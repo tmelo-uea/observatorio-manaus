@@ -182,18 +182,30 @@ with col_right:
     st.plotly_chart(fig_sources, use_container_width=True)
 
 # --- Nuvem de palavras ---
-st.subheader("Nuvem de palavras — títulos das notícias")
-all_titles = " ".join(filtered["title"].dropna().tolist())
-if all_titles.strip():
+st.subheader("Nuvem de palavras")
+texts = []
+for col in ["title", "summary", "transcript"]:
+    if col in filtered.columns:
+        texts.append(filtered[col].dropna().str.cat(sep=" "))
+all_text = " ".join(t for t in texts if t.strip())
+if all_text.strip():
     stopwords = {
-        "de", "da", "do", "em", "no", "na", "e", "o", "a", "os", "as",
-        "um", "uma", "com", "por", "para", "que", "se", "ao", "são",
-        "mais", "foi", "será", "ser", "tem", "ter", "seus", "sua"
+        "de", "da", "do", "dos", "das", "em", "no", "na", "nos", "nas",
+        "e", "o", "a", "os", "as", "um", "uma", "uns", "umas",
+        "com", "por", "para", "que", "se", "ao", "aos", "à", "às",
+        "são", "mais", "foi", "será", "ser", "tem", "ter", "seus", "sua",
+        "seu", "suas", "isso", "este", "esta", "esse", "essa", "esses", "essas",
+        "ele", "ela", "eles", "elas", "nós", "eu", "você", "vocês",
+        "já", "ainda", "também", "sobre", "entre", "após", "até", "como",
+        "quando", "onde", "porque", "mas", "ou", "nem", "não", "sim",
+        "muito", "bem", "aqui", "lá", "agora", "então", "assim", "tudo",
+        "todos", "todas", "outro", "outra", "outros", "outras", "mesmo",
+        "disse", "diz", "afirmou", "segundo", "conforme", "durante",
     }
     wc = WordCloud(
         width=1200, height=350, background_color="white",
         collocations=False, max_words=120, stopwords=stopwords,
-    ).generate(all_titles)
+    ).generate(all_text)
     fig_wc, ax = plt.subplots(figsize=(14, 4))
     ax.imshow(wc, interpolation="bilinear")
     ax.axis("off")
