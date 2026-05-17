@@ -115,6 +115,7 @@ if all_titles.strip():
     ax.imshow(wc, interpolation="bilinear")
     ax.axis("off")
     st.pyplot(fig_wc)
+    plt.close(fig_wc)
 
 # Lista de artigos
 st.subheader(f"Últimas notícias — {selected}")

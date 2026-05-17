@@ -198,6 +198,7 @@ if all_titles.strip():
     ax.imshow(wc, interpolation="bilinear")
     ax.axis("off")
     st.pyplot(fig_wc)
+    plt.close(fig_wc)
 
 # --- Feed de últimas notícias ---
 st.divider()
