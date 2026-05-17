@@ -1,0 +1,22 @@
+services:
+  mysql:
+    image: mysql:8.3
+    container_name: observatorio_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: observatorio_manaus
+      MYSQL_USER: observatorio
+      MYSQL_PASSWORD: observatorio123
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uobservatorio", "-pobservatorio123"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mysql_data:
