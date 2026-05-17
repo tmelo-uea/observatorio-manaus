@@ -94,7 +94,7 @@ selected_topic = st.sidebar.selectbox("Tema", topic_options)
 source_options = ["Todos"] + sorted(df["source"].unique().tolist())
 selected_source = st.sidebar.selectbox("Portal / Blog", source_options)
 
-source_type_options = ["Todos", "portal", "blog"]
+source_type_options = ["Todos"] + sorted(df["source_type"].dropna().unique().tolist())
 selected_type = st.sidebar.selectbox("Tipo de fonte", source_type_options)
 
 dates_valid = df["date"].dropna()
