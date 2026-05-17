@@ -132,7 +132,7 @@ if busca:
 # --- Métricas rápidas ---
 st.divider()
 c1, c2, c3, c4, c5 = st.columns(5)
-c1.metric("Total de notícias", f"{len(filtered):,}")
+c1.metric("Notícias no período", f"{len(filtered):,}")
 c2.metric("Portais monitorados", filtered["source"].nunique())
 c3.metric("Temas identificados", filtered["topic"].nunique())
 today_count = len(filtered[filtered["date"] == pd.Timestamp.today().date()])
