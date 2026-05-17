@@ -97,8 +97,9 @@ selected_source = st.sidebar.selectbox("Portal / Blog", source_options)
 source_type_options = ["Todos", "portal", "blog"]
 selected_type = st.sidebar.selectbox("Tipo de fonte", source_type_options)
 
-date_min = df["date"].min()
-date_max = df["date"].max()
+dates_valid = df["date"].dropna()
+date_min = dates_valid.min() if not dates_valid.empty else pd.Timestamp.today().date()
+date_max = dates_valid.max() if not dates_valid.empty else pd.Timestamp.today().date()
 date_range = st.sidebar.date_input(
     "Período", value=(date_min, date_max),
     min_value=date_min, max_value=date_max
