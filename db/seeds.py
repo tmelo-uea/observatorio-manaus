@@ -116,10 +116,11 @@ TOPICS = [
         "color": "#3498db",
         "display_order": 10,
         "keywords": [
-            "tecnologia", "inovação", "app", "aplicativo", "digital", "inteligência artificial",
-            "ia", "software", "startup", "ti", "ciência de dados", "programação",
-            "internet", "5g", "blockchain", "robotica", "automação", "hackatona",
-            "lsi", "fapeam", "cnpq", "pesquisa tecnológica"
+            "tecnologia", "inovação", "aplicativo", "digital", "inteligência artificial",
+            "software", "startup", "ciência de dados", "programação",
+            "internet", "5g", "blockchain", "robótica", "automação", "hackathon",
+            "fapeam", "cnpq", "pesquisa tecnológica", "desenvolvimento de software",
+            "transformação digital", "inteligência de dados"
         ],
     },
     {

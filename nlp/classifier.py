@@ -1,3 +1,4 @@
+import re
 import unicodedata
 from db.connection import get_session
 from db.models import Article, Topic
@@ -10,6 +11,13 @@ def normalize(text: str) -> str:
     return text
 
 
+def keyword_matches(keyword: str, text: str) -> bool:
+    kw = normalize(keyword)
+    if " " in kw:
+        return kw in text
+    return bool(re.search(r"\b" + re.escape(kw) + r"\b", text))
+
+
 def classify_article(text: str, topics: list[Topic]) -> tuple[int, float]:
     normalized = normalize(text)
     outros_id = next((t.id for t in topics if t.slug == "outros"), None)
@@ -20,7 +28,7 @@ def classify_article(text: str, topics: list[Topic]) -> tuple[int, float]:
     for topic in topics:
         if topic.slug == "outros" or not topic.keywords:
             continue
-        matches = sum(1 for kw in topic.keywords if normalize(kw) in normalized)
+        matches = sum(1 for kw in topic.keywords if keyword_matches(kw, normalized))
         score = matches / len(topic.keywords)
         if matches > best_score:
             best_score = score
