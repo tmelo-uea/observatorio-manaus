@@ -12,18 +12,6 @@ from nlp.classifier import run_classification
 Base.metadata.create_all(get_engine())
 seed_all()
 
-def reset_classification():
-    from db.connection import get_session
-    from db.models import Article
-    session = get_session()
-    try:
-        session.query(Article).update({"topic_id": None, "topic_score": None})
-        session.commit()
-        print("Classificação resetada — todos os artigos serão reclassificados.")
-    finally:
-        session.close()
-
-reset_classification()
 
 def job():
     print("\n--- Iniciando coleta ---")
