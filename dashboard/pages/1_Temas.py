@@ -92,7 +92,9 @@ if df.empty:
 c1, c2, c3 = st.columns(3)
 c1.metric("Total de notícias", len(df))
 c2.metric("Fontes diferentes", df["source"].nunique())
-c3.metric("Período", f"{df['date'].min()} → {df['date'].max()}")
+dates = df["date"].dropna()
+periodo = f"{dates.min()} → {dates.max()}" if not dates.empty else "—"
+c3.metric("Período", periodo)
 
 # Linha do tempo
 daily = df.groupby(["date", "source"]).size().reset_index(name="count")
