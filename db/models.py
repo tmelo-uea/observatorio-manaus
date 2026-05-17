@@ -37,7 +37,7 @@ class Article(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     title: Mapped[str] = mapped_column(String(500), nullable=False)
-    url: Mapped[str] = mapped_column(String(1000), nullable=False)
+    url: Mapped[str] = mapped_column(String(767), nullable=False)
     summary: Mapped[str] = mapped_column(Text, nullable=True)
     published_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
     collected_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

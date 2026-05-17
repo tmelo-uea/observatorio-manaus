@@ -29,7 +29,7 @@ def collect_source(source: Source) -> int:
         for entry in feed.entries:
             article = Article(
                 title=entry.get("title", "")[:500],
-                url=entry.get("link", "")[:1000],
+                url=entry.get("link", "")[:767],
                 summary=entry.get("summary", ""),
                 published_at=parse_date(entry),
                 source_id=source.id,
