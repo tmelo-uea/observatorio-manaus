@@ -7,11 +7,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def _build_url():
-    # Railway injeta DATABASE_URL automaticamente quando o serviço MySQL é vinculado
     database_url = os.getenv("DATABASE_URL") or os.getenv("MYSQL_URL")
     if database_url:
-        # Garante que usa o driver correto
-        return re.sub(r"^mysql://", "mysql+mysqlconnector://", database_url)
+        return re.sub(r"^mysql://", "mysql+pymysql://", database_url)
 
     host = os.getenv("MYSQL_HOST", "localhost")
     port = os.getenv("MYSQL_PORT", "3306")
@@ -19,7 +17,7 @@ def _build_url():
     password = os.getenv("MYSQL_PASSWORD", "")
     database = os.getenv("MYSQL_DATABASE", "railway")
     return (
-        f"mysql+mysqlconnector://{user}:{password}"
+        f"mysql+pymysql://{user}:{password}"
         f"@{host}:{port}/{database}?charset=utf8mb4"
     )
 
@@ -28,14 +26,7 @@ _engine = None
 def get_engine():
     global _engine
     if _engine is None:
-        url = _build_url()
-        is_internal = "railway.internal" in url
-        connect_args = {} if is_internal else {
-            "ssl_disabled": False,
-            "ssl_verify_cert": False,
-            "ssl_verify_identity": False,
-        }
-        _engine = create_engine(url, pool_pre_ping=True, connect_args=connect_args)
+        _engine = create_engine(_build_url(), pool_pre_ping=True)
     return _engine
 
 class Base(DeclarativeBase):
