@@ -23,22 +23,23 @@ def _build_url():
         f"@{host}:{port}/{database}?charset=utf8mb4"
     )
 
-def get_engine():
-    url = _build_url()
-    # SSL necessário apenas para conexões externas (coletor local via túnel)
-    is_internal = "railway.internal" in url
-    connect_args = {} if is_internal else {
-        "ssl_disabled": False,
-        "ssl_verify_cert": False,
-        "ssl_verify_identity": False,
-    }
-    return create_engine(url, pool_pre_ping=True, connect_args=connect_args)
+_engine = None
 
-engine = get_engine()
-SessionLocal = sessionmaker(bind=engine)
+def get_engine():
+    global _engine
+    if _engine is None:
+        url = _build_url()
+        is_internal = "railway.internal" in url
+        connect_args = {} if is_internal else {
+            "ssl_disabled": False,
+            "ssl_verify_cert": False,
+            "ssl_verify_identity": False,
+        }
+        _engine = create_engine(url, pool_pre_ping=True, connect_args=connect_args)
+    return _engine
 
 class Base(DeclarativeBase):
     pass
 
 def get_session():
-    return SessionLocal()
+    return sessionmaker(bind=get_engine())()
