@@ -49,7 +49,7 @@ def run_classification(batch_size: int = 500) -> int:
             .all()
         )
         for article in unclassified:
-            text = f"{article.title or ''} {article.summary or ''}"
+            text = f"{article.title or ''} {article.summary or ''} {article.transcript or ''}"
             topic_id, score = classify_article(text, topics)
             article.topic_id = topic_id
             article.topic_score = score

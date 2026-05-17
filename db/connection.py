@@ -34,3 +34,18 @@ class Base(DeclarativeBase):
 
 def get_session():
     return sessionmaker(bind=get_engine())()
+
+
+def run_migrations():
+    from sqlalchemy import text
+    engine = get_engine()
+    with engine.connect() as conn:
+        exists = conn.execute(text(
+            "SELECT COUNT(*) FROM information_schema.COLUMNS "
+            "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'articles' "
+            "AND COLUMN_NAME = 'transcript'"
+        )).scalar()
+        if not exists:
+            conn.execute(text("ALTER TABLE articles ADD COLUMN transcript LONGTEXT NULL"))
+            conn.commit()
+            print("Migration: coluna transcript adicionada.")

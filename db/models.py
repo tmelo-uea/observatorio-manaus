@@ -45,6 +45,7 @@ class Article(Base):
     source_id: Mapped[int] = mapped_column(ForeignKey("sources.id"), nullable=False)
     topic_id: Mapped[int] = mapped_column(ForeignKey("topics.id"), nullable=True)
     topic_score: Mapped[float] = mapped_column(Float, nullable=True)
+    transcript: Mapped[str] = mapped_column(Text, nullable=True)
 
     source: Mapped["Source"] = relationship(back_populates="articles")
     topic: Mapped["Topic"] = relationship(back_populates="articles")

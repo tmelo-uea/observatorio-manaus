@@ -173,6 +173,17 @@ SOURCES = [
     {"name": "Portal Manaus Notícias","url": "https://www.portalmanausnoticias.com.br","rss_url": "https://www.portalmanausnoticias.com.br/feed",                       "type": "portal"},
     {"name": "Portal O Poder",        "url": "https://portalopoder.com.br",            "rss_url": "https://portalopoder.com.br/feed",                                   "type": "portal"},
     {"name": "Agência Amazonas",      "url": "https://www.agenciaamazonas.am.gov.br",  "rss_url": "https://www.agenciaamazonas.am.gov.br/feed",                         "type": "portal"},
+    # Canais do YouTube
+    {"name": "TV A Crítica (YouTube)",      "url": "https://www.youtube.com/channel/UCnLSKfHkgZ6ujEYCO9jq7Sw", "rss_url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCnLSKfHkgZ6ujEYCO9jq7Sw", "type": "youtube"},
+    {"name": "TV Norte Amazonas (YouTube)", "url": "https://www.youtube.com/channel/UC4WNZYa1d0HVzdVWlfJEGjw", "rss_url": "https://www.youtube.com/feeds/videos.xml?channel_id=UC4WNZYa1d0HVzdVWlfJEGjw", "type": "youtube"},
+    {"name": "Jovem Pan Manaus (YouTube)",  "url": "https://www.youtube.com/channel/UCnzSEPHQ2zoaYIFo4BIv0ow", "rss_url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCnzSEPHQ2zoaYIFo4BIv0ow", "type": "youtube"},
+    {"name": "Portal do Holanda (YouTube)", "url": "https://www.youtube.com/@PortaldoHolandaTV",               "rss_url": "https://www.youtube.com/@PortaldoHolandaTV",               "type": "youtube"},
+    {"name": "Rede Amazônica (YouTube)",    "url": "https://www.youtube.com/@redeamazonicaoficial",            "rss_url": "https://www.youtube.com/@redeamazonicaoficial",            "type": "youtube"},
+    {"name": "TV CM7 (YouTube)",            "url": "https://www.youtube.com/c/TVCM7",                          "rss_url": "https://www.youtube.com/c/TVCM7",                          "type": "youtube"},
+    {"name": "Record Manaus (YouTube)",     "url": "https://www.youtube.com/@RecordManaus",                    "rss_url": "https://www.youtube.com/@RecordManaus",                    "type": "youtube"},
+    {"name": "Band Amazonas (YouTube)",     "url": "https://www.youtube.com/@AmazonasBand",                    "rss_url": "https://www.youtube.com/@AmazonasBand",                    "type": "youtube"},
+    {"name": "Amazonas Atual (YouTube)",    "url": "https://www.youtube.com/@amazonasatual1125",               "rss_url": "https://www.youtube.com/@amazonasatual1125",               "type": "youtube"},
+    {"name": "AM POST (YouTube)",           "url": "https://www.youtube.com/@portalampost",                    "rss_url": "https://www.youtube.com/@portalampost",                    "type": "youtube"},
     # Cobertura regional e ambiental
     {"name": "G1 Amazonas",          "url": "https://g1.globo.com/am/amazonas",  "rss_url": "https://g1.globo.com/rss/g1/am/amazonas/",                      "type": "portal"},
     {"name": "Agência Brasil",       "url": "https://agenciabrasil.ebc.com.br",  "rss_url": "https://agenciabrasil.ebc.com.br/rss/ultimasnoticias/feed.xml",  "type": "portal"},
