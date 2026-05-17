@@ -1,4 +1,6 @@
+import os
 import re
+import subprocess
 import feedparser
 import requests
 from datetime import datetime
@@ -28,13 +30,68 @@ def _resolve_rss_url(channel_url: str) -> str | None:
         return None
 
 
-def _get_transcript(video_id: str) -> str | None:
+def _captions(video_id: str) -> str | None:
+    """Busca legendas automáticas do YouTube (sem download)."""
     try:
-        from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound, TranscriptsDisabled
-        transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=["pt", "pt-BR", "en"])
-        return " ".join(t["text"] for t in transcript)
+        from youtube_transcript_api import YouTubeTranscriptApi
+        segments = YouTubeTranscriptApi.get_transcript(
+            video_id, languages=["pt", "pt-BR", "en"]
+        )
+        return " ".join(s["text"] for s in segments)
     except Exception:
         return None
+
+
+def _groq_transcribe(video_url: str, video_id: str) -> str | None:
+    """Baixa o áudio e transcreve via Groq Whisper."""
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key:
+        return None
+
+    audio_path = f"/tmp/{video_id}.mp3"
+    try:
+        proc = subprocess.run(
+            [
+                "yt-dlp", "-x",
+                "--audio-format", "mp3",
+                "--audio-quality", "9",       # menor bitrate (melhor para tamanho)
+                "-o", audio_path,
+                "--no-playlist",
+                "--quiet",
+                video_url,
+            ],
+            capture_output=True,
+            timeout=180,
+        )
+        if proc.returncode != 0 or not os.path.exists(audio_path):
+            return None
+
+        if os.path.getsize(audio_path) > 24 * 1024 * 1024:  # limite 25 MB do Groq
+            return None
+
+        from groq import Groq
+        client = Groq(api_key=api_key)
+        with open(audio_path, "rb") as f:
+            result = client.audio.transcriptions.create(
+                file=(f"{video_id}.mp3", f),
+                model="whisper-large-v3",
+                language="pt",
+            )
+        return result.text
+    except Exception as e:
+        print(f"  [Groq] Erro: {e}")
+        return None
+    finally:
+        if os.path.exists(audio_path):
+            os.remove(audio_path)
+
+
+def _get_transcript(video_id: str, video_url: str) -> str | None:
+    """Tenta legendas do YouTube; cai no Groq se não houver."""
+    transcript = _captions(video_id)
+    if transcript:
+        return transcript
+    return _groq_transcribe(video_url, video_id)
 
 
 def _video_id_from_url(url: str) -> str | None:
@@ -48,7 +105,6 @@ def _collect_channel(source: Source, session) -> int:
         print(f"  [{source.name}] Não foi possível resolver o RSS.")
         return 0
 
-    # Atualiza rss_url no banco se foi resolvido agora
     if rss_url != source.rss_url:
         source.rss_url = rss_url
         session.flush()
@@ -62,15 +118,13 @@ def _collect_channel(source: Source, session) -> int:
             continue
 
         video_id = _video_id_from_url(url)
-        transcript = _get_transcript(video_id) if video_id else None
+        transcript = _get_transcript(video_id, url) if video_id else None
 
         published = None
         if getattr(entry, "published_parsed", None):
             published = datetime(*entry.published_parsed[:6])
 
-        summary = entry.get("summary", "") or ""
-        # O RSS do YouTube inclui HTML no summary; remove tags básicas
-        summary = re.sub(r"<[^>]+>", "", summary).strip()
+        summary = re.sub(r"<[^>]+>", "", entry.get("summary", "") or "").strip()
 
         article = Article(
             title=(entry.get("title", "") or "")[:500],

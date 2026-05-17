@@ -4,6 +4,8 @@ requests==2.31.0
 beautifulsoup4==4.12.3
 schedule==1.2.2
 youtube-transcript-api==0.6.2
+yt-dlp==2024.5.27
+groq==0.9.0
 
 # Banco de dados
 sqlalchemy==2.0.30
