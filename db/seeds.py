@@ -146,6 +146,13 @@ SOURCES = [
     {"name": "Rede Amazônica",       "url": "https://redeamazonica.com.br",      "rss_url": "https://redeamazonica.com.br/feed",                             "type": "portal"},
     # Blogs
     {"name": "Blog do Holanda",      "url": "https://blogdoholanda.com",         "rss_url": "https://blogdoholanda.com/feed",                                "type": "blog"},
+    {"name": "Blog do Hiel Levy",    "url": "https://blogdohiellevy.com.br",     "rss_url": "https://blogdohiellevy.com.br/feed",                            "type": "blog"},
+    {"name": "Portal Marcos Santos", "url": "https://portalmarcossantos.com.br", "rss_url": "https://portalmarcossantos.com.br/feed",                        "type": "blog"},
+    {"name": "Fato Amazônico",       "url": "https://fatoamazonico.com",         "rss_url": "https://fatoamazonico.com/feed",                                "type": "portal"},
+    {"name": "Radar Amazônico",      "url": "https://radaramazonico.com.br",     "rss_url": "https://radaramazonico.com.br/feed",                            "type": "portal"},
+    {"name": "BNC Amazonas",         "url": "https://bncamazonas.com.br",        "rss_url": "https://bncamazonas.com.br/feed",                               "type": "portal"},
+    {"name": "Realtime",             "url": "https://realtime1.com.br",          "rss_url": "https://realtime1.com.br/feed",                                 "type": "portal"},
+    {"name": "Portal Único",         "url": "https://portalunico.com",           "rss_url": "https://portalunico.com/feed",                                  "type": "portal"},
     # Cobertura regional e ambiental
     {"name": "G1 Amazonas",          "url": "https://g1.globo.com/am/amazonas",  "rss_url": "https://g1.globo.com/rss/g1/am/amazonas/",                      "type": "portal"},
     {"name": "Agência Brasil",       "url": "https://agenciabrasil.ebc.com.br",  "rss_url": "https://agenciabrasil.ebc.com.br/rss/ultimasnoticias/feed.xml",  "type": "portal"},
