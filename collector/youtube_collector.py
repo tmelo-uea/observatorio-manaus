@@ -21,7 +21,7 @@ def _resolve_rss_url(channel_url: str) -> str | None:
         )
         if resp.status_code != 200:
             return None
-        match = re.search(r'"channelId":"(UC[a-zA-Z0-9_-]{22})"', resp.text)
+        match = re.search(r'"externalId":"(UC[a-zA-Z0-9_-]{22})"', resp.text)
         if not match:
             return None
         channel_id = match.group(1)

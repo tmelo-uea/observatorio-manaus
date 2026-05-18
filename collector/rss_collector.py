@@ -47,7 +47,10 @@ def collect_source(source: Source) -> int:
 
 def run_collection() -> dict:
     session = get_session()
-    sources = session.query(Source).filter_by(active=True).all()
+    sources = session.query(Source).filter(
+        Source.active == True,
+        Source.type != "youtube",
+    ).all()
     session.close()
 
     results = {}
