@@ -182,12 +182,16 @@ with col_right:
     fig_sources.update_traces(textposition="inside", textinfo="percent+label")
     st.plotly_chart(fig_sources, use_container_width=True)
 
+def _strip_html(series):
+    import re
+    return series.dropna().apply(lambda t: re.sub(r"<[^>]+>", " ", t)).str.cat(sep=" ")
+
 # --- Nuvem de palavras ---
 st.subheader("Nuvem de palavras")
 texts = []
 for col in ["title", "summary", "transcript"]:
     if col in filtered.columns:
-        texts.append(filtered[col].dropna().str.cat(sep=" "))
+        texts.append(_strip_html(filtered[col]))
 all_text = " ".join(t for t in texts if t.strip())
 if all_text.strip():
     stopwords = {

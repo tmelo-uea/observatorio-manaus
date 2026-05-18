@@ -103,11 +103,15 @@ fig2 = px.line(daily, x="date", y="count", color="source", markers=True,
                labels={"date": "Data", "count": "Notícias", "source": "Fonte"})
 st.plotly_chart(fig2, use_container_width=True)
 
+def _strip_html(series):
+    import re
+    return series.dropna().apply(lambda t: re.sub(r"<[^>]+>", " ", t)).str.cat(sep=" ")
+
 # Nuvem de palavras
 texts = []
 for col in ["title", "summary", "transcript"]:
     if col in df.columns:
-        texts.append(df[col].dropna().str.cat(sep=" "))
+        texts.append(_strip_html(df[col]))
 all_text = " ".join(t for t in texts if t.strip())
 if all_text.strip():
     stopwords = {
