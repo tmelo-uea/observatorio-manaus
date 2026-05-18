@@ -129,7 +129,7 @@ if all_text.strip():
         "http", "br", "href", "src", "img",
     }
     wc = WordCloud(width=900, height=280, background_color="white",
-                   collocations=False, max_words=80, stopwords=stopwords,
+                   collocations=True, max_words=80, stopwords=stopwords,
                    regexp=r"\b[^\W\d_]{2,}\b").generate(all_text)
     fig_wc, ax = plt.subplots(figsize=(12, 3.5))
     ax.imshow(wc, interpolation="bilinear")
