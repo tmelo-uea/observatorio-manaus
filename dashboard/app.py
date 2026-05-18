@@ -187,6 +187,7 @@ def _clean_text(series):
     def clean(t):
         t = re.sub(r"<[^>]+>", " ", t)           # remove tags HTML
         t = re.sub(r"https?://\S+", " ", t)       # remove URLs completas
+        t = re.sub(r"\bhttps?\b", " ", t)         # remove http/https soltos
         t = re.sub(r"\b\w*\d\w*\b", " ", t)       # remove tokens com números
         t = re.sub(r"\b\w{1,2}\b", " ", t)        # remove palavras de 1-2 letras
         return t

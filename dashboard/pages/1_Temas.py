@@ -108,6 +108,7 @@ def _clean_text(series):
     def clean(t):
         t = re.sub(r"<[^>]+>", " ", t)
         t = re.sub(r"https?://\S+", " ", t)
+        t = re.sub(r"\bhttps?\b", " ", t)
         t = re.sub(r"\b\w*\d\w*\b", " ", t)
         t = re.sub(r"\b\w{1,2}\b", " ", t)
         return t
