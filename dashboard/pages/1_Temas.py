@@ -122,6 +122,7 @@ if all_text.strip():
         "muito", "bem", "aqui", "lá", "agora", "então", "assim", "tudo",
         "todos", "todas", "outro", "outra", "outros", "outras", "mesmo",
         "disse", "diz", "afirmou", "segundo", "conforme", "durante",
+        "http", "br", "href", "src", "img",
     }
     wc = WordCloud(width=900, height=280, background_color="white",
                    collocations=False, max_words=80, stopwords=stopwords,
