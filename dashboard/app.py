@@ -206,6 +206,7 @@ if all_text.strip():
     wc = WordCloud(
         width=1200, height=350, background_color="white",
         collocations=False, max_words=120, stopwords=stopwords,
+        regexp=r"\b[^\W\d_]{2,}\b",
     ).generate(all_text)
     fig_wc, ax = plt.subplots(figsize=(14, 4))
     ax.imshow(wc, interpolation="bilinear")

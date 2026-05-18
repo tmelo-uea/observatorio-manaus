@@ -124,7 +124,8 @@ if all_text.strip():
         "disse", "diz", "afirmou", "segundo", "conforme", "durante",
     }
     wc = WordCloud(width=900, height=280, background_color="white",
-                   collocations=False, max_words=80, stopwords=stopwords).generate(all_text)
+                   collocations=False, max_words=80, stopwords=stopwords,
+                   regexp=r"\b[^\W\d_]{2,}\b").generate(all_text)
     fig_wc, ax = plt.subplots(figsize=(12, 3.5))
     ax.imshow(wc, interpolation="bilinear")
     ax.axis("off")
