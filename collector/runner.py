@@ -9,6 +9,7 @@ from db.seeds import seed_all
 from collector.rss_collector import run_collection
 from collector.youtube_collector import run_youtube_collection
 from nlp.classifier import run_classification
+from scripts.backfill_transcripts import backfill
 
 Base.metadata.create_all(get_engine())
 run_migrations()
@@ -24,6 +25,8 @@ def job():
     print(f"Classificados: {n} artigos")
 
 print("Observatório do Amazonas — Coletor iniciado")
+print("Preenchendo transcrições pendentes...")
+backfill()
 job()
 
 schedule.every(30).minutes.do(job)
