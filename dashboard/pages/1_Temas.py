@@ -103,15 +103,21 @@ fig2 = px.line(daily, x="date", y="count", color="source", markers=True,
                labels={"date": "Data", "count": "Notícias", "source": "Fonte"})
 st.plotly_chart(fig2, use_container_width=True)
 
-def _strip_html(series):
+def _clean_text(series):
     import re
-    return series.dropna().apply(lambda t: re.sub(r"<[^>]+>", " ", t)).str.cat(sep=" ")
+    def clean(t):
+        t = re.sub(r"<[^>]+>", " ", t)
+        t = re.sub(r"https?://\S+", " ", t)
+        t = re.sub(r"\b\w*\d\w*\b", " ", t)
+        t = re.sub(r"\b\w{1,2}\b", " ", t)
+        return t
+    return series.dropna().apply(clean).str.cat(sep=" ")
 
 # Nuvem de palavras
 texts = []
 for col in ["title", "summary", "transcript"]:
     if col in df.columns:
-        texts.append(_strip_html(df[col]))
+        texts.append(_clean_text(df[col]))
 all_text = " ".join(t for t in texts if t.strip())
 if all_text.strip():
     stopwords = {
@@ -126,7 +132,11 @@ if all_text.strip():
         "muito", "bem", "aqui", "lá", "agora", "então", "assim", "tudo",
         "todos", "todas", "outro", "outra", "outros", "outras", "mesmo",
         "disse", "diz", "afirmou", "segundo", "conforme", "durante",
-        "http", "br", "href", "src", "img",
+        "http", "https", "br", "href", "src", "img", "bit", "www",
+        "apareceu", "primeiro", "post", "vivo", "acompanhe", "inscreva",
+        "canal", "site", "neste", "pelo", "pela", "pelos", "pelas",
+        "notificações", "conteúdo", "conteúdos", "exclusivos", "informações",
+        "instagram", "facebook", "tiktok", "youtube", "twitter", "whatsapp",
     }
     wc = WordCloud(width=900, height=280, background_color="white",
                    collocations=True, max_words=80, stopwords=stopwords,
