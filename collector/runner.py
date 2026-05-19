@@ -9,6 +9,7 @@ from db.seeds import seed_all
 from collector.rss_collector import run_collection
 from collector.youtube_collector import run_youtube_collection
 from nlp.classifier import run_classification
+from nlp.local_classifier import run_local_classification
 from scripts.backfill_transcripts import backfill
 
 Base.metadata.create_all(get_engine())
@@ -23,6 +24,8 @@ def job():
     print(f"YouTube: {n_yt} novos vídeos")
     n = run_classification()
     print(f"Classificados: {n} artigos")
+    n_local = run_local_classification()
+    print(f"Localidade classificada: {n_local} artigos")
 
 print("Observatório do Amazonas — Coletor iniciado")
 print("Preenchendo transcrições pendentes...")

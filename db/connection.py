@@ -82,4 +82,15 @@ def run_migrations():
         conn.execute(text(
             "UPDATE sources SET active = 0 WHERE url = 'https://www.youtube.com/@portalampost'"
         ))
+
+        # Adiciona coluna is_local se não existir
+        has_is_local = conn.execute(text(
+            "SELECT COUNT(*) FROM information_schema.COLUMNS "
+            "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'articles' "
+            "AND COLUMN_NAME = 'is_local'"
+        )).scalar()
+        if not has_is_local:
+            conn.execute(text("ALTER TABLE articles ADD COLUMN is_local TINYINT(1) NULL"))
+            print("Migration: coluna is_local adicionada.")
+
         conn.commit()
