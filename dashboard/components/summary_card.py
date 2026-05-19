@@ -63,9 +63,15 @@ def render_summary_card(engine, topic_id: int | None = None, topic_name: str | N
     else:
         sources_str = ", ".join(sources)
 
-    title = f"🤖 Resumo do dia — {today.strftime('%d de %B de %Y')}"
+    MESES = {
+        1: "janeiro", 2: "fevereiro", 3: "março", 4: "abril",
+        5: "maio", 6: "junho", 7: "julho", 8: "agosto",
+        9: "setembro", 10: "outubro", 11: "novembro", 12: "dezembro",
+    }
+    data_fmt = f"{today.day} de {MESES[today.month]} de {today.year}"
+    title = f"🤖 Resumo do dia — {data_fmt}"
     if topic_name:
-        title = f"🤖 Resumo de {topic_name} — {today.strftime('%d de %B de %Y')}"
+        title = f"🤖 Resumo de {topic_name} — {data_fmt}"
 
     st.markdown(f"""
 <div style="
