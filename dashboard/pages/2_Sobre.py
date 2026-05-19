@@ -113,13 +113,39 @@ st.markdown("""
 O Observatório de Manaus é uma iniciativa do **LSI — Laboratório de Sistemas Inteligentes**
 da **Universidade do Estado do Amazonas (UEA)**.
 
-O LSI desenvolve pesquisas nas áreas de Inteligência Artificial, Ciência de Dados,
-Processamento de Linguagem Natural e Mineração de Texto, com foco em aplicações
-para a realidade amazônica.
-
 **Coordenação:** Tiago Eugenio de Melo
 **Equipe:** Elloá Guedes, Carlos Maurício, Fábio Santos
 **Contato:** tmelo@uea.edu.br
+""")
+
+st.divider()
+
+# --- Sobre o LSI ---
+st.markdown("""
+### Sobre o LSI
+
+O **Laboratório de Sistemas Inteligentes (LSI)** da Universidade do Estado do Amazonas,
+localizado na Sala A21 da Escola Superior de Tecnologia, congrega pesquisadores e
+estudantes das áreas de Computação e afins que desenvolvem soluções de vanguarda para
+problemas de domínios diversos utilizando métodos, técnicas e tecnologias da Inteligência
+Artificial, Ciência dos Dados e Aprendizagem de Máquina.
+
+Inaugurado em 2018 com recursos oriundos de editais da Fundação de Amparo à Pesquisa
+do Estado do Amazonas (FAPEAM), atua em nível de graduação e pós-graduação,
+colaborando para o aprimoramento do capital humano existente na região e para o emprego e
+aprimoramento de métodos e técnicas inteligentes para o avanço da fronteira do conhecimento.
+
+O LSI dispõe de servidores computacionais de alta capacidade para realização de
+experimentos com volumes massivos de dados e oferece infraestrutura física e computacional
+para os integrantes do Grupo de Pesquisa em Sistemas Inteligentes desenvolverem suas
+atividades, as quais caracterizam-se por orientações de iniciação científica, trabalhos de
+conclusão de curso de graduação, pesquisas em nível de mestrado e projetos de pesquisa e
+desenvolvimento com parceiros diversos.
+
+**Links úteis:**
+- [Diretório de Laboratórios — UEA](https://dirlab.uea.edu.br/publico/view/217/)
+- [Grupo de Pesquisa — CNPq](http://dgp.cnpq.br/dgp/espelhogrupo/358110)
+- [LSI no YouTube](https://www.youtube.com/watch?v=up-c4irUINc)
 """)
 
 st.divider()
