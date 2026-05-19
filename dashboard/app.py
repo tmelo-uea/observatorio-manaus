@@ -43,7 +43,7 @@ def load_articles():
     query = text("""
         SELECT
             a.id, a.title, a.url, a.summary,
-            a.published_at, a.collected_at, a.topic_score,
+            a.published_at, a.collected_at, a.topic_score, a.is_local,
             s.name AS source, s.type AS source_type,
             t.name AS topic, t.slug AS topic_slug, t.color AS topic_color
         FROM articles a
@@ -110,6 +110,8 @@ date_range = st.sidebar.date_input(
 
 busca = st.sidebar.text_input("Buscar por palavra-chave")
 
+only_local = st.sidebar.checkbox("Apenas notícias de Manaus/AM", value=False)
+
 # --- Aplicar filtros ---
 filtered = df.copy()
 if selected_topic != "Todos":
@@ -122,6 +124,8 @@ if len(date_range) == 2:
     filtered = filtered[
         (filtered["date"] >= date_range[0]) & (filtered["date"] <= date_range[1])
     ]
+if only_local and "is_local" in filtered.columns:
+    filtered = filtered[filtered["is_local"] == True]
 if busca:
     mask = (
         filtered["title"].str.contains(busca, case=False, na=False) |
