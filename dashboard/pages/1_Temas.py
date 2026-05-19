@@ -9,6 +9,7 @@ from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 from sqlalchemy import text
 from db.connection import get_engine
+from dashboard.components.summary_card import render_summary_card
 
 st.set_page_config(page_title="Temas — Observatório de Manaus", page_icon="🏷️", layout="wide")
 
@@ -88,6 +89,8 @@ df = load_articles_by_topic(topic_row["id"])
 if df.empty:
     st.info("Nenhum artigo classificado neste tema ainda.")
     st.stop()
+
+render_summary_card(get_db(), topic_id=int(topic_row["id"]), topic_name=selected)
 
 c1, c2, c3 = st.columns(3)
 c1.metric("Total de notícias", len(df))

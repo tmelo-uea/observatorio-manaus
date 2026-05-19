@@ -10,6 +10,7 @@ from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 from sqlalchemy import text
 from db.connection import get_engine
+from dashboard.components.summary_card import render_summary_card
 
 st.set_page_config(
     page_title="Observatório de Manaus",
@@ -77,6 +78,7 @@ with col_refresh:
 try:
     df = load_articles()
     topics_df = load_topics()
+    render_summary_card(get_db())
 except Exception as e:
     st.error(f"Erro ao conectar ao banco de dados: {e}")
     st.stop()

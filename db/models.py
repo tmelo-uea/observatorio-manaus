@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import String, Text, DateTime, Integer, Float, ForeignKey, UniqueConstraint, JSON
+from sqlalchemy import String, Text, DateTime, Integer, Float, ForeignKey, UniqueConstraint, JSON, Date
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from db.connection import Base
 
@@ -50,3 +50,18 @@ class Article(Base):
 
     source: Mapped["Source"] = relationship(back_populates="articles")
     topic: Mapped["Topic"] = relationship(back_populates="articles")
+
+
+class DailySummary(Base):
+    __tablename__ = "daily_summaries"
+    __table_args__ = (UniqueConstraint("date", "topic_id", name="uq_summary_date_topic"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    date: Mapped[datetime] = mapped_column(Date, nullable=False)
+    topic_id: Mapped[int] = mapped_column(ForeignKey("topics.id"), nullable=True)
+    summary: Mapped[str] = mapped_column(Text, nullable=False)
+    article_ids: Mapped[dict] = mapped_column(JSON, nullable=False)
+    article_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    generated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    topic: Mapped["Topic"] = relationship()
