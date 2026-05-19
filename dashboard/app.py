@@ -110,7 +110,7 @@ date_range = st.sidebar.date_input(
 
 busca = st.sidebar.text_input("Buscar por palavra-chave")
 
-only_local = st.sidebar.checkbox("Apenas notícias de Manaus/AM", value=False)
+only_local = st.sidebar.checkbox("Só notícias locais", value=False)
 
 # --- Aplicar filtros ---
 filtered = df.copy()
