@@ -281,6 +281,6 @@ O deploy é automático a cada push no branch `main`.
 Iniciativa do **LSI — Laboratório de Sistemas Inteligentes**  
 **Universidade do Estado do Amazonas (UEA)**
 
-**Coordenação:** *(a preencher)*  
-**Equipe:** *(a preencher)*  
-**Contato:** *(a preencher)*
+**Coordenação:** Tiago Eugenio de Melo  
+**Equipe:** Elloá Guedes, Carlos Maurício, Fábio Santos  
+**Contato:** tmelo@uea.edu.br

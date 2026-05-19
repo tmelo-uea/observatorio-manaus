@@ -117,9 +117,9 @@ O LSI desenvolve pesquisas nas áreas de Inteligência Artificial, Ciência de D
 Processamento de Linguagem Natural e Mineração de Texto, com foco em aplicações
 para a realidade amazônica.
 
-**Coordenação:** *(a preencher)*
-**Equipe:** *(a preencher)*
-**Contato:** *(a preencher)*
+**Coordenação:** Tiago Eugenio de Melo
+**Equipe:** Elloá Guedes, Carlos Maurício, Fábio Santos
+**Contato:** tmelo@uea.edu.br
 """)
 
 st.divider()
