@@ -183,6 +183,11 @@ SOURCES = [
     {"name": "Record Manaus (YouTube)",     "url": "https://www.youtube.com/channel/UClpkHFE0rwJOsA_Rzk7OK8A", "rss_url": "https://www.youtube.com/feeds/videos.xml?channel_id=UClpkHFE0rwJOsA_Rzk7OK8A", "type": "youtube"},
     {"name": "Band Amazonas (YouTube)",     "url": "https://www.youtube.com/channel/UCJVYVZTlMgiytKA9hjZ3ioA", "rss_url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCJVYVZTlMgiytKA9hjZ3ioA", "type": "youtube"},
     {"name": "Amazonas Atual (YouTube)",    "url": "https://www.youtube.com/channel/UCg8t9F8LXjaOURUBnMZgb5g", "rss_url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCg8t9F8LXjaOURUBnMZgb5g", "type": "youtube"},
+    # Universidades e institutos de pesquisa
+    {"name": "UFAM",    "url": "https://www.ufam.edu.br",    "rss_url": "https://www.ufam.edu.br/noticias.feed?type=rss",                        "type": "portal"},
+    {"name": "UEA",     "url": "https://www.uea.edu.br",     "rss_url": None,                                                                    "type": "portal"},
+    {"name": "INPA",    "url": "https://www.gov.br/inpa",    "rss_url": "https://www.gov.br/inpa/pt-br/assuntos/noticias/@@search?format=rss",    "type": "portal"},
+    {"name": "UniNorte","url": "https://www.uninorte.com.br","rss_url": "https://www.uninorte.com.br/feed/",                                      "type": "portal"},
     # Cobertura regional e ambiental
     {"name": "G1 Amazonas",          "url": "https://g1.globo.com/am/amazonas",  "rss_url": "https://g1.globo.com/rss/g1/am/amazonas/",                      "type": "portal"},
     {"name": "Agência Brasil",       "url": "https://agenciabrasil.ebc.com.br",  "rss_url": "https://agenciabrasil.ebc.com.br/rss/ultimasnoticias/feed.xml",  "type": "portal"},
