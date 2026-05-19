@@ -185,7 +185,7 @@ SOURCES = [
     {"name": "Amazonas Atual (YouTube)",    "url": "https://www.youtube.com/channel/UCg8t9F8LXjaOURUBnMZgb5g", "rss_url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCg8t9F8LXjaOURUBnMZgb5g", "type": "youtube"},
     # Universidades e institutos de pesquisa
     {"name": "UFAM",    "url": "https://www.ufam.edu.br",    "rss_url": "https://www.ufam.edu.br/noticias.feed?type=rss",                        "type": "portal"},
-    {"name": "UEA",     "url": "https://www.uea.edu.br",     "rss_url": None,                                                                    "type": "portal"},
+    {"name": "UEA",     "url": "https://www.uea.edu.br",     "rss_url": "http://www.uea.edu.br/index.php/feed/",                                "type": "portal"},
     {"name": "INPA",    "url": "https://www.gov.br/inpa",    "rss_url": "https://www.gov.br/inpa/pt-br/assuntos/noticias/@@search?format=rss",    "type": "portal"},
     {"name": "UniNorte","url": "https://www.uninorte.com.br","rss_url": "https://www.uninorte.com.br/feed/",                                      "type": "portal"},
     # Cobertura regional e ambiental
