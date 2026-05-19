@@ -32,6 +32,8 @@ def job():
 print("Observatório do Amazonas — Coletor iniciado")
 print("Preenchendo transcrições pendentes...")
 backfill()
+print("Gerando resumo diário inicial...")
+run_daily_summary()
 job()
 
 schedule.every(30).minutes.do(job)
