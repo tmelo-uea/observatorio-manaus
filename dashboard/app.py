@@ -234,7 +234,7 @@ if all_text.strip():
 st.divider()
 st.subheader("Últimas notícias coletadas")
 
-for _, row in filtered.head(30).iterrows():
+for _, row in filtered.head(5).iterrows():
     date_str = row["published_at"].strftime("%d/%m/%Y %H:%M") if pd.notna(row["published_at"]) else "—"
     topic_badge = f"`{row['topic']}`" if pd.notna(row["topic"]) else ""
     st.markdown(
