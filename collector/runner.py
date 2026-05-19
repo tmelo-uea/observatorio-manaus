@@ -27,9 +27,7 @@ def job():
     print(f"Classificados: {n} artigos")
     n_local = run_local_classification()
     print(f"Localidade classificada: {n_local} artigos")
-    from datetime import datetime
-    if datetime.utcnow().hour == 7:
-        run_daily_summary()
+    run_daily_summary()
 
 print("Observatório do Amazonas — Coletor iniciado")
 print("Preenchendo transcrições pendentes...")
