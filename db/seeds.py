@@ -192,6 +192,26 @@ SOURCES = [
     {"name": "G1 Amazonas",          "url": "https://g1.globo.com/am/amazonas",  "rss_url": "https://g1.globo.com/rss/g1/am/amazonas/",                      "type": "portal"},
     {"name": "Agência Brasil",       "url": "https://agenciabrasil.ebc.com.br",  "rss_url": "https://agenciabrasil.ebc.com.br/rss/ultimasnoticias/feed.xml",  "type": "portal"},
     {"name": "Mongabay Brasil",      "url": "https://brasil.mongabay.com",       "rss_url": "https://brasil.mongabay.com/feed/",                             "type": "portal"},
+    # Novos portais locais
+    {"name": "Canal 92",             "url": "https://canal92am.com",             "rss_url": "https://canal92am.com/feed/",                                   "type": "portal"},
+    {"name": "Portal Regional AM",   "url": "https://portalregionalam.com.br",   "rss_url": "https://portalregionalam.com.br/feed/",                         "type": "portal"},
+    {"name": "Portal Tambaqui",      "url": "https://portaltambaqui.com.br",     "rss_url": "https://portaltambaqui.com.br/feed/",                           "type": "portal"},
+    {"name": "Portal AM 24h",        "url": "https://portalam24h.com",           "rss_url": "https://www.portalam24h.com/feed/",                             "type": "portal"},
+    {"name": "Portal do Amazonas AM","url": "https://portaldoamazonas.com",      "rss_url": "https://portaldoamazonas.com/feed/",                            "type": "portal"},
+    {"name": "Comunica AM",          "url": "https://comunicaam.com.br",         "rss_url": "https://comunicaam.com.br/feed",                                "type": "portal"},
+    {"name": "Portal Amazôn Online", "url": "https://portalamazononline.com.br", "rss_url": "https://portalamazononline.com.br/feed/",                       "type": "portal"},
+    {"name": "No Ar Portal",         "url": "https://noarportal.com.br",         "rss_url": "https://noarportal.com.br/feed/",                               "type": "portal"},
+    {"name": "Menezes Virtual Eye",  "url": "https://menezesvirtualeye.com",     "rss_url": "https://menezesvirtualeye.com/feed/",                           "type": "blog"},
+    {"name": "Portal R5",            "url": "https://portalr5.com.br",           "rss_url": "https://portalr5.com.br/feed/",                                 "type": "portal"},
+    {"name": "Nosso Show AM",        "url": "https://nossoshowam.com",           "rss_url": "https://nossoshowam.com/feed",                                  "type": "portal"},
+    # Órgãos governamentais do Amazonas
+    {"name": "Governo do Amazonas",  "url": "https://www.amazonas.am.gov.br",    "rss_url": "https://www.amazonas.am.gov.br/feed/",                          "type": "portal"},
+    {"name": "ALEAM",                "url": "https://www.aleam.gov.br",          "rss_url": "https://www.aleam.gov.br/feed/",                                "type": "portal"},
+    {"name": "IPAAM",                "url": "https://www.ipaam.am.gov.br",       "rss_url": "https://www.ipaam.am.gov.br/feed/",                             "type": "portal"},
+    {"name": "SSP-AM",               "url": "https://www.ssp.am.gov.br",         "rss_url": "https://www.ssp.am.gov.br/feed/",                               "type": "portal"},
+    {"name": "DETRAN-AM",            "url": "https://www.detran.am.gov.br",      "rss_url": "https://www.detran.am.gov.br/feed/",                            "type": "portal"},
+    {"name": "Cultura AM",           "url": "https://cultura.am.gov.br",         "rss_url": "https://cultura.am.gov.br/feed/",                               "type": "portal"},
+    {"name": "Prefeitura de Manaus", "url": "https://www.manaus.am.gov.br",      "rss_url": "https://www.manaus.am.gov.br/feed/",                            "type": "portal"},
 ]
 
 
