@@ -43,7 +43,8 @@ def load_articles():
     engine = get_db()
     query = text("""
         SELECT
-            a.id, a.title, a.url, a.summary,
+            a.id, a.title, a.url,
+            LEFT(a.summary, 500) AS summary,
             a.published_at, a.collected_at, a.topic_score, a.is_local,
             s.name AS source, s.type AS source_type,
             t.name AS topic, t.slug AS topic_slug, t.color AS topic_color
@@ -51,6 +52,7 @@ def load_articles():
         JOIN sources s ON a.source_id = s.id
         LEFT JOIN topics t ON a.topic_id = t.id
         ORDER BY a.published_at DESC
+        LIMIT 5000
     """)
     with engine.connect() as conn:
         df = pd.read_sql(query, conn)
