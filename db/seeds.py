@@ -8,10 +8,15 @@ TOPICS = [
         "color": "#e74c3c",
         "display_order": 1,
         "keywords": [
-            "saúde", "hospital", "ubs", "sus", "médico", "enfermeiro", "dengue",
-            "vacina", "vacinação", "epidemia", "pandemia", "doença", "paciente",
-            "internação", "pronto-socorro", "fhaj", "fcecon", "hps", "caps",
-            "secretaria de saúde", "semsa"
+            "saúde", "hospital", "ubs", "sus", "médico", "médica", "enfermeiro", "enfermagem",
+            "dengue", "vacina", "vacinação", "epidemia", "pandemia", "doença", "paciente",
+            "internação", "pronto-socorro", "fhaj", "fcecon", "hps", "caps", "upa",
+            "secretaria de saúde", "semsa", "leito", "cirurgia", "tratamento", "remédio",
+            "medicamento", "febre", "vírus", "infecção", "malária", "tuberculose", "aids",
+            "câncer", "obesidade", "hipertensão", "diabetes", "saúde mental", "ambulância",
+            "samu", "emergência médica", "clínica", "posto de saúde", "agente de saúde",
+            "farmácia", "nutrição", "pediatria", "maternidade", "parto", "gestante",
+            "zika", "chikungunya", "leptospirose"
         ],
     },
     {
@@ -20,10 +25,17 @@ TOPICS = [
         "color": "#c0392b",
         "display_order": 2,
         "keywords": [
-            "crime", "polícia", "homicídio", "assassinato", "tráfico", "bope",
-            "pm", "policia militar", "policia civil", "ssp", "segurança pública",
-            "preso", "prisão", "furto", "roubo", "violência", "operação policial",
-            "feminicídio", "latrocínio", "delegacia", "penal"
+            "crime", "polícia", "homicídio", "assassinato", "assassinado", "tráfico",
+            "bope", "polícia militar", "policia militar", "polícia civil", "policia civil",
+            "ssp", "segurança pública", "preso", "prisão", "furto", "roubo", "violência",
+            "operação policial", "feminicídio", "latrocínio", "delegacia", "penal",
+            "morte", "morto", "vítima", "suspeito", "arma", "tiro", "bala", "disparo",
+            "droga", "cocaína", "crack", "maconha", "apreensão", "flagrante", "mandado",
+            "inquérito", "acusado", "criminoso", "gangue", "milícia", "sequestro",
+            "estupro", "abuso", "violência doméstica", "feminicídio", "ameaça",
+            "acidente de trânsito", "batida", "atropelamento", "colisão", "capotamento",
+            "bombeiros", "corpo de bombeiros", "cbm", "resgate", "incêndio", "fogo",
+            "desaparecido", "foragido", "procurado", "investigação criminal"
         ],
     },
     {
@@ -35,7 +47,13 @@ TOPICS = [
             "meio ambiente", "amazônia", "desmatamento", "queimada", "incêndio florestal",
             "rio negro", "solimões", "peixe", "ibama", "sema", "enchente", "cheia",
             "seca", "biodiversidade", "floresta", "sustentabilidade", "carbono",
-            "poluição", "resíduo", "lixo", "manancial", "igarapé"
+            "poluição", "resíduo", "lixo", "manancial", "igarapé",
+            "fauna", "flora", "animal silvestre", "reserva ambiental", "área de preservação",
+            "reflorestamento", "desmatamento ilegal", "garimpo", "mineração ilegal",
+            "clima", "temperatura", "chuva", "estiagem", "nível do rio",
+            "ipaam", "arboviroses", "mosquito", "dengue ambiental", "saneamento básico",
+            "reciclagem", "coleta seletiva", "compostagem", "agrotóxico",
+            "poluição do ar", "poluição da água", "derramamento", "vazamento"
         ],
     },
     {
@@ -45,9 +63,17 @@ TOPICS = [
         "display_order": 4,
         "keywords": [
             "prefeito", "governador", "vereador", "deputado", "senador", "câmara",
-            "assembleia legislativa", "eleição", "partido", "política", "governo",
-            "prefeitura", "estado do amazonas", "semcom", "licitação", "concurso público",
-            "decreto", "lei municipal", "gestão pública", "david almeida", "wilson lima"
+            "assembleia legislativa", "aleam", "eleição", "eleições", "partido",
+            "política", "governo", "prefeitura", "estado do amazonas", "semcom",
+            "licitação", "concurso público", "decreto", "lei municipal", "gestão pública",
+            "david almeida", "wilson lima", "roberto cidade", "gestão",
+            "secretaria", "secretário", "secretária", "ministério", "ministro",
+            "orçamento", "emenda", "pec", "projeto de lei", "votação", "sessão",
+            "plenário", "comissão parlamentar", "cpi", "mandato", "posse",
+            "campanha eleitoral", "candidato", "urna", "eleitorado", "coligação",
+            "improbidade", "corrupto", "corrupção", "denúncia política",
+            "transparência", "prestação de contas", "licitação pública",
+            "contrato público", "concurso público", "edital"
         ],
     },
     {
@@ -59,7 +85,15 @@ TOPICS = [
             "economia", "emprego", "desemprego", "salário", "pib", "zona franca",
             "suframa", "indústria", "comércio", "empresa", "investimento", "inflação",
             "mercado", "exportação", "importação", "produto", "serviço", "polo industrial",
-            "empreendedor", "startup", "negócio", "renda"
+            "empreendedor", "startup", "negócio", "renda",
+            "salário mínimo", "crédito", "financiamento", "banco", "dívida",
+            "imposto", "tributo", "icms", "receita", "arrecadação",
+            "auxílio", "benefício social", "bolsa família", "bpc", "cad único",
+            "sine", "vaga de emprego", "contratação", "demissão", "rescisão",
+            "faturamento", "lucro", "prejuízo", "falência", "concordata",
+            "loja", "supermercado", "shopping", "preço", "custo de vida",
+            "turismo econômico", "feira", "mercado municipal", "produtor rural",
+            "agronegócio", "pesca", "agricultura familiar"
         ],
     },
     {
@@ -71,7 +105,14 @@ TOPICS = [
             "educação", "escola", "aluno", "professor", "universidade", "uea", "ufam",
             "enem", "vestibular", "graduação", "pós-graduação", "pesquisa", "ciência",
             "secretaria de educação", "semed", "creche", "ensino fundamental",
-            "ensino médio", "bolsa", "fies", "prouni", "alfabetização"
+            "ensino médio", "bolsa", "fies", "prouni", "alfabetização",
+            "estudante", "acadêmico", "acadêmica", "ifam", "instituto federal",
+            "escola pública", "escola particular", "colégio", "turma", "aula",
+            "aprovação", "reprovação", "evasão escolar", "analfabetismo",
+            "educação infantil", "berçário", "pré-escola", "eja",
+            "projeto pedagógico", "currículo", "formação", "capacitação",
+            "bolsista", "monitoria", "iniciação científica", "tcc",
+            "congresso acadêmico", "seminário científico", "publicação científica"
         ],
     },
     {
@@ -82,8 +123,16 @@ TOPICS = [
         "keywords": [
             "trânsito", "obra", "ônibus", "transporte", "ponte", "saneamento",
             "asfalto", "pavimentação", "semob", "manaustrans", "congestionamento",
-            "semsa", "energia elétrica", "água", "esgoto", "manaus ambiental",
-            "brt", "via", "rodovia", "aeroporto", "porto"
+            "energia elétrica", "água", "esgoto", "manaus ambiental",
+            "brt", "via", "rodovia", "aeroporto", "porto",
+            "calçada", "ciclovia", "iluminação pública", "poste",
+            "abastecimento de água", "falta de água", "falta de luz", "blecaute",
+            "interrupção", "manutenção", "reforma", "reconstrução", "demolição",
+            "habitação", "moradia", "conjunto habitacional", "minha casa minha vida",
+            "urbanização", "regularização fundiária", "reassentamento",
+            "bueiro", "alagamento", "drenagem", "canal", "galeria",
+            "semulsp", "implanturb", "detran", "vias expressas",
+            "teleférico", "hidrovia", "balsa", "ferry", "lancha"
         ],
     },
     {
@@ -95,7 +144,16 @@ TOPICS = [
             "cultura", "festival", "teatro", "show", "turismo", "festa junina",
             "festival de parintins", "boi bumbá", "folclore", "museu", "cinema",
             "arte", "exposição", "gastronomia", "evento", "carnaval", "réveillon",
-            "parque", "lazer", "música", "dança"
+            "parque", "lazer", "música", "dança",
+            "teatro amazonas", "espetáculo", "peça teatral", "ópera", "ballet",
+            "artista", "cantor", "banda", "forró", "funk", "pagode", "axé",
+            "literatura", "livro", "escritor", "biblioteca", "leitura",
+            "fotografia", "pintura", "escultura", "artesanato", "patrimônio",
+            "festa popular", "arraial", "quadrilha", "bumba meu boi",
+            "parque do mindú", "bosque da ciência", "jardim botânico",
+            "praia", "balneário", "piscina", "recreação", "passeio",
+            "restaurante", "bar", "culinária", "prato típico", "tacacá",
+            "religiosa", "festejo", "procissão", "quermesse"
         ],
     },
     {
@@ -104,10 +162,19 @@ TOPICS = [
         "color": "#1abc9c",
         "display_order": 9,
         "keywords": [
-            "esporte", "futebol", "amazonas fc", "nacional", "fast clube",
+            "esporte", "futebol", "amazonas fc", "nacional fc", "fast clube",
+            "são raimundo", "rio negro clube",
             "campeonato", "atleta", "competição", "jogos", "olimpíada", "natação",
             "basquete", "vôlei", "maratona", "arena da amazônia", "goleiro",
-            "técnico", "jogo", "partida", "gol", "copa"
+            "técnico", "jogo", "partida", "gol", "copa",
+            "campeonato brasileiro", "série a", "série b", "série c",
+            "campeonato amazonense", "estadual", "copa do brasil",
+            "treinamento", "treino", "preparação física", "lesão",
+            "transferência", "contratação", "reforço", "torcida", "torcedor",
+            "esporte amador", "escolinha", "peneira", "categoria de base",
+            "judô", "karatê", "boxe", "MMA", "luta", "ciclismo",
+            "corrida de rua", "triathlon", "remo", "canoagem", "surfe",
+            "tênis", "golfe", "hipismo", "atletismo", "ginástica"
         ],
     },
     {
@@ -120,14 +187,65 @@ TOPICS = [
             "software", "startup", "ciência de dados", "programação",
             "internet", "5g", "blockchain", "robótica", "automação", "hackathon",
             "fapeam", "cnpq", "pesquisa tecnológica", "desenvolvimento de software",
-            "transformação digital", "inteligência de dados"
+            "transformação digital", "inteligência de dados",
+            "smartphone", "celular", "app", "plataforma digital", "e-commerce",
+            "cibersegurança", "hacker", "golpe digital", "fraude online",
+            "computador", "servidor", "nuvem", "cloud", "dados",
+            "telemedicina", "educação digital", "governo digital",
+            "inclusão digital", "conectividade", "wifi", "fibra óptica",
+            "satélite", "starlink", "4g", "rede móvel"
+        ],
+    },
+    {
+        "name": "Justiça e Direito",
+        "slug": "justica-direito",
+        "color": "#6c3483",
+        "display_order": 11,
+        "keywords": [
+            "tribunal", "tjam", "stj", "stf", "trf", "tce", "mpam", "ministério público",
+            "juiz", "juíza", "promotor", "promotora", "defensor", "defensoria",
+            "advogado", "advogada", "processo judicial", "ação judicial",
+            "sentença", "condenação", "absolvição", "julgamento", "audiência",
+            "habeas corpus", "liminar", "recurso", "apelação", "decisão judicial",
+            "vara", "fórum", "comarca", "juizado especial",
+            "preso", "prisão preventiva", "prisão domiciliar", "liberdade",
+            "extradição", "mandado de prisão", "operação judicial",
+            "improbidade administrativa", "peculato", "desvio de verbas",
+            "lava jato", "investigação", "inquérito policial", "denúncia",
+            "vítima", "réu", "acusado", "testemunho", "perícia",
+            "conciliação", "mediação", "acordo judicial", "indenização",
+            "dano moral", "pensão alimentícia", "guarda", "adoção", "divórcio",
+            "direito do consumidor", "procon", "multa judicial"
+        ],
+    },
+    {
+        "name": "Social e Cidadania",
+        "slug": "social-cidadania",
+        "color": "#e91e63",
+        "display_order": 12,
+        "keywords": [
+            "assistência social", "cras", "creas", "família", "criança",
+            "idoso", "pessoa idosa", "adolescente", "jovem", "juventude",
+            "comunidade", "bairro", "morador", "vizinhança",
+            "voluntário", "doação", "campanha solidária", "ação social",
+            "vulnerabilidade", "pobreza", "exclusão social", "desigualdade",
+            "habitação social", "sem teto", "sem casa", "ocupação",
+            "mulher", "gênero", "feminismo", "violência contra a mulher",
+            "lgbtqia", "diversidade", "inclusão", "preconceito", "discriminação",
+            "pessoa com deficiência", "acessibilidade", "inclusão social",
+            "indígena", "quilombola", "ribeirinho", "comunidade tradicional",
+            "migrante", "refugiado", "imigrante",
+            "direitos humanos", "cidadania", "participação popular",
+            "conselho municipal", "conferência", "audiência pública",
+            "proteção animal", "abandono animal", "maus tratos",
+            "criança desaparecida", "menor abandonado", "abrigo"
         ],
     },
     {
         "name": "Outros",
         "slug": "outros",
         "color": "#95a5a6",
-        "display_order": 11,
+        "display_order": 13,
         "keywords": [],
     },
 ]
@@ -219,7 +337,11 @@ def seed_all():
     session = get_session()
     try:
         for t in TOPICS:
-            if not session.query(Topic).filter_by(slug=t["slug"]).first():
+            existing = session.query(Topic).filter_by(slug=t["slug"]).first()
+            if existing:
+                existing.keywords = t["keywords"]
+                existing.display_order = t["display_order"]
+            else:
                 session.add(Topic(**t))
 
         for s in SOURCES:

@@ -8,7 +8,7 @@ from db.connection import get_engine, Base, run_migrations
 from db.seeds import seed_all
 from collector.rss_collector import run_collection
 from collector.youtube_collector import run_youtube_collection
-from nlp.classifier import run_classification
+from nlp.classifier import run_classification, reclassify_outros
 from nlp.local_classifier import run_local_classification
 from nlp.summarizer import run_daily_summary
 from scripts.backfill_transcripts import backfill
@@ -32,6 +32,8 @@ def job():
 print("Observatório do Amazonas — Coletor iniciado")
 print("Preenchendo transcrições pendentes...")
 backfill()
+print("Reclassificando artigos em 'Outros'...")
+reclassify_outros(batch_size=2000)
 print("Gerando resumo diário inicial...")
 run_daily_summary()
 job()
