@@ -183,11 +183,24 @@ with col_right:
     st.subheader("Notícias por fonte")
     source_counts = filtered["source"].value_counts().reset_index()
     source_counts.columns = ["Fonte", "Quantidade"]
-    fig_sources = px.pie(
-        source_counts, names="Fonte", values="Quantidade",
-        color_discrete_sequence=px.colors.qualitative.Pastel,
+    top_sources = source_counts.head(20)
+    fig_sources = px.bar(
+        top_sources, x="Quantidade", y="Fonte", orientation="h",
+        labels={"Quantidade": "Notícias", "Fonte": ""},
+        color="Quantidade",
+        color_continuous_scale="Blues",
+        text="Quantidade",
     )
-    fig_sources.update_traces(textposition="inside", textinfo="percent+label")
+    fig_sources.update_traces(textposition="outside")
+    fig_sources.update_layout(
+        showlegend=False,
+        coloraxis_showscale=False,
+        yaxis=dict(categoryorder="total ascending"),
+        height=520,
+        margin=dict(l=0, r=40, t=10, b=10),
+    )
+    if len(source_counts) > 20:
+        st.caption(f"Top 20 de {len(source_counts)} fontes")
     st.plotly_chart(fig_sources, use_container_width=True)
 
 def _clean_text(series):
