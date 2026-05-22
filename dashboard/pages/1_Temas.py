@@ -264,12 +264,12 @@ def render_theme_card(row, summary_row):
 
     delta_html = f'<div style="font-size:0.76rem;margin-top:5px;color:{delta_color};font-weight:700;">{delta_arrow} {delta_str} vs. semana anterior</div>' if delta_str else ""
 
-    st.markdown(f"""
-<div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:22px;box-shadow:0 4px 18px rgba(15,23,42,0.07);overflow:hidden;margin-bottom:4px;">
+    st.html(f"""
+<div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:22px;box-shadow:0 4px 18px rgba(15,23,42,0.07);overflow:hidden;margin-bottom:4px;font-family:sans-serif;">
   <div style="background:linear-gradient(135deg,#eff6ff 0%,#eef2ff 55%,#f8fafc 100%);padding:22px 26px 18px;border-bottom:1px solid #dbeafe;">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
       <div style="display:flex;align-items:center;gap:14px;">
-        <div style="width:52px;height:52px;border-radius:18px;display:grid;place-items:center;background:#ffffff;box-shadow:0 6px 16px rgba(37,99,235,0.13);font-size:1.7rem;">{icon}</div>
+        <div style="width:52px;height:52px;border-radius:18px;display:flex;align-items:center;justify-content:center;background:#ffffff;box-shadow:0 6px 16px rgba(37,99,235,0.13);font-size:1.7rem;">{icon}</div>
         <div>
           <div style="font-size:0.76rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:{color};margin-bottom:3px;">Resumo automático por tema</div>
           <div style="font-size:1.45rem;font-weight:800;color:#0f172a;line-height:1.2;">{name}</div>
@@ -277,21 +277,21 @@ def render_theme_card(row, summary_row):
       </div>
       {status_badge}
     </div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
-      <div style="background:rgba(255,255,255,0.8);border:1px solid rgba(219,234,254,0.9);border-radius:14px;padding:13px 15px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;">
+      <div style="background:#ffffffcc;border:1px solid #dbeafe;border-radius:14px;padding:13px 15px;">
         <div style="font-size:0.77rem;color:#6b7280;margin-bottom:3px;">Notícias hoje</div>
         <div style="font-size:1.4rem;font-weight:800;color:#111827;">{total_hoje}</div>
         {delta_html}
       </div>
-      <div style="background:rgba(255,255,255,0.8);border:1px solid rgba(219,234,254,0.9);border-radius:14px;padding:13px 15px;">
+      <div style="background:#ffffffcc;border:1px solid #dbeafe;border-radius:14px;padding:13px 15px;">
         <div style="font-size:0.77rem;color:#6b7280;margin-bottom:3px;">Fontes hoje</div>
         <div style="font-size:1.4rem;font-weight:800;color:#111827;">{fontes_hoje}</div>
       </div>
-      <div style="background:rgba(255,255,255,0.8);border:1px solid rgba(219,234,254,0.9);border-radius:14px;padding:13px 15px;">
+      <div style="background:#ffffffcc;border:1px solid #dbeafe;border-radius:14px;padding:13px 15px;">
         <div style="font-size:0.77rem;color:#6b7280;margin-bottom:3px;">Assuntos detectados</div>
         <div style="font-size:1.4rem;font-weight:800;color:#111827;">{len(keywords)}</div>
       </div>
-      <div style="background:rgba(255,255,255,0.8);border:1px solid rgba(219,234,254,0.9);border-radius:14px;padding:13px 15px;">
+      <div style="background:#ffffffcc;border:1px solid #dbeafe;border-radius:14px;padding:13px 15px;">
         <div style="font-size:0.77rem;color:#6b7280;margin-bottom:3px;">Última notícia</div>
         <div style="font-size:1.4rem;font-weight:800;color:#111827;">{_time_ago(ultima)}</div>
       </div>
@@ -311,7 +311,7 @@ def render_theme_card(row, summary_row):
     </div>
   </div>
 </div>
-""", unsafe_allow_html=True)
+""")
 
 
 try:
