@@ -34,8 +34,9 @@ def job():
 print("Observatório do Amazonas — Coletor iniciado")
 print("Reclassificando artigos em 'Outros'...")
 reclassify_outros(batch_size=2000)
-print("Gerando resumo diário inicial...")
+print("Gerando resumos iniciais...")
 run_daily_summary()
+run_topic_summaries()
 job()
 
 schedule.every(30).minutes.do(job)
