@@ -356,17 +356,15 @@ for _, topic_row in topics_iter:
     label = f"{icon} {name}{badge}  —  {total_hoje} notícias hoje"
 
     with st.expander(label):
-        # Busca resumo de hoje
         with engine.connect() as conn:
             summary_row = conn.execute(text(
                 "SELECT summary, article_ids, article_count, generated_at "
                 "FROM daily_summaries WHERE date = :d AND topic_id = :tid "
                 "ORDER BY generated_at DESC LIMIT 1"
-            ), {"d": date.today(), "tid": topic_id}).fetchone()
+            ), {"d": manaus_today(), "tid": topic_id}).fetchone()
 
         render_theme_card(topic_row, summary_row)
 
-        # Botão para gerar resumo se não existir
         if not summary_row:
             if st.button("🤖 Gerar resumo com IA", key=f"gen_{topic_id}"):
                 with st.spinner("Gerando resumo..."):
@@ -376,27 +374,3 @@ for _, topic_row in topics_iter:
                     st.rerun()
                 else:
                     st.warning("Artigos insuficientes para gerar resumo hoje.")
-
-        st.divider()
-
-        # Detalhe completo do tema
-        df = load_articles_by_topic(topic_id)
-        if not df.empty:
-            c1, c2 = st.columns(2)
-            with c1:
-                daily = df.groupby(["date", "source"]).size().reset_index(name="count")
-                fig2 = px.line(daily, x="date", y="count", color="source", markers=True,
-                               labels={"date": "Data", "count": "Notícias", "source": "Fonte"},
-                               title=f"Volume diário — {name}")
-                fig2.update_layout(legend=dict(orientation="h", yanchor="bottom", y=1.02))
-                st.plotly_chart(fig2, use_container_width=True)
-
-            with c2:
-                st.markdown(f"**Últimas notícias — {name}**")
-                for _, row in df.head(8).iterrows():
-                    date_str = row["published_at"].strftime("%d/%m %H:%M") if pd.notna(row["published_at"]) else "—"
-                    st.markdown(
-                        f"[{row['title']}]({row['url']})  \n"
-                        f"<small>{row['source']} · {date_str}</small>",
-                        unsafe_allow_html=True,
-                    )

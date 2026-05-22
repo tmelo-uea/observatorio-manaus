@@ -10,7 +10,7 @@ from collector.rss_collector import run_collection
 from collector.youtube_collector import run_youtube_collection
 from nlp.classifier import run_classification, reclassify_outros
 from nlp.local_classifier import run_local_classification
-from nlp.summarizer import run_daily_summary
+from nlp.summarizer import run_daily_summary, run_topic_summaries
 from scripts.backfill_transcripts import backfill
 
 Base.metadata.create_all(get_engine())
@@ -28,6 +28,7 @@ def job():
     n_local = run_local_classification()
     print(f"Localidade classificada: {n_local} artigos")
     run_daily_summary()
+    run_topic_summaries()
 
 print("Observatório do Amazonas — Coletor iniciado")
 print("Preenchendo transcrições pendentes...")

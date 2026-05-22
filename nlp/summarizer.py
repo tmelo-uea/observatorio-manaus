@@ -127,6 +127,31 @@ def _should_regenerate(existing: DailySummary, current_count: int) -> bool:
     return volume_doubled and hours_elapsed >= 2
 
 
+def run_topic_summaries(min_articles: int = 10):
+    """Gera resumos automáticos para temas com artigos suficientes hoje (Opção C)."""
+    session = get_session()
+    today = _manaus_today()
+    try:
+        from sqlalchemy import func
+        topics = session.query(Topic).filter(Topic.slug != "outros").all()
+        for topic in topics:
+            count = session.query(Article).join(Source).filter(
+                func.date(func.convert_tz(Article.published_at, '+00:00', '-04:00')) == today,
+                Article.topic_id == topic.id,
+                Source.active == True,
+            ).count()
+            if count >= min_articles:
+                existing = session.query(DailySummary).filter_by(
+                    date=today, topic_id=topic.id
+                ).first()
+                if existing and not _should_regenerate(existing, count):
+                    continue
+                print(f"  Gerando resumo para tema '{topic.name}' ({count} artigos)...")
+                generate_summary(topic_id=topic.id, force=bool(existing))
+    finally:
+        session.close()
+
+
 def run_daily_summary():
     """Gera ou regenera o resumo do dia com base no Critério 4."""
     session = get_session()
