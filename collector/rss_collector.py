@@ -1,5 +1,5 @@
 import feedparser
-from datetime import datetime
+from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from sqlalchemy.exc import IntegrityError
 from db.connection import get_session
@@ -7,15 +7,18 @@ from db.models import Source, Article
 
 
 def parse_date(entry) -> datetime | None:
+    # published_parsed/updated_parsed já são UTC (feedparser normaliza)
     for field in ("published_parsed", "updated_parsed"):
         value = getattr(entry, field, None)
         if value:
             return datetime(*value[:6])
+    # Fallback para strings brutas: converter para UTC antes de remover tzinfo
     for field in ("published", "updated"):
         value = getattr(entry, field, None)
         if value:
             try:
-                return parsedate_to_datetime(value).replace(tzinfo=None)
+                dt = parsedate_to_datetime(value)
+                return dt.astimezone(timezone.utc).replace(tzinfo=None)
             except Exception:
                 pass
     return None
