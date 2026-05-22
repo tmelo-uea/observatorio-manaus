@@ -3,9 +3,12 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 import streamlit as st
-from datetime import date
+from datetime import date, datetime, timedelta
 from db.connection import get_engine
 from sqlalchemy import text
+
+def _manaus_today() -> date:
+    return (datetime.utcnow() - timedelta(hours=4)).date()
 
 
 MESES = {
@@ -129,7 +132,7 @@ def render_summary_card(engine, topic_id: int | None = None, topic_name: str | N
 
     data_fmt = f"{current.day} de {MESES[current.month]} de {current.year}"
     title = f"Resumo de {topic_name} — {data_fmt}" if topic_name else f"Resumo do dia — {data_fmt}"
-    is_today = current == date.today()
+    is_today = current == _manaus_today()
     badge = '<span style="background:#4a90d9;color:white;font-size:0.7rem;padding:2px 8px;border-radius:10px;margin-left:8px;vertical-align:middle;">Hoje</span>' if is_today else ""
 
     _inject_nav_css()

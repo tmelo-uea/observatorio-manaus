@@ -1,8 +1,11 @@
 import os
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from sqlalchemy.exc import IntegrityError
 from db.connection import get_session
 from db.models import Article, Source, Topic, DailySummary
+
+def _manaus_today() -> date:
+    return (datetime.utcnow() - timedelta(hours=4)).date()
 
 
 def _call_groq(prompt: str) -> str | None:
@@ -44,7 +47,7 @@ def _build_prompt(articles, topic_name: str | None) -> str:
 
 def generate_summary(topic_id: int | None = None, force: bool = False) -> DailySummary | None:
     session = get_session()
-    today = date.today()
+    today = _manaus_today()
     try:
         # Verifica se já existe resumo para hoje
         existing = session.query(DailySummary).filter_by(
@@ -56,7 +59,7 @@ def generate_summary(topic_id: int | None = None, force: bool = False) -> DailyS
         # Busca artigos do dia (ou dos últimos 2 dias se poucos artigos hoje)
         from sqlalchemy import func
         query = session.query(Article).join(Source).filter(
-            func.date(Article.published_at) == today,
+            func.date(func.convert_tz(Article.published_at, '+00:00', '-04:00')) == today,
             Source.active == True,
         )
         if topic_id:
@@ -127,7 +130,7 @@ def _should_regenerate(existing: DailySummary, current_count: int) -> bool:
 def run_daily_summary():
     """Gera ou regenera o resumo do dia com base no Critério 4."""
     session = get_session()
-    today = date.today()
+    today = _manaus_today()
     try:
         from sqlalchemy import func
         current_count = session.query(Article).join(Source).filter(

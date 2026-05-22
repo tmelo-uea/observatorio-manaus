@@ -10,10 +10,13 @@ import plotly.express as px
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 from collections import Counter
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from sqlalchemy import text
 from db.connection import get_engine
 from dashboard.components.summary_card import render_summary_card
+
+def manaus_today() -> date:
+    return (datetime.utcnow() - timedelta(hours=4)).date()
 
 st.set_page_config(page_title="Temas — Observatório de Manaus", page_icon="🏷️", layout="wide")
 
@@ -65,7 +68,7 @@ def load_topics():
 def load_topic_stats():
     """Métricas por tema: total hoje, total semana atual, semana anterior, fontes, última notícia."""
     engine = get_db()
-    today = date.today()
+    today = manaus_today()
     week_start = today - timedelta(days=today.weekday())
     prev_week_start = week_start - timedelta(days=7)
     query = text("""
@@ -75,11 +78,11 @@ def load_topic_stats():
             t.color,
             t.display_order,
             COUNT(a.id) AS total_all,
-            SUM(CASE WHEN DATE(a.published_at) = :today THEN 1 ELSE 0 END) AS total_hoje,
+            SUM(CASE WHEN DATE(CONVERT_TZ(a.published_at, '+00:00', '-04:00')) = :today THEN 1 ELSE 0 END) AS total_hoje,
             SUM(CASE WHEN DATE(a.published_at) >= :week_start THEN 1 ELSE 0 END) AS total_semana,
             SUM(CASE WHEN DATE(a.published_at) >= :prev_week_start
                       AND DATE(a.published_at) < :week_start THEN 1 ELSE 0 END) AS total_semana_ant,
-            COUNT(DISTINCT CASE WHEN DATE(a.published_at) = :today THEN a.source_id END) AS fontes_hoje,
+            COUNT(DISTINCT CASE WHEN DATE(CONVERT_TZ(a.published_at, '+00:00', '-04:00')) = :today THEN a.source_id END) AS fontes_hoje,
             MAX(a.published_at) AS ultima_noticia
         FROM topics t
         LEFT JOIN articles a ON a.topic_id = t.id
@@ -97,10 +100,10 @@ def load_topic_stats():
 @st.cache_data(ttl=300)
 def load_today_titles(topic_id: int) -> list[str]:
     engine = get_db()
-    today = date.today()
+    today = manaus_today()
     query = text("""
         SELECT a.title FROM articles a
-        WHERE a.topic_id = :tid AND DATE(a.published_at) = :today
+        WHERE a.topic_id = :tid AND DATE(CONVERT_TZ(a.published_at, '+00:00', '-04:00')) = :today
         ORDER BY a.published_at DESC
     """)
     with engine.connect() as conn:
@@ -111,12 +114,12 @@ def load_today_titles(topic_id: int) -> list[str]:
 @st.cache_data(ttl=300)
 def load_top_sources_today(topic_id: int, limit: int = 3):
     engine = get_db()
-    today = date.today()
+    today = manaus_today()
     query = text("""
         SELECT s.name, COUNT(a.id) AS total
         FROM articles a
         JOIN sources s ON a.source_id = s.id
-        WHERE a.topic_id = :tid AND DATE(a.published_at) = :today
+        WHERE a.topic_id = :tid AND DATE(CONVERT_TZ(a.published_at, '+00:00', '-04:00')) = :today
         GROUP BY s.id, s.name
         ORDER BY total DESC
         LIMIT :lim

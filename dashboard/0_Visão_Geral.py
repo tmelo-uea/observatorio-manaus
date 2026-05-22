@@ -8,9 +8,13 @@ import plotly.express as px
 import plotly.graph_objects as go
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
+from datetime import datetime, timedelta
 from sqlalchemy import text
 from db.connection import get_engine
 from dashboard.components.summary_card import render_summary_card
+
+def manaus_today():
+    return (datetime.utcnow() - timedelta(hours=4)).date()
 
 st.set_page_config(
     page_title="Observatório de Manaus",
@@ -143,9 +147,9 @@ c1, c2, c3, c4, c5 = st.columns(5)
 c1.metric("Notícias no período", f"{len(filtered):,}")
 c2.metric("Portais monitorados", filtered["source"].nunique())
 c3.metric("Temas identificados", filtered["topic"].nunique())
-today_count = len(filtered[filtered["date"] == pd.Timestamp.today().date()])
+today_count = len(filtered[filtered["date"] == manaus_today()])
 c4.metric("Hoje", today_count)
-week_count = len(filtered[filtered["published_at"] >= pd.Timestamp.today() - pd.Timedelta(days=7)])
+week_count = len(filtered[filtered["published_at"] >= pd.Timestamp(datetime.utcnow() - timedelta(days=7))])
 c5.metric("Últimos 7 dias", week_count)
 
 st.divider()
