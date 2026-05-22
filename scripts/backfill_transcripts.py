@@ -7,31 +7,34 @@ from db.models import Article, Source
 from collector.youtube_collector import _get_transcript, _video_id_from_url
 
 
-def backfill():
+def backfill(limit: int | None = None):
     session = get_session()
     try:
-        articles = (
+        query = (
             session.query(Article)
             .join(Source)
             .filter(Source.type == "youtube", Article.transcript.is_(None))
-            .all()
         )
-        total = len(articles)
-        print(f"Vídeos sem transcrição: {total}")
+        total_pending = query.count()
+        if total_pending == 0:
+            return
+
+        articles = query.limit(limit).all() if limit else query.all()
+        batch = len(articles)
+        print(f"Transcrições pendentes: {total_pending} | Processando: {batch}")
 
         for i, article in enumerate(articles, 1):
             video_id = _video_id_from_url(article.url)
             if not video_id:
-                print(f"[{i}/{total}] Sem video_id: {article.url}")
                 continue
 
             transcript = _get_transcript(video_id, article.url)
             if transcript:
                 article.transcript = transcript
                 session.commit()
-                print(f"[{i}/{total}] OK: {article.title[:60]}")
+                print(f"[{i}/{batch}] OK: {article.title[:60]}")
             else:
-                print(f"[{i}/{total}] Sem transcrição: {article.title[:60]}")
+                print(f"[{i}/{batch}] Sem transcrição: {article.title[:60]}")
 
     finally:
         session.close()
