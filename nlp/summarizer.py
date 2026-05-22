@@ -1,4 +1,5 @@
 import os
+import time
 from datetime import date, datetime, timedelta
 from sqlalchemy.exc import IntegrityError
 from db.connection import get_session
@@ -17,6 +18,7 @@ def _manaus_day_utc_range(d: date):
 def _call_groq(prompt: str) -> str | None:
     api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
+        print("  [Groq summarizer] GROQ_API_KEY não configurada — resumo não gerado.")
         return None
     try:
         from groq import Groq
@@ -29,7 +31,7 @@ def _call_groq(prompt: str) -> str | None:
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
-        print(f"  [Groq summarizer] Erro: {e}")
+        print(f"  [Groq summarizer] Erro na API: {e}")
         return None
 
 
@@ -134,10 +136,11 @@ def _should_regenerate(existing: DailySummary, current_count: int) -> bool:
 
 
 def run_topic_summaries(min_articles: int = 10):
-    """Gera resumos automáticos para temas com artigos suficientes hoje (Opção C)."""
+    """Gera resumos automáticos para temas com artigos suficientes hoje."""
     session = get_session()
     today = _manaus_today()
     start_utc, end_utc = _manaus_day_utc_range(today)
+    print(f"  [Resumos por tema] Data Manaus: {today} | UTC range: {start_utc} → {end_utc}")
     try:
         topics = session.query(Topic).filter(Topic.slug != "outros").all()
         for topic in topics:
@@ -147,14 +150,22 @@ def run_topic_summaries(min_articles: int = 10):
                 Article.topic_id == topic.id,
                 Source.active == True,
             ).count()
-            if count >= min_articles:
-                existing = session.query(DailySummary).filter_by(
-                    date=today, topic_id=topic.id
-                ).first()
-                if existing and not _should_regenerate(existing, count):
-                    continue
-                print(f"  Gerando resumo para tema '{topic.name}' ({count} artigos)...")
-                generate_summary(topic_id=topic.id, force=bool(existing))
+            print(f"  [Resumos por tema] '{topic.name}': {count} artigos hoje")
+            if count < min_articles:
+                continue
+            existing = session.query(DailySummary).filter_by(
+                date=today, topic_id=topic.id
+            ).first()
+            if existing and not _should_regenerate(existing, count):
+                print(f"  [Resumos por tema] '{topic.name}': resumo já existe, sem regeneração.")
+                continue
+            print(f"  [Resumos por tema] Gerando resumo para '{topic.name}' ({count} artigos)...")
+            result = generate_summary(topic_id=topic.id, force=bool(existing))
+            if result:
+                print(f"  [Resumos por tema] '{topic.name}': resumo salvo com {result.article_count} artigos.")
+            else:
+                print(f"  [Resumos por tema] '{topic.name}': falha ao gerar resumo.")
+            time.sleep(2)  # evita rate limit do Groq entre chamadas consecutivas
     finally:
         session.close()
 
