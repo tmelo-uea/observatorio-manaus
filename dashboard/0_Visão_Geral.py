@@ -151,7 +151,7 @@ date_range = st.sidebar.date_input(
 
 busca = st.sidebar.text_input("Buscar por palavra-chave")
 
-only_local = st.sidebar.checkbox("Só notícias locais", value=False)
+show_all = st.sidebar.checkbox("Incluir notícias não locais", value=False)
 
 # --- Aplicar filtros ---
 filtered = df.copy()
@@ -165,7 +165,7 @@ if len(date_range) == 2:
     filtered = filtered[
         (filtered["date"] >= date_range[0]) & (filtered["date"] <= date_range[1])
     ]
-if only_local and "is_local" in filtered.columns:
+if not show_all and "is_local" in filtered.columns:
     filtered = filtered[filtered["is_local"] == True]
 if busca:
     mask = (
