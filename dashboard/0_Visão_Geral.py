@@ -64,6 +64,31 @@ def load_articles():
     df["date"] = df["published_at"].dt.date
     return df
 
+
+@st.cache_data(ttl=300)
+def load_totals():
+    """Contagens reais do banco, sem o limite de 5000."""
+    engine = get_db()
+    today = manaus_today()
+    with engine.connect() as conn:
+        total = conn.execute(text("SELECT COUNT(*) FROM articles")).scalar()
+        hoje = conn.execute(text(
+            "SELECT COUNT(*) FROM articles "
+            "WHERE DATE(CONVERT_TZ(published_at, '+00:00', '-04:00')) = :d"
+        ), {"d": today}).scalar()
+        semana = conn.execute(text(
+            "SELECT COUNT(*) FROM articles "
+            "WHERE published_at >= NOW() - INTERVAL 7 DAY"
+        )).scalar()
+        fontes = conn.execute(text(
+            "SELECT COUNT(DISTINCT source_id) FROM articles "
+            "WHERE DATE(CONVERT_TZ(published_at, '+00:00', '-04:00')) = :d"
+        ), {"d": today}).scalar()
+        ultima = conn.execute(text(
+            "SELECT MAX(collected_at) FROM articles"
+        )).scalar()
+    return {"total": total, "hoje": hoje, "semana": semana, "fontes": fontes, "ultima": ultima}
+
 @st.cache_data(ttl=3600)
 def load_topics():
     engine = get_db()
@@ -84,6 +109,7 @@ with col_refresh:
 try:
     df = load_articles()
     topics_df = load_topics()
+    totals = load_totals()
     render_summary_card(get_db())
 except Exception as e:
     st.error(f"Erro ao conectar ao banco de dados: {e}")
@@ -143,14 +169,23 @@ if busca:
 
 # --- Métricas rápidas ---
 st.divider()
-c1, c2, c3, c4, c5 = st.columns(5)
-c1.metric("Notícias no período", f"{len(filtered):,}")
-c2.metric("Portais monitorados", filtered["source"].nunique())
-c3.metric("Temas identificados", filtered["topic"].nunique())
-today_count = len(filtered[filtered["date"] == manaus_today()])
-c4.metric("Hoje", today_count)
-week_count = len(filtered[filtered["published_at"] >= pd.Timestamp(datetime.utcnow() - timedelta(days=7))])
-c5.metric("Últimos 7 dias", week_count)
+c1, c2, c3, c4, c5, c6 = st.columns(6)
+c1.metric("Total coletado", f"{totals['total']:,}")
+c2.metric("Notícias no período", f"{len(filtered):,}")
+c3.metric("Portais monitorados", filtered["source"].nunique())
+c4.metric("Temas identificados", filtered["topic"].nunique())
+c5.metric("Hoje", f"{totals['hoje']:,}")
+c6.metric("Últimos 7 dias", f"{totals['semana']:,}")
+
+# Última coleta
+if totals["ultima"]:
+    ultima_dt = pd.Timestamp(totals["ultima"])
+    diff_min = int((pd.Timestamp.utcnow() - ultima_dt).total_seconds() / 60)
+    if diff_min < 60:
+        ultima_str = f"há {diff_min} min"
+    else:
+        ultima_str = f"há {diff_min // 60}h{diff_min % 60:02d}min"
+    st.caption(f"🟢 Última coleta: {ultima_str}")
 
 st.divider()
 
