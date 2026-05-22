@@ -29,14 +29,14 @@ def job():
     print(f"Localidade classificada: {n_local} artigos")
     backfill(limit=10)  # processa até 10 transcrições pendentes por ciclo
     run_daily_summary()
-    run_topic_summaries()
+    run_topic_summaries(min_articles=5)
 
 print("Observatório do Amazonas — Coletor iniciado")
 print("Reclassificando artigos em 'Outros'...")
 reclassify_outros(batch_size=2000)
 print("Gerando resumos iniciais...")
 run_daily_summary()
-run_topic_summaries()
+run_topic_summaries(min_articles=5)
 job()
 
 schedule.every(30).minutes.do(job)

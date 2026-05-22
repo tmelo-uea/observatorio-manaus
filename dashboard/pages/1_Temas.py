@@ -82,13 +82,13 @@ def load_topic_stats():
             t.name,
             t.color,
             t.display_order,
-            COUNT(a.id) AS total_all,
-            SUM(CASE WHEN a.published_at >= :start_utc AND a.published_at < :end_utc THEN 1 ELSE 0 END) AS total_hoje,
-            SUM(CASE WHEN DATE(a.published_at) >= :week_start THEN 1 ELSE 0 END) AS total_semana,
+            COUNT(CASE WHEN a.is_local = 1 THEN 1 END) AS total_all,
+            SUM(CASE WHEN a.published_at >= :start_utc AND a.published_at < :end_utc AND a.is_local = 1 THEN 1 ELSE 0 END) AS total_hoje,
+            SUM(CASE WHEN DATE(a.published_at) >= :week_start AND a.is_local = 1 THEN 1 ELSE 0 END) AS total_semana,
             SUM(CASE WHEN DATE(a.published_at) >= :prev_week_start
-                      AND DATE(a.published_at) < :week_start THEN 1 ELSE 0 END) AS total_semana_ant,
-            COUNT(DISTINCT CASE WHEN a.published_at >= :start_utc AND a.published_at < :end_utc THEN a.source_id END) AS fontes_hoje,
-            MAX(a.published_at) AS ultima_noticia
+                      AND DATE(a.published_at) < :week_start AND a.is_local = 1 THEN 1 ELSE 0 END) AS total_semana_ant,
+            COUNT(DISTINCT CASE WHEN a.published_at >= :start_utc AND a.published_at < :end_utc AND a.is_local = 1 THEN a.source_id END) AS fontes_hoje,
+            MAX(CASE WHEN a.is_local = 1 THEN a.published_at END) AS ultima_noticia
         FROM topics t
         LEFT JOIN articles a ON a.topic_id = t.id
         GROUP BY t.id, t.name, t.color, t.display_order
