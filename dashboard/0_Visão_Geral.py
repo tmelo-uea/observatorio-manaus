@@ -142,7 +142,7 @@ selected_type = st.sidebar.selectbox("Tipo de fonte", source_type_options)
 dates_valid = df["date"].dropna()
 date_min = dates_valid.min() if not dates_valid.empty else pd.Timestamp.today().date()
 date_max = dates_valid.max() if not dates_valid.empty else pd.Timestamp.today().date()
-default_start = max(date_min, (pd.Timestamp.today() - pd.Timedelta(days=30)).date())
+default_start = max(date_min, (pd.Timestamp.today() - pd.Timedelta(days=7)).date())
 date_range = st.sidebar.date_input(
     "Período", value=(default_start, date_max),
     min_value=date_min, max_value=date_max
