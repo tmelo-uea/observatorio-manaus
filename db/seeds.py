@@ -252,22 +252,22 @@ TOPICS = [
 
 SOURCES = [
     # Portais locais de Manaus
-    {"name": "A Crítica",            "url": "https://www.acritica.com",          "rss_url": "https://www.acritica.com/feed",                                 "type": "portal"},
+    {"name": "A Crítica",            "url": "https://www.acritica.com",          "rss_url": "https://www.acritica.com/feed",                                 "type": "portal", "active": False},
     {"name": "Em Tempo",             "url": "https://emtempo.com.br",            "rss_url": "https://emtempo.com.br/feed",                                   "type": "portal"},
     {"name": "D24am",                "url": "https://www.d24am.com",             "rss_url": "https://www.d24am.com/feed",                                    "type": "portal"},
     {"name": "Portal do Holanda",    "url": "https://portaldoholanda.com.br",    "rss_url": "https://portaldoholanda.com.br/feed",                           "type": "portal"},
     {"name": "Amazonas Atual",       "url": "https://amazonasatual.com.br",      "rss_url": "https://amazonasatual.com.br/feed",                             "type": "portal"},
-    {"name": "A Gazeta do Amazonas", "url": "https://agazetadoamazonas.com",     "rss_url": "https://agazetadoamazonas.com/feed",                            "type": "portal"},
+    {"name": "A Gazeta do Amazonas", "url": "https://agazetadoamazonas.com",     "rss_url": "https://agazetadoamazonas.com/feed",                            "type": "portal", "active": False},
     {"name": "Amazonas 1",           "url": "https://amazonas1.com.br",          "rss_url": "https://amazonas1.com.br/feed",                                 "type": "portal"},
     {"name": "AM POST",              "url": "https://ampost.com.br",             "rss_url": "https://ampost.com.br/feed",                                    "type": "portal"},
     {"name": "Norte em Foco",        "url": "https://norteemfoco.com.br",        "rss_url": "https://norteemfoco.com.br/feed",                               "type": "portal"},
     {"name": "Correio da Amazônia",  "url": "https://correiodaamazonia.com",     "rss_url": "https://correiodaamazonia.com/feed",                            "type": "portal"},
-    {"name": "Rede Amazônica",       "url": "https://redeamazonica.com.br",      "rss_url": "https://redeamazonica.com.br/feed",                             "type": "portal"},
+    {"name": "Rede Amazônica",       "url": "https://redeamazonica.com.br",      "rss_url": "https://redeamazonica.com.br/feed",                             "type": "portal", "active": False},
     # Blogs
     {"name": "Blog do Holanda",      "url": "https://blogdoholanda.com",         "rss_url": "https://blogdoholanda.com/feed",                                "type": "blog"},
     {"name": "Blog do Hiel Levy",    "url": "https://blogdohiellevy.com.br",     "rss_url": "https://blogdohiellevy.com.br/feed",                            "type": "blog"},
     {"name": "Portal Marcos Santos", "url": "https://portalmarcossantos.com.br", "rss_url": "https://portalmarcossantos.com.br/feed",                        "type": "blog"},
-    {"name": "Blog do Jucem",        "url": "https://www.blogdojucem.com",       "rss_url": "https://www.blogdojucem.com/feed",                              "type": "blog"},
+    {"name": "Blog do Jucem",        "url": "https://www.blogdojucem.com",       "rss_url": "https://www.blogdojucem.com/feed",                              "type": "blog",   "active": False},
     {"name": "I9 Brasil",            "url": "https://i9brasil.com.br",           "rss_url": "https://i9brasil.com.br/feed",                                  "type": "portal"},
     {"name": "Fato Amazônico",        "url": "https://fatoamazonico.com",              "rss_url": "https://fatoamazonico.com/feed",                                     "type": "portal"},
     {"name": "Radar Amazônico",       "url": "https://radaramazonico.com.br",          "rss_url": "https://radaramazonico.com.br/feed",                                 "type": "portal"},
@@ -284,11 +284,11 @@ SOURCES = [
     {"name": "Tribuna do Amazonas",   "url": "https://tribunadoam.com",                "rss_url": "https://tribunadoam.com/feed",                                       "type": "portal"},
     {"name": "Igarapé News",          "url": "https://igarapenews.com.br",             "rss_url": "https://igarapenews.com.br/feed",                                    "type": "portal"},
     {"name": "Rios de Notícias",      "url": "https://www.riosdenoticias.com.br",      "rss_url": "https://www.riosdenoticias.com.br/feed",                             "type": "portal"},
-    {"name": "Portal do Amazonas",    "url": "https://portaldoamazonas.com.br",        "rss_url": "https://portaldoamazonas.com.br/feed",                              "type": "portal"},
+    {"name": "Portal do Amazonas",    "url": "https://portaldoamazonas.com.br",        "rss_url": "https://portaldoamazonas.com.br/feed",                              "type": "portal", "active": False},
     {"name": "Portal da Floresta",    "url": "https://portaldafloresta.com.br",        "rss_url": "https://portaldafloresta.com.br/feed",                              "type": "portal"},
-    {"name": "Portal do Zacarias",    "url": "https://portaldozacarias.com.br",        "rss_url": "https://portaldozacarias.com.br/feed",                              "type": "portal"},
+    {"name": "Portal do Zacarias",    "url": "https://portaldozacarias.com.br",        "rss_url": "https://portaldozacarias.com.br/feed",                              "type": "portal", "active": False},
     {"name": "Portal Norte",          "url": "https://portalnorte.com.br",             "rss_url": "https://portalnorte.com.br/feed",                                   "type": "portal"},
-    {"name": "Portal Manaus Notícias","url": "https://www.portalmanausnoticias.com.br","rss_url": "https://www.portalmanausnoticias.com.br/feed",                       "type": "portal"},
+    {"name": "Portal Manaus Notícias","url": "https://www.portalmanausnoticias.com.br","rss_url": "https://www.portalmanausnoticias.com.br/feed",                       "type": "portal", "active": False},
     {"name": "Portal O Poder",        "url": "https://portalopoder.com.br",            "rss_url": "https://portalopoder.com.br/feed",                                   "type": "portal"},
     {"name": "Agência Amazonas",      "url": "https://www.agenciaamazonas.am.gov.br",  "rss_url": "https://www.agenciaamazonas.am.gov.br/feed",                         "type": "portal"},
     # Canais do YouTube (rss_url com channel_id hardcoded para evitar resolução em runtime)
@@ -303,8 +303,8 @@ SOURCES = [
     {"name": "Amazonas Atual (YouTube)",    "url": "https://www.youtube.com/channel/UCg8t9F8LXjaOURUBnMZgb5g", "rss_url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCg8t9F8LXjaOURUBnMZgb5g", "type": "youtube"},
     # Universidades e institutos de pesquisa
     {"name": "UFAM",    "url": "https://www.ufam.edu.br",    "rss_url": "https://www.ufam.edu.br/noticias.feed?type=rss",                        "type": "portal"},
-    {"name": "UEA",     "url": "https://www.uea.edu.br",     "rss_url": "http://www.uea.edu.br/index.php/feed/",                                "type": "portal"},
-    {"name": "INPA",    "url": "https://www.gov.br/inpa",    "rss_url": "https://www.gov.br/inpa/pt-br/assuntos/noticias/@@search?format=rss",    "type": "portal"},
+    {"name": "UEA",     "url": "https://www.uea.edu.br",     "rss_url": "http://www.uea.edu.br/index.php/feed/",                                "type": "portal", "active": False},
+    {"name": "INPA",    "url": "https://www.gov.br/inpa",    "rss_url": "https://www.gov.br/inpa/pt-br/assuntos/noticias/@@search?format=rss",    "type": "portal", "active": False},
     {"name": "UniNorte","url": "https://www.uninorte.com.br","rss_url": "https://www.uninorte.com.br/feed/",                                      "type": "portal"},
     # Cobertura regional e ambiental
     {"name": "G1 Amazonas",          "url": "https://g1.globo.com/am/amazonas",  "rss_url": "https://g1.globo.com/rss/g1/am/amazonas/",                      "type": "portal"},
@@ -323,12 +323,12 @@ SOURCES = [
     {"name": "Portal R5",            "url": "https://portalr5.com.br",           "rss_url": "https://portalr5.com.br/feed/",                                 "type": "portal"},
     {"name": "Nosso Show AM",        "url": "https://nossoshowam.com",           "rss_url": "https://nossoshowam.com/feed",                                  "type": "portal"},
     # Órgãos governamentais do Amazonas
-    {"name": "Governo do Amazonas",  "url": "https://www.amazonas.am.gov.br",    "rss_url": "https://www.amazonas.am.gov.br/feed/",                          "type": "portal"},
+    {"name": "Governo do Amazonas",  "url": "https://www.amazonas.am.gov.br",    "rss_url": "https://www.amazonas.am.gov.br/feed/",                          "type": "portal", "active": False},
     {"name": "ALEAM",                "url": "https://www.aleam.gov.br",          "rss_url": "https://www.aleam.gov.br/feed/",                                "type": "portal"},
     {"name": "IPAAM",                "url": "https://www.ipaam.am.gov.br",       "rss_url": "https://www.ipaam.am.gov.br/feed/",                             "type": "portal"},
     {"name": "SSP-AM",               "url": "https://www.ssp.am.gov.br",         "rss_url": "https://www.ssp.am.gov.br/feed/",                               "type": "portal"},
     {"name": "DETRAN-AM",            "url": "https://www.detran.am.gov.br",      "rss_url": "https://www.detran.am.gov.br/feed/",                            "type": "portal"},
-    {"name": "Cultura AM",           "url": "https://cultura.am.gov.br",         "rss_url": "https://cultura.am.gov.br/feed/",                               "type": "portal"},
+    {"name": "Cultura AM",           "url": "https://cultura.am.gov.br",         "rss_url": "https://www.cultura.am.gov.br/feed/",                           "type": "portal"},
     {"name": "Prefeitura de Manaus", "url": "https://www.manaus.am.gov.br",      "rss_url": "https://www.manaus.am.gov.br/feed/",                            "type": "portal"},
 ]
 
@@ -345,7 +345,11 @@ def seed_all():
                 session.add(Topic(**t))
 
         for s in SOURCES:
-            if not session.query(Source).filter_by(url=s["url"]).first():
+            existing = session.query(Source).filter_by(url=s["url"]).first()
+            if existing:
+                existing.active = s.get("active", True)
+                existing.rss_url = s.get("rss_url")
+            else:
                 session.add(Source(**s))
 
         session.commit()
