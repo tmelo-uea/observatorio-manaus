@@ -66,7 +66,8 @@ def load_articles():
     with engine.connect() as conn:
         df = pd.read_sql(query, conn)
     df["published_at"] = pd.to_datetime(df["published_at"])
-    df["date"] = df["published_at"].dt.date
+    df["published_at_manaus"] = df["published_at"] - pd.Timedelta(hours=4)
+    df["date"] = df["published_at_manaus"].dt.date
     return df
 
 
@@ -311,7 +312,7 @@ st.divider()
 st.subheader("Últimas notícias coletadas")
 
 for _, row in filtered.head(5).iterrows():
-    date_str = row["published_at"].strftime("%d/%m/%Y %H:%M") if pd.notna(row["published_at"]) else "—"
+    date_str = row["published_at_manaus"].strftime("%d/%m/%Y %H:%M") if pd.notna(row["published_at"]) else "—"
     topic_badge = f"`{row['topic']}`" if pd.notna(row["topic"]) else ""
     st.markdown(
         f"**[{row['title']}]({row['url']})** &nbsp; {topic_badge}  \n"
