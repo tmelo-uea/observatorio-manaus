@@ -115,11 +115,39 @@ def get_today_summary(topic_id: int | None = None) -> DailySummary | None:
         session.close()
 
 
+def _should_regenerate(existing: DailySummary, current_count: int) -> bool:
+    """Critério 4: volume dobrou E passaram pelo menos 2 horas."""
+    if existing.article_count == 0:
+        return current_count >= 3
+    volume_doubled = current_count >= existing.article_count * 2
+    hours_elapsed = (datetime.utcnow() - existing.generated_at).total_seconds() / 3600
+    return volume_doubled and hours_elapsed >= 2
+
+
 def run_daily_summary():
-    """Gera resumo geral do dia. Chamado uma vez por dia pelo runner."""
-    print("  Gerando resumo diário...")
-    result = generate_summary(topic_id=None)
-    if result:
-        print(f"  Resumo gerado: {result.article_count} artigos.")
-    else:
-        print("  Artigos insuficientes para resumo.")
+    """Gera ou regenera o resumo do dia com base no Critério 4."""
+    session = get_session()
+    today = date.today()
+    try:
+        from sqlalchemy import func
+        current_count = session.query(Article).join(Source).filter(
+            func.date(Article.published_at) == today,
+            Source.active == True,
+        ).count()
+
+        existing = session.query(DailySummary).filter_by(
+            date=today, topic_id=None
+        ).first()
+
+        if existing and not _should_regenerate(existing, current_count):
+            print(f"  Resumo do dia já existe ({existing.article_count} artigos, {current_count} disponíveis hoje). Sem regeneração.")
+            return
+
+        print(f"  Gerando resumo diário ({current_count} artigos publicados hoje)...")
+        result = generate_summary(topic_id=None, force=True)
+        if result:
+            print(f"  Resumo gerado: {result.article_count} artigos.")
+        else:
+            print("  Artigos insuficientes para resumo.")
+    finally:
+        session.close()
