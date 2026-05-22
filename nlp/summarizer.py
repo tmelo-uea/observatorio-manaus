@@ -7,6 +7,12 @@ from db.models import Article, Source, Topic, DailySummary
 def _manaus_today() -> date:
     return (datetime.utcnow() - timedelta(hours=4)).date()
 
+def _manaus_day_utc_range(d: date):
+    """Retorna (start_utc, end_utc) para um dia no horário de Manaus (UTC-4)."""
+    start = datetime(d.year, d.month, d.day, 4, 0, 0)      # meia-noite Manaus = 04:00 UTC
+    end   = start + timedelta(days=1)
+    return start, end
+
 
 def _call_groq(prompt: str) -> str | None:
     api_key = os.getenv("GROQ_API_KEY")
@@ -56,10 +62,10 @@ def generate_summary(topic_id: int | None = None, force: bool = False) -> DailyS
         if existing and not force:
             return existing
 
-        # Busca artigos do dia (ou dos últimos 2 dias se poucos artigos hoje)
-        from sqlalchemy import func
+        start_utc, end_utc = _manaus_day_utc_range(today)
         query = session.query(Article).join(Source).filter(
-            func.date(func.convert_tz(Article.published_at, '+00:00', '-04:00')) == today,
+            Article.published_at >= start_utc,
+            Article.published_at < end_utc,
             Source.active == True,
         )
         if topic_id:
@@ -131,12 +137,13 @@ def run_topic_summaries(min_articles: int = 10):
     """Gera resumos automáticos para temas com artigos suficientes hoje (Opção C)."""
     session = get_session()
     today = _manaus_today()
+    start_utc, end_utc = _manaus_day_utc_range(today)
     try:
-        from sqlalchemy import func
         topics = session.query(Topic).filter(Topic.slug != "outros").all()
         for topic in topics:
             count = session.query(Article).join(Source).filter(
-                func.date(func.convert_tz(Article.published_at, '+00:00', '-04:00')) == today,
+                Article.published_at >= start_utc,
+                Article.published_at < end_utc,
                 Article.topic_id == topic.id,
                 Source.active == True,
             ).count()
@@ -157,9 +164,10 @@ def run_daily_summary():
     session = get_session()
     today = _manaus_today()
     try:
-        from sqlalchemy import func
+        start_utc, end_utc = _manaus_day_utc_range(today)
         current_count = session.query(Article).join(Source).filter(
-            func.date(Article.published_at) == today,
+            Article.published_at >= start_utc,
+            Article.published_at < end_utc,
             Source.active == True,
         ).count()
 

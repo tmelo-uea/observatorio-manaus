@@ -18,6 +18,10 @@ from dashboard.components.summary_card import render_summary_card
 def manaus_today() -> date:
     return (datetime.utcnow() - timedelta(hours=4)).date()
 
+def manaus_day_utc_range(d: date):
+    start = datetime(d.year, d.month, d.day, 4, 0, 0)
+    return start, start + timedelta(days=1)
+
 st.set_page_config(page_title="Temas — Observatório de Manaus", page_icon="🏷️", layout="wide")
 
 TOPIC_ICONS = {
@@ -69,6 +73,7 @@ def load_topic_stats():
     """Métricas por tema: total hoje, total semana atual, semana anterior, fontes, última notícia."""
     engine = get_db()
     today = manaus_today()
+    start_utc, end_utc = manaus_day_utc_range(today)
     week_start = today - timedelta(days=today.weekday())
     prev_week_start = week_start - timedelta(days=7)
     query = text("""
@@ -78,11 +83,11 @@ def load_topic_stats():
             t.color,
             t.display_order,
             COUNT(a.id) AS total_all,
-            SUM(CASE WHEN DATE(CONVERT_TZ(a.published_at, '+00:00', '-04:00')) = :today THEN 1 ELSE 0 END) AS total_hoje,
+            SUM(CASE WHEN a.published_at >= :start_utc AND a.published_at < :end_utc THEN 1 ELSE 0 END) AS total_hoje,
             SUM(CASE WHEN DATE(a.published_at) >= :week_start THEN 1 ELSE 0 END) AS total_semana,
             SUM(CASE WHEN DATE(a.published_at) >= :prev_week_start
                       AND DATE(a.published_at) < :week_start THEN 1 ELSE 0 END) AS total_semana_ant,
-            COUNT(DISTINCT CASE WHEN DATE(CONVERT_TZ(a.published_at, '+00:00', '-04:00')) = :today THEN a.source_id END) AS fontes_hoje,
+            COUNT(DISTINCT CASE WHEN a.published_at >= :start_utc AND a.published_at < :end_utc THEN a.source_id END) AS fontes_hoje,
             MAX(a.published_at) AS ultima_noticia
         FROM topics t
         LEFT JOIN articles a ON a.topic_id = t.id
@@ -91,7 +96,8 @@ def load_topic_stats():
     """)
     with engine.connect() as conn:
         return pd.read_sql(query, conn, params={
-            "today": today,
+            "start_utc": start_utc,
+            "end_utc": end_utc,
             "week_start": week_start,
             "prev_week_start": prev_week_start,
         })
@@ -100,32 +106,32 @@ def load_topic_stats():
 @st.cache_data(ttl=300)
 def load_today_titles(topic_id: int) -> list[str]:
     engine = get_db()
-    today = manaus_today()
+    start_utc, end_utc = manaus_day_utc_range(manaus_today())
     query = text("""
         SELECT a.title FROM articles a
-        WHERE a.topic_id = :tid AND DATE(CONVERT_TZ(a.published_at, '+00:00', '-04:00')) = :today
+        WHERE a.topic_id = :tid AND a.published_at >= :start_utc AND a.published_at < :end_utc
         ORDER BY a.published_at DESC
     """)
     with engine.connect() as conn:
-        rows = conn.execute(query, {"tid": topic_id, "today": today}).fetchall()
+        rows = conn.execute(query, {"tid": topic_id, "start_utc": start_utc, "end_utc": end_utc}).fetchall()
     return [r[0] for r in rows if r[0]]
 
 
 @st.cache_data(ttl=300)
 def load_top_sources_today(topic_id: int, limit: int = 3):
     engine = get_db()
-    today = manaus_today()
+    start_utc, end_utc = manaus_day_utc_range(manaus_today())
     query = text("""
         SELECT s.name, COUNT(a.id) AS total
         FROM articles a
         JOIN sources s ON a.source_id = s.id
-        WHERE a.topic_id = :tid AND DATE(CONVERT_TZ(a.published_at, '+00:00', '-04:00')) = :today
+        WHERE a.topic_id = :tid AND a.published_at >= :start_utc AND a.published_at < :end_utc
         GROUP BY s.id, s.name
         ORDER BY total DESC
         LIMIT :lim
     """)
     with engine.connect() as conn:
-        rows = conn.execute(query, {"tid": topic_id, "today": today, "lim": limit}).fetchall()
+        rows = conn.execute(query, {"tid": topic_id, "start_utc": start_utc, "end_utc": end_utc, "lim": limit}).fetchall()
     return [(r[0], r[1]) for r in rows]
 
 

@@ -16,6 +16,11 @@ from dashboard.components.summary_card import render_summary_card
 def manaus_today():
     return (datetime.utcnow() - timedelta(hours=4)).date()
 
+def manaus_day_utc_range(d):
+    from datetime import date as _date
+    start = datetime(d.year, d.month, d.day, 4, 0, 0)
+    return start, start + timedelta(days=1)
+
 st.set_page_config(
     page_title="Observatório de Manaus",
     page_icon="🔭",
@@ -70,20 +75,21 @@ def load_totals():
     """Contagens reais do banco, sem o limite de 5000."""
     engine = get_db()
     today = manaus_today()
+    start_utc, end_utc = manaus_day_utc_range(today)
     with engine.connect() as conn:
         total = conn.execute(text("SELECT COUNT(*) FROM articles")).scalar()
         hoje = conn.execute(text(
             "SELECT COUNT(*) FROM articles "
-            "WHERE DATE(CONVERT_TZ(published_at, '+00:00', '-04:00')) = :d"
-        ), {"d": today}).scalar()
+            "WHERE published_at >= :s AND published_at < :e"
+        ), {"s": start_utc, "e": end_utc}).scalar()
         semana = conn.execute(text(
             "SELECT COUNT(*) FROM articles "
             "WHERE published_at >= NOW() - INTERVAL 7 DAY"
         )).scalar()
         fontes = conn.execute(text(
             "SELECT COUNT(DISTINCT source_id) FROM articles "
-            "WHERE DATE(CONVERT_TZ(published_at, '+00:00', '-04:00')) = :d"
-        ), {"d": today}).scalar()
+            "WHERE published_at >= :s AND published_at < :e"
+        ), {"s": start_utc, "e": end_utc}).scalar()
         ultima = conn.execute(text(
             "SELECT MAX(collected_at) FROM articles"
         )).scalar()
@@ -179,8 +185,8 @@ c6.metric("Últimos 7 dias", f"{totals['semana']:,}")
 
 # Última coleta
 if totals["ultima"]:
-    ultima_dt = pd.Timestamp(totals["ultima"])
-    diff_min = int((pd.Timestamp.utcnow() - ultima_dt).total_seconds() / 60)
+    ultima_dt = pd.Timestamp(totals["ultima"]).replace(tzinfo=None)
+    diff_min = int((pd.Timestamp(datetime.utcnow()) - ultima_dt).total_seconds() / 60)
     if diff_min < 60:
         ultima_str = f"há {diff_min} min"
     else:
