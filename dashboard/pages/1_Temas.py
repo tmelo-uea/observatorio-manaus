@@ -262,7 +262,7 @@ def render_theme_card(row, summary_row):
         <p style="margin:0 0 8px;font-size:0.86rem;text-transform:uppercase;
             letter-spacing:0.06em;color:#6b7280;font-weight:800;">Leitura do Observatório</p>
         <p style="margin:0;font-size:0.95rem;color:#9ca3af;font-style:italic;">
-            Resumo não disponível — artigos insuficientes hoje.</p>"""
+            Resumo ainda não disponível — será gerado automaticamente na próxima coleta.</p>"""
 
     status_badge = f"""
         <div style="display:inline-flex;align-items:center;gap:6px;padding:7px 12px;
@@ -370,13 +370,3 @@ for _, topic_row in topics_iter:
             ), {"d": manaus_today(), "tid": topic_id}).fetchone()
 
         render_theme_card(topic_row, summary_row)
-
-        if not summary_row:
-            if st.button("🤖 Gerar resumo com IA", key=f"gen_{topic_id}"):
-                with st.spinner("Gerando resumo..."):
-                    from nlp.summarizer import generate_summary
-                    result = generate_summary(topic_id=topic_id)
-                if result:
-                    st.rerun()
-                else:
-                    st.warning("Artigos insuficientes para gerar resumo hoje.")
