@@ -69,6 +69,7 @@ def generate_summary(topic_id: int | None = None, force: bool = False) -> DailyS
             Article.published_at >= start_utc,
             Article.published_at < end_utc,
             Source.active == True,
+            Article.is_local == True,
         )
         if topic_id:
             query = query.filter(Article.topic_id == topic_id)
@@ -149,6 +150,7 @@ def run_topic_summaries(min_articles: int = 10):
                 Article.published_at < end_utc,
                 Article.topic_id == topic.id,
                 Source.active == True,
+                Article.is_local == True,
             ).count()
             print(f"  [Resumos por tema] '{topic.name}': {count} artigos hoje")
             if count < min_articles:
