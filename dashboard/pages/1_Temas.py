@@ -265,72 +265,51 @@ def render_theme_card(row, summary_row):
     delta_html = f'<div style="font-size:0.76rem;margin-top:5px;color:{delta_color};font-weight:700;">{delta_arrow} {delta_str} vs. semana anterior</div>' if delta_str else ""
 
     st.markdown(f"""
-<div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:22px;
-    box-shadow:0 4px 18px rgba(15,23,42,0.07);overflow:hidden;margin-bottom:4px;">
-
-  <!-- Cabeçalho -->
-  <div style="background:linear-gradient(135deg,#eff6ff 0%,#eef2ff 55%,#f8fafc 100%);
-      padding:22px 26px 18px;border-bottom:1px solid #dbeafe;">
+<div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:22px;box-shadow:0 4px 18px rgba(15,23,42,0.07);overflow:hidden;margin-bottom:4px;">
+  <div style="background:linear-gradient(135deg,#eff6ff 0%,#eef2ff 55%,#f8fafc 100%);padding:22px 26px 18px;border-bottom:1px solid #dbeafe;">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
       <div style="display:flex;align-items:center;gap:14px;">
-        <div style="width:52px;height:52px;border-radius:18px;display:grid;place-items:center;
-            background:#ffffff;box-shadow:0 6px 16px rgba(37,99,235,0.13);font-size:1.7rem;">
-            {icon}
-        </div>
+        <div style="width:52px;height:52px;border-radius:18px;display:grid;place-items:center;background:#ffffff;box-shadow:0 6px 16px rgba(37,99,235,0.13);font-size:1.7rem;">{icon}</div>
         <div>
-          <div style="font-size:0.76rem;font-weight:800;letter-spacing:0.08em;
-              text-transform:uppercase;color:{color};margin-bottom:3px;">
-              Resumo automático por tema
-          </div>
+          <div style="font-size:0.76rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:{color};margin-bottom:3px;">Resumo automático por tema</div>
           <div style="font-size:1.45rem;font-weight:800;color:#0f172a;line-height:1.2;">{name}</div>
         </div>
       </div>
       {status_badge}
     </div>
-
-    <!-- Métricas -->
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
-      <div style="background:rgba(255,255,255,0.8);border:1px solid rgba(219,234,254,0.9);
-          border-radius:14px;padding:13px 15px;">
+      <div style="background:rgba(255,255,255,0.8);border:1px solid rgba(219,234,254,0.9);border-radius:14px;padding:13px 15px;">
         <div style="font-size:0.77rem;color:#6b7280;margin-bottom:3px;">Notícias hoje</div>
         <div style="font-size:1.4rem;font-weight:800;color:#111827;">{total_hoje}</div>
         {delta_html}
       </div>
-      <div style="background:rgba(255,255,255,0.8);border:1px solid rgba(219,234,254,0.9);
-          border-radius:14px;padding:13px 15px;">
+      <div style="background:rgba(255,255,255,0.8);border:1px solid rgba(219,234,254,0.9);border-radius:14px;padding:13px 15px;">
         <div style="font-size:0.77rem;color:#6b7280;margin-bottom:3px;">Fontes hoje</div>
         <div style="font-size:1.4rem;font-weight:800;color:#111827;">{fontes_hoje}</div>
       </div>
-      <div style="background:rgba(255,255,255,0.8);border:1px solid rgba(219,234,254,0.9);
-          border-radius:14px;padding:13px 15px;">
+      <div style="background:rgba(255,255,255,0.8);border:1px solid rgba(219,234,254,0.9);border-radius:14px;padding:13px 15px;">
         <div style="font-size:0.77rem;color:#6b7280;margin-bottom:3px;">Assuntos detectados</div>
         <div style="font-size:1.4rem;font-weight:800;color:#111827;">{len(keywords)}</div>
       </div>
-      <div style="background:rgba(255,255,255,0.8);border:1px solid rgba(219,234,254,0.9);
-          border-radius:14px;padding:13px 15px;">
+      <div style="background:rgba(255,255,255,0.8);border:1px solid rgba(219,234,254,0.9);border-radius:14px;padding:13px 15px;">
         <div style="font-size:0.77rem;color:#6b7280;margin-bottom:3px;">Última notícia</div>
         <div style="font-size:1.4rem;font-weight:800;color:#111827;">{_time_ago(ultima)}</div>
       </div>
     </div>
   </div>
-
-  <!-- Corpo -->
   <div style="padding:22px 26px 20px;display:grid;grid-template-columns:1.3fr 0.7fr;gap:24px;">
     <div>{leitura_html}</div>
     <div style="display:flex;flex-direction:column;gap:16px;">
       <div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:16px;padding:15px;">
-        <div style="font-size:0.8rem;text-transform:uppercase;letter-spacing:0.06em;
-            font-weight:800;color:#475569;margin-bottom:10px;">Assuntos em destaque</div>
+        <div style="font-size:0.8rem;text-transform:uppercase;letter-spacing:0.06em;font-weight:800;color:#475569;margin-bottom:10px;">Assuntos em destaque</div>
         <div style="display:flex;flex-wrap:wrap;gap:7px;">{chips_html}</div>
       </div>
       <div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:16px;padding:15px;">
-        <div style="font-size:0.8rem;text-transform:uppercase;letter-spacing:0.06em;
-            font-weight:800;color:#475569;margin-bottom:10px;">Fontes mais presentes</div>
+        <div style="font-size:0.8rem;text-transform:uppercase;letter-spacing:0.06em;font-weight:800;color:#475569;margin-bottom:10px;">Fontes mais presentes</div>
         {sources_html}
       </div>
     </div>
   </div>
-
 </div>
 """, unsafe_allow_html=True)
 
