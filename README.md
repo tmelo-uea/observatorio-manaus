@@ -1,6 +1,6 @@
 # 🔭 Observatório de Manaus
 
-Plataforma de monitoramento contínuo de notícias e publicações sobre a cidade de Manaus e o estado do Amazonas. O sistema coleta, classifica e exibe automaticamente o que é publicado nos principais portais, blogs, canais de YouTube e instituições de ensino da região.
+Plataforma de monitoramento contínuo de notícias e publicações sobre a cidade de Manaus e o estado do Amazonas. O sistema coleta, classifica e exibe automaticamente o que é publicado nos principais portais, blogs, canais de YouTube e órgãos públicos da região.
 
 Uma iniciativa do **LSI — Laboratório de Sistemas Inteligentes** da **Universidade do Estado do Amazonas (UEA)**.
 
@@ -13,8 +13,8 @@ Uma iniciativa do **LSI — Laboratório de Sistemas Inteligentes** da **Univers
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                         FONTES DE DADOS                         │
-│  Portais RSS (42+)  │  Blogs (4)  │  YouTube (9 canais)         │
-│  Universidades (4)  │  Institutos de pesquisa                   │
+│  Portais e blogs (43+)  │  YouTube (9 canais)                   │
+│  Órgãos públicos (5)    │  Cobertura regional (3)               │
 └──────────────┬──────────────────────────────────────────────────┘
                │ coleta a cada 30 min
                ▼
@@ -60,23 +60,25 @@ Uma iniciativa do **LSI — Laboratório de Sistemas Inteligentes** da **Univers
 ## Funcionalidades
 
 ### Coleta
-- Coleta automática a cada **30 minutos** via RSS de portais, blogs e universidades
+- Coleta automática a cada **30 minutos** via RSS de portais, blogs e órgãos públicos
 - Coleta de vídeos de **9 canais do YouTube** locais via RSS do YouTube
 - **Transcrição automática** de vídeos: busca legendas do YouTube; usa **Groq Whisper** como fallback
 - Deduplicação por URL — cada artigo é armazenado apenas uma vez
+- Datas armazenadas em **UTC**; exibição convertida para horário de Manaus (UTC−4, sem horário de verão)
 
 ### Processamento de Linguagem Natural
-- **Classificação temática** por palavras-chave com regex (word boundary) em 10 temas pré-definidos
-- **Classificação de localidade** (`is_local`): híbrida — palavras-chave primeiro, Groq LLM para casos ambíguos
-- **Resumos diários gerados por IA** (Groq `llama3-8b-8192`): resumo geral às 7h e resumos por tema sob demanda
+- **Classificação temática** por palavras-chave com regex (word boundary) em 12 temas pré-definidos
+- **Classificação de localidade** (`is_local`): híbrida — lista com mais de 700 palavras-chave locais primeiro; Groq LLM apenas para casos ambíguos
+- **Resumos diários gerados por IA** (Groq `llama-3.1-8b-instant`): resumo geral e resumos por tema gerados automaticamente a cada ciclo de coleta
 
 ### Dashboard
 - Filtros por tema, fonte, tipo de fonte, período e palavra-chave
-- Filtro **"Só notícias locais"** baseado na classificação de localidade
-- Gráfico de volume de notícias por dia
-- Distribuição por tema e por fonte
+- **Notícias locais por padrão** — exibe apenas artigos classificados como `is_local = True`; opção para incluir todas
+- Gráfico de volume de notícias por dia com **rótulos em português**
+- Distribuição por tema e por fonte (top 20)
 - Nuvem de palavras com bigramas (título + descrição + transcrição, com limpeza de HTML e URLs)
 - Card de resumo diário com IA, mostrando fontes consultadas
+- Cards de resumo por tema com contadores de notícias hoje / semana / total
 
 ---
 
@@ -84,36 +86,41 @@ Uma iniciativa do **LSI — Laboratório de Sistemas Inteligentes** da **Univers
 
 | Tema | Cor |
 |---|---|
-| Saúde | ![#e74c3c](https://placehold.co/12x12/e74c3c/e74c3c.png) |
-| Segurança Pública | ![#c0392b](https://placehold.co/12x12/c0392b/c0392b.png) |
-| Meio Ambiente | ![#27ae60](https://placehold.co/12x12/27ae60/27ae60.png) |
-| Política e Governo | ![#2980b9](https://placehold.co/12x12/2980b9/2980b9.png) |
-| Economia e Negócios | ![#f39c12](https://placehold.co/12x12/f39c12/f39c12.png) |
-| Educação | ![#8e44ad](https://placehold.co/12x12/8e44ad/8e44ad.png) |
-| Infraestrutura e Mobilidade | ![#7f8c8d](https://placehold.co/12x12/7f8c8d/7f8c8d.png) |
-| Cultura e Lazer | ![#e67e22](https://placehold.co/12x12/e67e22/e67e22.png) |
-| Esporte | ![#1abc9c](https://placehold.co/12x12/1abc9c/1abc9c.png) |
-| Tecnologia e Inovação | ![#3498db](https://placehold.co/12x12/3498db/3498db.png) |
-| Outros | ![#95a5a6](https://placehold.co/12x12/95a5a6/95a5a6.png) |
+| Saúde | ![#e74c3c](https://placehold.co/12x12/e74c3c/e74c3c.png) `#e74c3c` |
+| Segurança Pública | ![#c0392b](https://placehold.co/12x12/c0392b/c0392b.png) `#c0392b` |
+| Meio Ambiente | ![#27ae60](https://placehold.co/12x12/27ae60/27ae60.png) `#27ae60` |
+| Política e Governo | ![#2980b9](https://placehold.co/12x12/2980b9/2980b9.png) `#2980b9` |
+| Economia e Negócios | ![#f39c12](https://placehold.co/12x12/f39c12/f39c12.png) `#f39c12` |
+| Educação | ![#8e44ad](https://placehold.co/12x12/8e44ad/8e44ad.png) `#8e44ad` |
+| Infraestrutura e Mobilidade | ![#7f8c8d](https://placehold.co/12x12/7f8c8d/7f8c8d.png) `#7f8c8d` |
+| Cultura e Lazer | ![#e67e22](https://placehold.co/12x12/e67e22/e67e22.png) `#e67e22` |
+| Esporte | ![#1abc9c](https://placehold.co/12x12/1abc9c/1abc9c.png) `#1abc9c` |
+| Tecnologia e Inovação | ![#3498db](https://placehold.co/12x12/3498db/3498db.png) `#3498db` |
+| Justiça e Direito | ![#6c3483](https://placehold.co/12x12/6c3483/6c3483.png) `#6c3483` |
+| Social e Cidadania | ![#e91e63](https://placehold.co/12x12/e91e63/e91e63.png) `#e91e63` |
+| Outros | ![#95a5a6](https://placehold.co/12x12/95a5a6/95a5a6.png) `#95a5a6` |
 
 ---
 
 ## Fontes monitoradas
 
 ### Portais de notícias (Manaus/Amazonas)
-A Crítica, Em Tempo, D24am, Portal do Holanda, Amazonas Atual, A Gazeta do Amazonas, Amazonas 1, AM POST, Norte em Foco, Correio da Amazônia, Rede Amazônica, I9 Brasil, Fato Amazônico, Radar Amazônico, BNC Amazonas, Realtime, Portal Único, Portal Manaus Alerta, CM7 Brasil, Manaus 360, Vocativo, Chumbo Grosso Manaus, Tribuna Amazonas, Tribuna de Manaus, Tribuna do Amazonas, Igarapé News, Rios de Notícias, Portal do Amazonas, Portal da Floresta, Portal do Zacarias, Portal Norte, Portal Manaus Notícias, Portal O Poder, Agência Amazonas
+Em Tempo, D24am, Portal do Holanda, Amazonas Atual, Amazonas 1, AM POST, Norte em Foco, Correio da Amazônia, I9 Brasil, Fato Amazônico, Radar Amazônico, BNC Amazonas, Realtime, Portal Único, Portal Manaus Alerta, CM7 Brasil, Manaus 360, Vocativo, Chumbo Grosso Manaus, Tribuna Amazonas, Tribuna de Manaus, Tribuna do Amazonas, Igarapé News, Rios de Notícias, Portal da Floresta, Portal Norte, Portal O Poder, Agência Amazonas, Portal AM 24h, Portal Amazôn Online, Portal R5, Portal Regional AM, Portal Tambaqui, Portal do Amazonas AM, No Ar Portal, Nosso Show AM, Comunica AM, Menezes Virtual Eye, Canal 92, ALEAM
 
 ### Blogs
-Blog do Holanda, Blog do Hiel Levy, Portal Marcos Santos, Blog do Jucem
+Blog do Holanda, Blog do Hiel Levy, Portal Marcos Santos
 
 ### Cobertura regional e ambiental
 G1 Amazonas, Agência Brasil, Mongabay Brasil
 
-### Universidades e institutos
-UFAM, UEA, INPA, UniNorte
+### Órgãos públicos
+Prefeitura de Manaus, SSP-AM, DETRAN-AM, IPAAM, Cultura AM
+
+### Universidades
+UFAM, UniNorte
 
 ### Canais do YouTube
-TV A Crítica, TV Norte Amazonas, Jovem Pan Manaus, Portal do Holanda, Rede Amazônica, TV CM7, Record Manaus, Band Amazonas, Amazonas Atual
+TV Norte Amazonas, Jovem Pan Manaus, Portal do Holanda, Rede Amazônica, TV CM7, Record Manaus, Band Amazonas, Amazonas Atual, ALEAM
 
 ---
 
@@ -138,10 +145,10 @@ observatorio-manaus/
 │   └── seeds.py             # Dados iniciais (temas e fontes)
 ├── nlp/
 │   ├── classifier.py        # Classificador de temas por palavras-chave
-│   ├── local_classifier.py  # Classificador de localidade (híbrido: keywords + Groq)
+│   ├── local_classifier.py  # Classificador de localidade (700+ keywords + Groq)
 │   └── summarizer.py        # Geração de resumos diários via Groq
 ├── scripts/
-│   └── backfill_transcripts.py  # Preenche transcrições retroativas
+│   └── backfill_transcripts.py  # Preenche transcrições retroativas (limit por ciclo)
 ├── Procfile                 # Comando de start para Railway
 ├── nixpacks.toml            # Dependências de sistema (ffmpeg)
 ├── requirements.txt         # Dependências Python
@@ -159,7 +166,7 @@ observatorio-manaus/
 | name | VARCHAR(200) | Nome da fonte |
 | url | VARCHAR(500) | URL principal |
 | rss_url | VARCHAR(500) | URL do feed RSS |
-| type | VARCHAR(50) | `portal`, `blog` ou `youtube` |
+| type | VARCHAR(50) | `portal`, `blog`, `youtube` ou `orgao_publico` |
 | active | BOOL | Ativa para coleta |
 
 ### `topics`
@@ -180,8 +187,8 @@ observatorio-manaus/
 | url | VARCHAR(767) | URL original (único) |
 | summary | TEXT | Descrição/resumo |
 | transcript | LONGTEXT | Transcrição (vídeos YouTube) |
-| published_at | DATETIME | Data de publicação |
-| collected_at | DATETIME | Data de coleta |
+| published_at | DATETIME | Data de publicação **em UTC** |
+| collected_at | DATETIME | Data de coleta **em UTC** |
 | source_id | INT | FK → sources |
 | topic_id | INT | FK → topics |
 | topic_score | FLOAT | Confiança da classificação |
@@ -191,11 +198,11 @@ observatorio-manaus/
 | Campo | Tipo | Descrição |
 |---|---|---|
 | id | INT | Chave primária |
-| date | DATE | Data do resumo |
-| topic_id | INT | FK → topics (NULL = geral) |
+| date | DATE | Data do resumo (horário de Manaus) |
+| topic_id | INT | FK → topics (NULL = resumo geral) |
 | summary | TEXT | Texto gerado pelo Groq |
 | article_ids | JSON | IDs dos artigos usados |
-| article_count | INT | Quantidade de artigos |
+| article_count | INT | Quantidade de artigos locais (`is_local = 1`) |
 | generated_at | DATETIME | Timestamp de geração |
 
 ---
@@ -211,7 +218,7 @@ observatorio-manaus/
 | Coleta RSS | feedparser |
 | Coleta YouTube | feedparser + youtube-transcript-api + yt-dlp |
 | Transcrição | Groq Whisper (`whisper-large-v3`) |
-| NLP / IA | Groq (`llama3-8b-8192`) |
+| NLP / IA | Groq (`llama-3.1-8b-instant`) |
 | Gráficos | Plotly |
 | Nuvem de palavras | WordCloud + matplotlib |
 | Hospedagem | Railway (web + worker) |
@@ -268,9 +275,9 @@ O projeto usa dois serviços no Railway:
 - **Web** (`Procfile`): `streamlit run "dashboard/0_Visão_Geral.py"`
 - **Worker**: `python collector/runner.py`
 
-Variáveis de ambiente necessárias no Railway:
-- `MYSQL_URL` ou `DATABASE_URL` — fornecida automaticamente pelo plugin MySQL
-- `GROQ_API_KEY` — chave da API do Groq
+Variáveis de ambiente necessárias em **ambos os serviços**:
+- `MYSQL_URL` ou `DATABASE_URL` — fornecida automaticamente pelo plugin MySQL do Railway
+- `GROQ_API_KEY` — chave da API do Groq (necessária para resumos por IA e classificação de localidade)
 
 O deploy é automático a cada push no branch `main`.
 
