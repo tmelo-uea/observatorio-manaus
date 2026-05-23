@@ -201,20 +201,28 @@ _MESES_ABR = {1:"jan",2:"fev",3:"mar",4:"abr",5:"mai",6:"jun",
               7:"jul",8:"ago",9:"set",10:"out",11:"nov",12:"dez"}
 
 st.subheader("Volume de notícias por dia")
-daily = filtered.groupby(["date", "source"]).size().reset_index(name="count")
+_TYPE_LABELS = {"portal": "Portal", "blog": "Blog", "youtube": "YouTube", "orgao_publico": "Órgão público"}
+_TYPE_COLORS = {"Portal": "#2980b9", "Blog": "#e67e22", "YouTube": "#e74c3c", "Órgão público": "#27ae60"}
+daily = filtered.copy()
+daily["tipo"] = daily["source_type"].map(_TYPE_LABELS).fillna("Outros")
+daily = daily.groupby(["date", "tipo"]).size().reset_index(name="count")
 daily["date_ts"] = pd.to_datetime(daily["date"])
-fig_timeline = px.line(
-    daily, x="date_ts", y="count", color="source", markers=True,
-    labels={"date_ts": "Data", "count": "Notícias", "source": "Fonte"},
-    color_discrete_sequence=px.colors.qualitative.Set2,
-)
 _dates = sorted(daily["date"].unique())
 _tickvals = [pd.Timestamp(d) for d in _dates]
 _ticktext = [f"{d.day} {_MESES_ABR[d.month]}" for d in _dates]
 if _dates:
     _ticktext[0] = f"{_dates[0].day} {_MESES_ABR[_dates[0].month]}\n{_dates[0].year}"
+fig_timeline = px.bar(
+    daily, x="date_ts", y="count", color="tipo",
+    labels={"date_ts": "Data", "count": "Notícias", "tipo": "Tipo"},
+    color_discrete_map=_TYPE_COLORS,
+    category_orders={"tipo": ["Portal", "Blog", "YouTube", "Órgão público"]},
+)
 fig_timeline.update_xaxes(tickvals=_tickvals, ticktext=_ticktext)
-fig_timeline.update_layout(legend=dict(orientation="h", yanchor="bottom", y=1.02))
+fig_timeline.update_layout(
+    barmode="stack",
+    legend=dict(orientation="h", yanchor="bottom", y=1.02, title_text=""),
+)
 st.plotly_chart(fig_timeline, use_container_width=True)
 
 # --- Linha 2: por tema e por fonte ---
