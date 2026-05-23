@@ -254,7 +254,7 @@ SOURCES = [
     # Portais locais de Manaus
     {"name": "A Crítica",            "url": "https://www.acritica.com",          "rss_url": "https://www.acritica.com/feed",                                 "type": "portal", "active": False},
     {"name": "Em Tempo",             "url": "https://emtempo.com.br",            "rss_url": "https://emtempo.com.br/feed",                                   "type": "portal"},
-    {"name": "D24am",                "url": "https://www.d24am.com",             "rss_url": "https://www.d24am.com/feed",                                    "type": "portal"},
+    {"name": "D24am",                "url": "https://www.d24am.com",             "rss_url": "https://www.d24am.com/feed",                                    "type": "portal",  "active": False},
     {"name": "Portal do Holanda",    "url": "https://portaldoholanda.com.br",    "rss_url": "https://portaldoholanda.com.br/feed",                           "type": "portal"},
     {"name": "Amazonas Atual",       "url": "https://amazonasatual.com.br",      "rss_url": "https://amazonasatual.com.br/feed",                             "type": "portal"},
     {"name": "A Gazeta do Amazonas", "url": "https://agazetadoamazonas.com",     "rss_url": "https://agazetadoamazonas.com/feed",                            "type": "portal", "active": False},
@@ -330,6 +330,7 @@ SOURCES = [
     {"name": "DETRAN-AM",            "url": "https://www.detran.am.gov.br",      "rss_url": "https://www.detran.am.gov.br/feed/",                            "type": "portal"},
     {"name": "Cultura AM",           "url": "https://cultura.am.gov.br",         "rss_url": "https://www.cultura.am.gov.br/feed/",                           "type": "portal"},
     {"name": "Prefeitura de Manaus", "url": "https://www.manaus.am.gov.br",      "rss_url": "https://www.manaus.am.gov.br/feed/",                            "type": "portal"},
+    {"name": "TRE-AM",              "url": "https://www.tre-am.jus.br",         "rss_url": "https://www.tre-am.jus.br/rss",                                 "type": "portal"},
 ]
 
 
