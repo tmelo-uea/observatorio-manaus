@@ -300,9 +300,11 @@ if all_text.strip():
         "disse", "diz", "afirmou", "segundo", "conforme", "durante",
         "http", "https", "br", "href", "src", "img", "bit", "www",
         "apareceu", "primeiro", "post", "vivo", "acompanhe", "inscreva",
-        "canal", "site", "neste", "pelo", "pela", "pelos", "pelas",
+        "canal", "site", "neste", "nesta", "pelo", "pela", "pelos", "pelas",
         "notificações", "conteúdo", "conteúdos", "exclusivos", "informações",
         "instagram", "facebook", "tiktok", "youtube", "twitter", "whatsapp",
+        # dias da semana — aparecem sem hífen por limitação da regex de tokenização
+        "segunda", "terça", "terca", "quarta", "quinta", "sexta", "sábado", "sabado", "domingo", "feira",
     }
     wc = WordCloud(
         width=1200, height=350, background_color="white",
