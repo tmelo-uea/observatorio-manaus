@@ -287,7 +287,7 @@ SOURCES = [
     {"name": "Portal do Amazonas",    "url": "https://portaldoamazonas.com.br",        "rss_url": "https://portaldoamazonas.com.br/feed",                              "type": "portal", "active": False},
     {"name": "Portal da Floresta",    "url": "https://portaldafloresta.com.br",        "rss_url": "https://portaldafloresta.com.br/feed",                              "type": "portal"},
     {"name": "Portal do Zacarias",    "url": "https://portaldozacarias.com.br",        "rss_url": "https://portaldozacarias.com.br/feed",                              "type": "portal", "active": False},
-    {"name": "Portal Norte",          "url": "https://portalnorte.com.br",             "rss_url": "https://portalnorte.com.br/feed",                                   "type": "portal"},
+    {"name": "Portal Norte",          "url": "https://portalnorte.com.br",             "rss_url": "https://portalnorte.com.br/feed",                                   "type": "portal",  "active": False},
     {"name": "Portal Manaus Notícias","url": "https://www.portalmanausnoticias.com.br","rss_url": "https://www.portalmanausnoticias.com.br/feed",                       "type": "portal", "active": False},
     {"name": "Portal O Poder",        "url": "https://portalopoder.com.br",            "rss_url": "https://portalopoder.com.br/feed",                                   "type": "portal"},
     {"name": "Agência Amazonas",      "url": "https://www.agenciaamazonas.am.gov.br",  "rss_url": "https://www.agenciaamazonas.am.gov.br/feed",                         "type": "portal"},
@@ -313,7 +313,7 @@ SOURCES = [
     # Novos portais locais
     {"name": "Canal 92",             "url": "https://canal92am.com",             "rss_url": "https://canal92am.com/feed/",                                   "type": "portal"},
     {"name": "Portal Regional AM",   "url": "https://portalregionalam.com.br",   "rss_url": "https://portalregionalam.com.br/feed/",                         "type": "portal"},
-    {"name": "Portal Tambaqui",      "url": "https://portaltambaqui.com.br",     "rss_url": "https://portaltambaqui.com.br/feed/",                           "type": "portal"},
+    {"name": "Portal Tambaqui",      "url": "https://portaltambaqui.com.br",     "rss_url": "https://portaltambaqui.com.br/feed/",                           "type": "portal",  "active": False},
     {"name": "Portal AM 24h",        "url": "https://portalam24h.com",           "rss_url": "https://www.portalam24h.com/feed/",                             "type": "portal"},
     {"name": "Portal do Amazonas AM","url": "https://portaldoamazonas.com",      "rss_url": "https://portaldoamazonas.com/feed/",                            "type": "portal"},
     {"name": "Comunica AM",          "url": "https://comunicaam.com.br",         "rss_url": "https://comunicaam.com.br/feed",                                "type": "portal"},
