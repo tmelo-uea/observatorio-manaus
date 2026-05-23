@@ -305,6 +305,14 @@ if all_text.strip():
         "instagram", "facebook", "tiktok", "youtube", "twitter", "whatsapp",
         # dias da semana — aparecem sem hífen por limitação da regex de tokenização
         "segunda", "terça", "terca", "quarta", "quinta", "sexta", "sábado", "sabado", "domingo", "feira",
+        # boilerplate de portais
+        "notícia", "notícias", "noticias", "noticia", "últimas", "ultimas", "leia", "veja", "segue",
+        # genéricos jornalísticos
+        "dia", "ano", "meio", "está", "esta", "vai", "vídeo", "video", "ocorreu", "visita",
+        # referências a horário de transmissão
+        "horário", "horario", "Brasília", "brasilia", "brasília",
+        # nomes de fontes que aparecem nos próprios textos
+        "atual", "notícias", "portais",
     }
     wc = WordCloud(
         width=1200, height=350, background_color="white",
