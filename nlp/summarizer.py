@@ -40,15 +40,18 @@ def _build_prompt(articles, topic_name: str | None) -> str:
         f"- [{a.source.name}] {a.title}" for a in articles[:40]
     )
     if topic_name:
-        context = f"sobre o tema '{topic_name}' em Manaus e no Amazonas"
+        context = f"sobre o tema '{topic_name}' na cidade de Manaus"
     else:
-        context = "sobre Manaus e o estado do Amazonas"
+        context = "sobre a cidade de Manaus"
 
     return (
         f"Você é um jornalista que escreve resumos diários de notícias {context}. "
         f"Com base nas manchetes abaixo, escreva um parágrafo conciso (4 a 6 frases) "
-        f"resumindo os principais acontecimentos do dia. Escreva em português, "
-        f"de forma clara e objetiva, sem usar bullet points.\n\n"
+        f"resumindo os principais acontecimentos do dia. "
+        f"Inclua apenas fatos que dizem respeito à cidade de Manaus — ignore notícias "
+        f"de outros municípios do Amazonas ou de outros estados. "
+        f"Preserve os nomes completos de pessoas, órgãos e locais mencionados nas manchetes. "
+        f"Escreva em português, de forma clara e objetiva, sem usar bullet points.\n\n"
         f"Manchetes:\n{headlines}"
     )
 
