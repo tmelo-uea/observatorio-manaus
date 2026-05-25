@@ -1,9 +1,27 @@
 import feedparser
+import requests
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from sqlalchemy.exc import IntegrityError
 from db.connection import get_session
 from db.models import Source, Article
+
+_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    ),
+    "Accept": "application/rss+xml, application/xml, text/xml, */*",
+    "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+}
+
+def fetch_feed(url: str):
+    try:
+        resp = requests.get(url, headers=_HEADERS, timeout=15, allow_redirects=True)
+        resp.raise_for_status()
+        return feedparser.parse(resp.content)
+    except Exception:
+        return feedparser.parse(url)
 
 
 def parse_date(entry) -> datetime | None:
@@ -25,7 +43,7 @@ def parse_date(entry) -> datetime | None:
 
 
 def collect_source(source: Source) -> int:
-    feed = feedparser.parse(source.rss_url, agent="ObservatorioManaus/1.0")
+    feed = fetch_feed(source.rss_url)
     count = 0
     session = get_session()
     try:
