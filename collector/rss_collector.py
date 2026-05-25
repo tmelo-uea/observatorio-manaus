@@ -19,9 +19,9 @@ def fetch_feed(url: str):
     try:
         resp = requests.get(url, headers=_HEADERS, timeout=15, allow_redirects=True)
         resp.raise_for_status()
-        return feedparser.parse(resp.content)
-    except Exception:
-        return feedparser.parse(url)
+        return feedparser.parse(resp.content), None
+    except Exception as e:
+        return feedparser.parse(url), str(e)
 
 
 def parse_date(entry) -> datetime | None:
@@ -43,7 +43,13 @@ def parse_date(entry) -> datetime | None:
 
 
 def collect_source(source: Source) -> int:
-    feed = fetch_feed(source.rss_url)
+    feed, fetch_err = fetch_feed(source.rss_url)
+    if fetch_err:
+        print(f"  [fetch] {source.name}: requests falhou ({fetch_err})")
+    n_entries = len(feed.entries)
+    if n_entries == 0:
+        bozo_ex = type(feed.get("bozo_exception")).__name__ if feed.get("bozo_exception") else None
+        print(f"  [feed vazio] {source.name}: status={feed.get('status','?')} bozo={feed.get('bozo')} bozo_ex={bozo_ex}")
     count = 0
     session = get_session()
     try:
