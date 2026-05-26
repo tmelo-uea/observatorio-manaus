@@ -41,6 +41,8 @@ def main():
                         help="Slug do tema específico (ex: tecnologia-inovacao)")
     parser.add_argument("--batch-size", type=int, default=500,
                         help="Tamanho do batch para commit")
+    parser.add_argument("--only-to-outros", action="store_true",
+                        help="Modo conservador: só aplica mudança se NOVO tema for 'Outros'")
     args = parser.parse_args()
 
     if not any([args.low_score, args.recent, args.all, args.topic]):
@@ -82,7 +84,9 @@ def main():
         if args.dry_run:
             print("\n🔍 DRY RUN — não vai aplicar mudanças\n")
 
-        changes = {"same": 0, "changed": 0}
+        outros_id = next((t.id for t in topics if t.slug == "outros"), None)
+
+        changes = {"same": 0, "changed": 0, "skipped_conservative": 0}
         change_examples = []
         processed = 0
 
@@ -96,6 +100,18 @@ def main():
             new_topic = topics_by_id.get(new_topic_id)
 
             if old_topic_id != new_topic_id:
+                # Modo conservador: só aplica se for mudança para "Outros"
+                if args.only_to_outros and new_topic_id != outros_id:
+                    changes["skipped_conservative"] += 1
+                    if not args.dry_run and article.topic_score != new_score:
+                        article.topic_score = new_score
+                    processed += 1
+                    if processed % args.batch_size == 0:
+                        if not args.dry_run:
+                            session.commit()
+                        print(f"  Processados: {processed}/{total} ({changes['changed']} mudaram)")
+                    continue
+
                 changes["changed"] += 1
                 if len(change_examples) < 10:
                     change_examples.append({
@@ -126,6 +142,8 @@ def main():
         print(f"   Total processado: {processed}")
         print(f"   Mantidos no mesmo tema: {changes['same']}")
         print(f"   Reclassificados: {changes['changed']}")
+        if args.only_to_outros:
+            print(f"   Trocas tema→tema ignoradas (modo conservador): {changes['skipped_conservative']}")
 
         if change_examples:
             print(f"\n🔄 Exemplos de mudanças:")
