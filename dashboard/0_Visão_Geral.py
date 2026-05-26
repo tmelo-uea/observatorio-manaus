@@ -167,26 +167,19 @@ if st.sidebar.checkbox("⚙️ Admin", key="admin_toggle"):
     admin_pwd = st.sidebar.text_input("Senha", type="password", key="admin_pwd")
     if admin_pwd == os.getenv("ADMIN_PASSWORD", "obs@manaus"):
         if st.sidebar.button("📤 Disparar digest agora (teste)", type="primary"):
-            with st.spinner("Enviando..."):
-                sent = run_digest(force=True, min_summaries=1)
-            if sent > 0:
-                st.sidebar.success(f"✓ Digest enviado para {sent} assinante(s).")
+            import os as _os
+            _api_key = _os.getenv("BREVO_API_KEY", "")
+            _sender  = _os.getenv("BREVO_SENDER_EMAIL", "")
+            if not _api_key:
+                st.sidebar.error("BREVO_API_KEY não encontrada neste serviço. Configure a variável no serviço Web do Railway.")
             else:
-                from datetime import timedelta as _td
-                from db.models import DailySummary as _DS, EmailSubscription as _ES
-                from sqlalchemy import text as _text
-                _today = (datetime.utcnow() - timedelta(hours=4)).date()
-                _yesterday = _today - _td(days=1)
-                with get_db().connect() as _c:
-                    _n_sum_today = _c.execute(_text("SELECT COUNT(*) FROM daily_summaries WHERE date = :d"), {"d": _today}).scalar()
-                    _n_sum_yest  = _c.execute(_text("SELECT COUNT(*) FROM daily_summaries WHERE date = :d"), {"d": _yesterday}).scalar()
-                    _n_subs      = _c.execute(_text("SELECT COUNT(*) FROM email_subscriptions WHERE active = 1")).scalar()
-                st.sidebar.warning(
-                    f"Nenhum e-mail enviado.\n\n"
-                    f"- Resumos hoje ({_today}): **{_n_sum_today}**\n"
-                    f"- Resumos ontem ({_yesterday}): **{_n_sum_yest}**\n"
-                    f"- Assinantes ativos: **{_n_subs}**"
-                )
+                st.sidebar.caption(f"API Key: `...{_api_key[-6:]}` | Remetente: `{_sender}`")
+                with st.spinner("Enviando..."):
+                    sent = run_digest(force=True, min_summaries=1)
+                if sent > 0:
+                    st.sidebar.success(f"✓ Digest enviado para {sent} assinante(s).")
+                else:
+                    st.sidebar.error("Envio falhou. Verifique os logs do Railway para detalhes do erro Brevo.")
     elif admin_pwd:
         st.sidebar.error("Senha incorreta.")
 
