@@ -90,50 +90,52 @@ def main():
         change_examples = []
         processed = 0
 
-        articles = query.yield_per(args.batch_size)
-        for article in articles:
-            text = f"{article.title or ''} {article.summary or ''} {article.transcript or ''}"
-            new_topic_id, new_score = classify_article(text, topics)
+        # Carrega todos os IDs primeiro para evitar cursor inválido após commit
+        article_ids = [a_id for (a_id,) in query.with_entities(Article.id).all()]
+        print(f"   IDs carregados, iniciando processamento em batches...")
 
-            old_topic_id = article.topic_id
-            old_topic = topics_by_id.get(old_topic_id)
-            new_topic = topics_by_id.get(new_topic_id)
+        for batch_start in range(0, len(article_ids), args.batch_size):
+            batch_ids = article_ids[batch_start:batch_start + args.batch_size]
+            batch_articles = session.query(Article).filter(Article.id.in_(batch_ids)).all()
 
-            if old_topic_id != new_topic_id:
-                # Modo conservador: só aplica se for mudança para "Outros"
-                if args.only_to_outros and new_topic_id != outros_id:
-                    changes["skipped_conservative"] += 1
+            for article in batch_articles:
+                text = f"{article.title or ''} {article.summary or ''} {article.transcript or ''}"
+                new_topic_id, new_score = classify_article(text, topics)
+
+                old_topic_id = article.topic_id
+                old_topic = topics_by_id.get(old_topic_id)
+                new_topic = topics_by_id.get(new_topic_id)
+
+                if old_topic_id != new_topic_id:
+                    if args.only_to_outros and new_topic_id != outros_id:
+                        changes["skipped_conservative"] += 1
+                        if not args.dry_run and article.topic_score != new_score:
+                            article.topic_score = new_score
+                        processed += 1
+                        continue
+
+                    changes["changed"] += 1
+                    if len(change_examples) < 10:
+                        change_examples.append({
+                            "title": article.title[:80] if article.title else "(sem título)",
+                            "from": old_topic.name if old_topic else "(nenhum)",
+                            "to": new_topic.name if new_topic else "(nenhum)",
+                            "score": new_score,
+                        })
+
+                    if not args.dry_run:
+                        article.topic_id = new_topic_id
+                        article.topic_score = new_score
+                else:
+                    changes["same"] += 1
                     if not args.dry_run and article.topic_score != new_score:
                         article.topic_score = new_score
-                    processed += 1
-                    if processed % args.batch_size == 0:
-                        if not args.dry_run:
-                            session.commit()
-                        print(f"  Processados: {processed}/{total} ({changes['changed']} mudaram)")
-                    continue
 
-                changes["changed"] += 1
-                if len(change_examples) < 10:
-                    change_examples.append({
-                        "title": article.title[:80] if article.title else "(sem título)",
-                        "from": old_topic.name if old_topic else "(nenhum)",
-                        "to": new_topic.name if new_topic else "(nenhum)",
-                        "score": new_score,
-                    })
+                processed += 1
 
-                if not args.dry_run:
-                    article.topic_id = new_topic_id
-                    article.topic_score = new_score
-            else:
-                changes["same"] += 1
-                if not args.dry_run and article.topic_score != new_score:
-                    article.topic_score = new_score
-
-            processed += 1
-            if processed % args.batch_size == 0:
-                if not args.dry_run:
-                    session.commit()
-                print(f"  Processados: {processed}/{total} ({changes['changed']} mudaram)")
+            if not args.dry_run:
+                session.commit()
+            print(f"  Processados: {processed}/{total} ({changes['changed']} mudaram, {changes['skipped_conservative']} ignoradas)")
 
         if not args.dry_run:
             session.commit()
