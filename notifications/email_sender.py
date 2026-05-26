@@ -145,6 +145,7 @@ def _build_html(summaries: list[tuple[str, str, str]], today: date, unsubscribe_
 def _send_sendgrid(to_email: str, subject: str, html: str) -> tuple[bool, str]:
     """Envia email via API REST do Sendgrid. Retorna (sucesso, mensagem_erro)."""
     import requests
+    import time
 
     api_key = os.getenv("SENDGRID_API_KEY")
     from_email = os.getenv("SENDGRID_FROM_EMAIL")
@@ -167,35 +168,47 @@ def _send_sendgrid(to_email: str, subject: str, html: str) -> tuple[bool, str]:
         "content": [{"type": "text/html", "value": html}],
     }
 
-    try:
-        print(f"  [Email] Enviando via Sendgrid para {to_email}...")
-        resp = requests.post(
-            "https://api.sendgrid.com/v3/mail/send",
-            json=payload,
-            headers=headers,
-            timeout=10,
-        )
+    max_retries = 3
+    timeout_sec = 20  # Timeout de 20s
 
-        if resp.status_code == 202:
-            print(f"  [Email] ✓ Enviado com sucesso para {to_email}")
-            return True, ""
-        else:
-            err = f"Sendgrid {resp.status_code}: {resp.text[:200]}"
+    for attempt in range(1, max_retries + 1):
+        try:
+            print(f"  [Email] Enviando via Sendgrid para {to_email} (tentativa {attempt}/{max_retries})...")
+            resp = requests.post(
+                "https://api.sendgrid.com/v3/mail/send",
+                json=payload,
+                headers=headers,
+                timeout=timeout_sec,
+            )
+
+            if resp.status_code == 202:
+                print(f"  [Email] ✓ Enviado com sucesso para {to_email}")
+                return True, ""
+            else:
+                err = f"Sendgrid {resp.status_code}: {resp.text[:200]}"
+                print(f"  [Email] ✗ {err}")
+                return False, err
+        except requests.Timeout:
+            if attempt < max_retries:
+                wait_sec = 2 ** attempt
+                print(f"  [Email] ⏱️  Timeout (tentativa {attempt}). Aguardando {wait_sec}s...")
+                time.sleep(wait_sec)
+            else:
+                err = f"Timeout após {max_retries} tentativas"
+                print(f"  [Email] ✗ {err}")
+                return False, err
+        except Exception as e:
+            err = f"{type(e).__name__}: {e}"
             print(f"  [Email] ✗ {err}")
             return False, err
-    except requests.Timeout:
-        err = "Timeout na API do Sendgrid"
-        print(f"  [Email] ✗ {err}")
-        return False, err
-    except Exception as e:
-        err = f"{type(e).__name__}: {e}"
-        print(f"  [Email] ✗ {err}")
-        return False, err
+
+    return False, "Falha após múltiplas tentativas"
 
 
 def _send_brevo(to_email: str, subject: str, html: str) -> tuple[bool, str]:
     """Envia email via API REST do Brevo (fallback). Retorna (sucesso, mensagem_erro)."""
     import requests
+    import time
 
     api_key = os.getenv("BREVO_API_KEY")
     sender_email = os.getenv("BREVO_SENDER_EMAIL")
@@ -216,30 +229,41 @@ def _send_brevo(to_email: str, subject: str, html: str) -> tuple[bool, str]:
         "htmlContent": html,
     }
 
-    try:
-        print(f"  [Email] Enviando via Brevo para {to_email}...")
-        resp = requests.post(
-            "https://api.brevo.com/v3/smtp/email",
-            json=payload,
-            headers=headers,
-            timeout=10,
-        )
+    max_retries = 3
+    timeout_sec = 30  # Aumentado de 10s para 30s (Brevo pode ser lento)
 
-        if resp.status_code == 201:
-            print(f"  [Email] ✓ Enviado com sucesso para {to_email}")
-            return True, ""
-        else:
-            err = f"Brevo {resp.status_code}: {resp.text[:200]}"
+    for attempt in range(1, max_retries + 1):
+        try:
+            print(f"  [Email] Enviando via Brevo para {to_email} (tentativa {attempt}/{max_retries})...")
+            resp = requests.post(
+                "https://api.brevo.com/v3/smtp/email",
+                json=payload,
+                headers=headers,
+                timeout=timeout_sec,
+            )
+
+            if resp.status_code == 201:
+                print(f"  [Email] ✓ Enviado com sucesso para {to_email}")
+                return True, ""
+            else:
+                err = f"Brevo {resp.status_code}: {resp.text[:200]}"
+                print(f"  [Email] ✗ {err}")
+                return False, err
+        except requests.Timeout:
+            if attempt < max_retries:
+                wait_sec = 2 ** attempt  # exponential backoff: 2s, 4s, 8s
+                print(f"  [Email] ⏱️  Timeout (tentativa {attempt}). Aguardando {wait_sec}s...")
+                time.sleep(wait_sec)
+            else:
+                err = f"Timeout após {max_retries} tentativas"
+                print(f"  [Email] ✗ {err}")
+                return False, err
+        except Exception as e:
+            err = f"{type(e).__name__}: {e}"
             print(f"  [Email] ✗ {err}")
             return False, err
-    except requests.Timeout:
-        err = "Timeout na API do Brevo"
-        print(f"  [Email] ✗ {err}")
-        return False, err
-    except Exception as e:
-        err = f"{type(e).__name__}: {e}"
-        print(f"  [Email] ✗ {err}")
-        return False, err
+
+    return False, "Falha após múltiplas tentativas"
 
 
 def run_digest(min_summaries: int = 3, send_after_hour: int = 7, force: bool = False) -> int:
