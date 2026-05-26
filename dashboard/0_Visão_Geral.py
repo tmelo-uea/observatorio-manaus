@@ -170,16 +170,25 @@ if st.sidebar.checkbox("⚙️ Admin", key="admin_toggle"):
             import os as _os
             _api_key = _os.getenv("BREVO_API_KEY", "")
             _sender  = _os.getenv("BREVO_SENDER_EMAIL", "")
+            _smtp_login = _os.getenv("BREVO_SMTP_LOGIN", "")
             if not _api_key:
-                st.sidebar.error("BREVO_API_KEY não encontrada neste serviço. Configure a variável no serviço Web do Railway.")
+                st.sidebar.error("BREVO_API_KEY não encontrada. Configure no Railway.")
+            elif not _smtp_login:
+                st.sidebar.error("BREVO_SMTP_LOGIN não configurada. Configure no Railway.")
             else:
-                st.sidebar.caption(f"API Key: `...{_api_key[-6:]}` | Remetente: `{_sender}`")
-                with st.spinner("Enviando..."):
+                st.sidebar.caption(f"API Key: `...{_api_key[-6:]}` | Login: `{_smtp_login}` | Remetente: `{_sender}`")
+                with st.spinner("Conectando ao Brevo..."):
                     try:
                         sent = run_digest(force=True, min_summaries=1)
                         st.sidebar.success(f"✓ Digest enviado para {sent} assinante(s).")
                     except Exception as _e:
-                        st.sidebar.error(f"Erro Brevo: {_e}")
+                        err_str = str(_e).lower()
+                        if "timeout" in err_str or "timed out" in err_str:
+                            st.sidebar.error(f"⏱️ Timeout SMTP: Railway pode estar bloqueando porta 587.\nTente: usar Sendgrid ou SendGrid, ou contatar Railway support.\n\nErro: {_e}")
+                        elif "authentication" in err_str:
+                            st.sidebar.error(f"🔐 Erro de autenticação: Verifique BREVO_SMTP_LOGIN e BREVO_API_KEY.\n\nErro: {_e}")
+                        else:
+                            st.sidebar.error(f"❌ Erro Brevo: {_e}")
     elif admin_pwd:
         st.sidebar.error("Senha incorreta.")
 

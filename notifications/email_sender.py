@@ -163,13 +163,26 @@ def _send_brevo(to_email: str, subject: str, html: str) -> tuple[bool, str]:
     msg.attach(MIMEText(html, "html", "utf-8"))
 
     try:
-        with smtplib.SMTP("smtp-relay.brevo.com", 587, timeout=20) as server:
+        print(f"  [Email] Conectando a smtp-relay.brevo.com:587...")
+        with smtplib.SMTP("smtp-relay.brevo.com", 587, timeout=30) as server:
+            print(f"  [Email] TCP conectado, iniciando STARTTLS...")
             server.starttls()
+            print(f"  [Email] STARTTLS OK, autenticando...")
             server.login(smtp_login, smtp_password)
+            print(f"  [Email] Login bem-sucedido, enviando para {to_email}...")
             server.sendmail(sender_email, to_email, msg.as_string())
+        print(f"  [Email] ✓ Enviado com sucesso para {to_email}")
         return True, ""
+    except smtplib.SMTPAuthenticationError as e:
+        err = f"Erro de autenticação SMTP (verifique BREVO_SMTP_LOGIN={smtp_login} e BREVO_API_KEY)"
+        print(f"  [Email] ✗ {err}")
+        return False, err
+    except TimeoutError as e:
+        err = "Timeout na porta 587 — Railway pode estar bloqueando SMTP outbound"
+        print(f"  [Email] ✗ {err}")
+        return False, err
     except Exception as e:
-        print(f"  [Digest] Erro SMTP para {to_email}: {e}")
+        print(f"  [Email] ✗ Erro para {to_email}: {type(e).__name__}: {e}")
         return False, str(e)
 
 
