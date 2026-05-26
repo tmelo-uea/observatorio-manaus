@@ -1,11 +1,9 @@
 import os
-import requests
 from datetime import datetime, timedelta, date
 from sqlalchemy.exc import IntegrityError
 from db.connection import get_session
 from db.models import EmailSubscription, DigestLog, DailySummary, Topic
 
-BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
 APP_URL = "https://observatorio-manaus-production.up.railway.app"
 
 TOPIC_ICONS = {
@@ -145,30 +143,32 @@ def _build_html(summaries: list[tuple[str, str, str]], today: date, unsubscribe_
 
 
 def _send_brevo(to_email: str, subject: str, html: str) -> tuple[bool, str]:
-    api_key = os.getenv("BREVO_API_KEY")
-    sender_email = os.getenv("BREVO_SENDER_EMAIL", "tmelo@uea.edu.br")
-    sender_name = os.getenv("BREVO_SENDER_NAME", "Observatório de Manaus")
+    import smtplib
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
 
-    if not api_key:
+    smtp_login    = os.getenv("BREVO_SMTP_LOGIN", "tmelo@uea.edu.br")
+    smtp_password = os.getenv("BREVO_API_KEY")
+    sender_email  = os.getenv("BREVO_SENDER_EMAIL", "tiagoeugeniodemelo@gmail.com")
+    sender_name   = os.getenv("BREVO_SENDER_NAME", "Observatório de Manaus")
+
+    if not smtp_password:
         return False, "BREVO_API_KEY não configurada."
 
-    payload = {
-        "sender": {"name": sender_name, "email": sender_email},
-        "to": [{"email": to_email}],
-        "subject": subject,
-        "htmlContent": html,
-    }
-    headers = {"api-key": api_key, "Content-Type": "application/json"}
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"]    = f"{sender_name} <{sender_email}>"
+    msg["To"]      = to_email
+    msg.attach(MIMEText(html, "html", "utf-8"))
 
     try:
-        resp = requests.post(BREVO_API_URL, json=payload, headers=headers, timeout=15)
-        if resp.status_code in (200, 201):
-            return True, ""
-        msg = resp.text[:300]
-        print(f"  [Digest] Brevo erro {resp.status_code}: {msg}")
-        return False, f"HTTP {resp.status_code}: {msg}"
+        with smtplib.SMTP("smtp-relay.brevo.com", 587, timeout=20) as server:
+            server.starttls()
+            server.login(smtp_login, smtp_password)
+            server.sendmail(sender_email, to_email, msg.as_string())
+        return True, ""
     except Exception as e:
-        print(f"  [Digest] Erro ao enviar para {to_email}: {e}")
+        print(f"  [Digest] Erro SMTP para {to_email}: {e}")
         return False, str(e)
 
 
