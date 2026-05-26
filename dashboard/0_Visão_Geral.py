@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import text
 from db.connection import get_engine
 from dashboard.components.summary_card import render_summary_card
-from notifications.email_sender import subscribe
+from notifications.email_sender import subscribe, unsubscribe_by_token
 
 def manaus_today():
     return (datetime.utcnow() - timedelta(hours=4)).date()
@@ -113,6 +113,15 @@ with col_refresh:
     if st.button("↻ Atualizar"):
         st.cache_data.clear()
         st.rerun()
+
+_unsubscribe_token = st.query_params.get("token", "")
+if _unsubscribe_token:
+    _ok, _msg = unsubscribe_by_token(_unsubscribe_token)
+    if _ok:
+        st.success(_msg)
+    else:
+        st.error(_msg)
+    st.query_params.clear()
 
 try:
     df = load_articles()

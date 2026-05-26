@@ -210,7 +210,7 @@ def run_digest(min_summaries: int = 3, send_after_hour: int = 7) -> int:
         subject = f"🔭 Observatório de Manaus — {yesterday.strftime('%d/%m/%Y')}"
         sent = 0
         for sub in subscribers:
-            unsubscribe_url = f"{APP_URL}/Cancelar_Inscri%C3%A7%C3%A3o?token={sub.unsubscribe_token}"
+            unsubscribe_url = f"{APP_URL}/?token={sub.unsubscribe_token}"
             html = _build_html(list(rows), yesterday, unsubscribe_url)
             if _send_brevo(sub.email, subject, html):
                 sent += 1
