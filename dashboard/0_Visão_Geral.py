@@ -175,11 +175,11 @@ if st.sidebar.checkbox("⚙️ Admin", key="admin_toggle"):
             else:
                 st.sidebar.caption(f"API Key: `...{_api_key[-6:]}` | Remetente: `{_sender}`")
                 with st.spinner("Enviando..."):
-                    sent = run_digest(force=True, min_summaries=1)
-                if sent > 0:
-                    st.sidebar.success(f"✓ Digest enviado para {sent} assinante(s).")
-                else:
-                    st.sidebar.error("Envio falhou. Verifique os logs do Railway para detalhes do erro Brevo.")
+                    try:
+                        sent = run_digest(force=True, min_summaries=1)
+                        st.sidebar.success(f"✓ Digest enviado para {sent} assinante(s).")
+                    except Exception as _e:
+                        st.sidebar.error(f"Erro Brevo: {_e}")
     elif admin_pwd:
         st.sidebar.error("Senha incorreta.")
 

@@ -144,14 +144,13 @@ def _build_html(summaries: list[tuple[str, str, str]], today: date, unsubscribe_
 </html>"""
 
 
-def _send_brevo(to_email: str, subject: str, html: str) -> bool:
+def _send_brevo(to_email: str, subject: str, html: str) -> tuple[bool, str]:
     api_key = os.getenv("BREVO_API_KEY")
     sender_email = os.getenv("BREVO_SENDER_EMAIL", "tmelo@uea.edu.br")
     sender_name = os.getenv("BREVO_SENDER_NAME", "Observatório de Manaus")
 
     if not api_key:
-        print("  [Digest] BREVO_API_KEY não configurada — envio ignorado.")
-        return False
+        return False, "BREVO_API_KEY não configurada."
 
     payload = {
         "sender": {"name": sender_name, "email": sender_email},
@@ -163,12 +162,14 @@ def _send_brevo(to_email: str, subject: str, html: str) -> bool:
 
     try:
         resp = requests.post(BREVO_API_URL, json=payload, headers=headers, timeout=15)
-        if resp.status_code not in (200, 201):
-            print(f"  [Digest] Brevo erro {resp.status_code}: {resp.text[:200]}")
-        return resp.status_code in (200, 201)
+        if resp.status_code in (200, 201):
+            return True, ""
+        msg = resp.text[:300]
+        print(f"  [Digest] Brevo erro {resp.status_code}: {msg}")
+        return False, f"HTTP {resp.status_code}: {msg}"
     except Exception as e:
         print(f"  [Digest] Erro ao enviar para {to_email}: {e}")
-        return False
+        return False, str(e)
 
 
 def run_digest(min_summaries: int = 3, send_after_hour: int = 7, force: bool = False) -> int:
@@ -221,11 +222,19 @@ def run_digest(min_summaries: int = 3, send_after_hour: int = 7, force: bool = F
 
         subject = f"🔭 Observatório de Manaus — {target_date.strftime('%d/%m/%Y')}"
         sent = 0
+        last_error = ""
         for sub in subscribers:
             unsubscribe_url = f"{APP_URL}/?token={sub.unsubscribe_token}"
             html = _build_html(list(rows), target_date, unsubscribe_url)
-            if _send_brevo(sub.email, subject, html):
+            ok, err = _send_brevo(sub.email, subject, html)
+            if ok:
                 sent += 1
+            else:
+                last_error = err
+
+        if sent == 0 and last_error:
+            print(f"  [Digest] Último erro Brevo: {last_error}")
+            raise RuntimeError(f"Brevo: {last_error}")
 
         _log_send(session, today, sent)
         print(f"  [Digest] Enviado para {sent}/{len(subscribers)} assinantes.")
