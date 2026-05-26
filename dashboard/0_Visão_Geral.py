@@ -168,27 +168,33 @@ if st.sidebar.checkbox("⚙️ Admin", key="admin_toggle"):
     if admin_pwd == os.getenv("ADMIN_PASSWORD", "obs@manaus"):
         if st.sidebar.button("📤 Disparar digest agora (teste)", type="primary"):
             import os as _os
-            _api_key = _os.getenv("BREVO_API_KEY", "")
-            _sender  = _os.getenv("BREVO_SENDER_EMAIL", "")
-            _smtp_login = _os.getenv("BREVO_SMTP_LOGIN", "")
-            if not _api_key:
-                st.sidebar.error("BREVO_API_KEY não encontrada. Configure no Railway.")
-            elif not _smtp_login:
-                st.sidebar.error("BREVO_SMTP_LOGIN não configurada. Configure no Railway.")
+            _sendgrid_key = _os.getenv("SENDGRID_API_KEY", "")
+            _brevo_key = _os.getenv("BREVO_API_KEY", "")
+
+            if _sendgrid_key:
+                _provider = "Sendgrid"
+                _from = _os.getenv("SENDGRID_FROM_EMAIL", "")
+                st.sidebar.caption(f"📧 Provedor: {_provider} | De: `{_from}`")
+            elif _brevo_key:
+                _provider = "Brevo"
+                _from = _os.getenv("BREVO_SENDER_EMAIL", "")
+                st.sidebar.caption(f"📧 Provedor: {_provider} | De: `{_from}`")
             else:
-                st.sidebar.caption(f"API Key: `...{_api_key[-6:]}` | Login: `{_smtp_login}` | Remetente: `{_sender}`")
-                with st.spinner("Conectando ao Brevo..."):
+                st.sidebar.error("Nenhum provedor de email configurado (SENDGRID_API_KEY ou BREVO_API_KEY).")
+
+            if _sendgrid_key or _brevo_key:
+                with st.spinner(f"Enviando via {_provider}..."):
                     try:
                         sent = run_digest(force=True, min_summaries=1)
                         st.sidebar.success(f"✓ Digest enviado para {sent} assinante(s).")
                     except Exception as _e:
                         err_str = str(_e).lower()
-                        if "timeout" in err_str or "timed out" in err_str:
-                            st.sidebar.error(f"⏱️ Timeout SMTP: Railway pode estar bloqueando porta 587.\nTente: usar Sendgrid ou SendGrid, ou contatar Railway support.\n\nErro: {_e}")
-                        elif "authentication" in err_str:
-                            st.sidebar.error(f"🔐 Erro de autenticação: Verifique BREVO_SMTP_LOGIN e BREVO_API_KEY.\n\nErro: {_e}")
+                        if "timeout" in err_str:
+                            st.sidebar.error(f"⏱️ Timeout: Verifique credenciais ou conectividade.\n\nErro: {_e}")
+                        elif "not configured" in err_str:
+                            st.sidebar.error(f"⚙️ Provedor não configurado corretamente.\n\nErro: {_e}")
                         else:
-                            st.sidebar.error(f"❌ Erro Brevo: {_e}")
+                            st.sidebar.error(f"❌ Erro ao enviar: {_e}")
     elif admin_pwd:
         st.sidebar.error("Senha incorreta.")
 

@@ -25,14 +25,23 @@ GROQ_API_KEY = sua_chave_groq
 ```
 Obtenha em: https://console.groq.com/
 
-#### Email / Digest (Brevo)
+#### Email / Digest (Escolha uma opção)
+
+**Opção A: Sendgrid** (Recomendado — nunca bloqueado por Railway)
+```
+SENDGRID_API_KEY = SG.xxxxxxxxxxxxxxxxxxxx
+SENDGRID_FROM_EMAIL = seu@email.com
+SENDGRID_FROM_NAME = Observatório de Manaus
+```
+Obtenha em: https://sendgrid.com/ → Settings → API Keys
+
+**Opção B: Brevo** (Fallback)
 ```
 BREVO_API_KEY = sua_chave_api_brevo
-BREVO_SMTP_LOGIN = seu@email.com
 BREVO_SENDER_EMAIL = seu@email.com
 BREVO_SENDER_NAME = Observatório de Manaus
 ```
-Obtenha em: https://www.brevo.com/ → SMTP Settings
+Obtenha em: https://www.brevo.com/ → Settings → SMTP & API
 
 #### Admin Dashboard
 ```

@@ -142,67 +142,104 @@ def _build_html(summaries: list[tuple[str, str, str]], today: date, unsubscribe_
 </html>"""
 
 
+def _send_sendgrid(to_email: str, subject: str, html: str) -> tuple[bool, str]:
+    """Envia email via API REST do Sendgrid. Retorna (sucesso, mensagem_erro)."""
+    import requests
+
+    api_key = os.getenv("SENDGRID_API_KEY")
+    from_email = os.getenv("SENDGRID_FROM_EMAIL")
+    from_name = os.getenv("SENDGRID_FROM_NAME", "Observatório de Manaus")
+
+    if not api_key:
+        return False, "SENDGRID_API_KEY não configurada."
+    if not from_email:
+        return False, "SENDGRID_FROM_EMAIL não configurada."
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "personalizations": [{"to": [{"email": to_email}]}],
+        "from": {"email": from_email, "name": from_name},
+        "subject": subject,
+        "content": [{"type": "text/html", "value": html}],
+    }
+
+    try:
+        print(f"  [Email] Enviando via Sendgrid para {to_email}...")
+        resp = requests.post(
+            "https://api.sendgrid.com/v3/mail/send",
+            json=payload,
+            headers=headers,
+            timeout=10,
+        )
+
+        if resp.status_code == 202:
+            print(f"  [Email] ✓ Enviado com sucesso para {to_email}")
+            return True, ""
+        else:
+            err = f"Sendgrid {resp.status_code}: {resp.text[:200]}"
+            print(f"  [Email] ✗ {err}")
+            return False, err
+    except requests.Timeout:
+        err = "Timeout na API do Sendgrid"
+        print(f"  [Email] ✗ {err}")
+        return False, err
+    except Exception as e:
+        err = f"{type(e).__name__}: {e}"
+        print(f"  [Email] ✗ {err}")
+        return False, err
+
+
 def _send_brevo(to_email: str, subject: str, html: str) -> tuple[bool, str]:
-    """Envia email via SMTP do Brevo. Retorna (sucesso, mensagem_erro)."""
-    import smtplib
-    from email.mime.multipart import MIMEMultipart
-    from email.mime.text import MIMEText
+    """Envia email via API REST do Brevo (fallback). Retorna (sucesso, mensagem_erro)."""
+    import requests
 
-    smtp_login    = os.getenv("BREVO_SMTP_LOGIN", "tmelo@uea.edu.br")
-    smtp_password = os.getenv("BREVO_API_KEY")
-    sender_email  = os.getenv("BREVO_SENDER_EMAIL", "tiagoeugeniodemelo@gmail.com")
-    sender_name   = os.getenv("BREVO_SENDER_NAME", "Observatório de Manaus")
+    api_key = os.getenv("BREVO_API_KEY")
+    sender_email = os.getenv("BREVO_SENDER_EMAIL")
+    sender_name = os.getenv("BREVO_SENDER_NAME", "Observatório de Manaus")
 
-    if not smtp_password:
+    if not api_key:
         return False, "BREVO_API_KEY não configurada."
 
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"]    = f"{sender_name} <{sender_email}>"
-    msg["To"]      = to_email
-    msg.attach(MIMEText(html, "html", "utf-8"))
+    headers = {
+        "api-key": api_key,
+        "Content-Type": "application/json",
+    }
 
-    # Tenta porta 587 (TLS) primeiro; se falhar, tenta 465 (SSL)
-    for port, use_ssl in [(587, False), (465, True)]:
-        try:
-            print(f"  [Email] Tentando smtp-relay.brevo.com:{port}{'(SSL)' if use_ssl else '(TLS)'}...")
-            if use_ssl:
-                server = smtplib.SMTP_SSL("smtp-relay.brevo.com", port, timeout=30)
-            else:
-                server = smtplib.SMTP("smtp-relay.brevo.com", port, timeout=30)
+    payload = {
+        "to": [{"email": to_email}],
+        "sender": {"name": sender_name, "email": sender_email},
+        "subject": subject,
+        "htmlContent": html,
+    }
 
-            with server:
-                if not use_ssl:
-                    print(f"  [Email] TCP conectado, iniciando STARTTLS...")
-                    server.starttls()
-                    print(f"  [Email] STARTTLS OK")
-                else:
-                    print(f"  [Email] SSL conectado")
+    try:
+        print(f"  [Email] Enviando via Brevo para {to_email}...")
+        resp = requests.post(
+            "https://api.brevo.com/v3/smtp/email",
+            json=payload,
+            headers=headers,
+            timeout=10,
+        )
 
-                print(f"  [Email] Autenticando...")
-                server.login(smtp_login, smtp_password)
-                print(f"  [Email] Login bem-sucedido, enviando para {to_email}...")
-                server.sendmail(sender_email, to_email, msg.as_string())
-
-            print(f"  [Email] ✓ Enviado com sucesso para {to_email} via porta {port}")
+        if resp.status_code == 201:
+            print(f"  [Email] ✓ Enviado com sucesso para {to_email}")
             return True, ""
-
-        except smtplib.SMTPAuthenticationError as e:
-            err = f"Erro de autenticação SMTP (verifique BREVO_SMTP_LOGIN={smtp_login} e BREVO_API_KEY)"
-            print(f"  [Email] ✗ Porta {port}: {err}")
-            if port == 465:  # última tentativa
-                return False, err
-        except (TimeoutError, OSError) as e:
-            err_type = "Timeout" if isinstance(e, TimeoutError) else "Conexão recusada"
-            print(f"  [Email] ✗ Porta {port}: {err_type} — tentando próxima porta...")
-            if port == 465:  # última tentativa
-                return False, f"Nenhuma porta SMTP funcionou (587 e 465 bloqueadas). Railway pode estar bloqueando SMTP outbound. Considere usar Sendgrid."
-        except Exception as e:
-            print(f"  [Email] ✗ Porta {port}: {type(e).__name__}: {e}")
-            if port == 465:  # última tentativa
-                return False, str(e)
-
-    return False, "Falha ao conectar em qualquer porta"
+        else:
+            err = f"Brevo {resp.status_code}: {resp.text[:200]}"
+            print(f"  [Email] ✗ {err}")
+            return False, err
+    except requests.Timeout:
+        err = "Timeout na API do Brevo"
+        print(f"  [Email] ✗ {err}")
+        return False, err
+    except Exception as e:
+        err = f"{type(e).__name__}: {e}"
+        print(f"  [Email] ✗ {err}")
+        return False, err
 
 
 def run_digest(min_summaries: int = 3, send_after_hour: int = 7, force: bool = False) -> int:
@@ -259,10 +296,29 @@ def run_digest(min_summaries: int = 3, send_after_hour: int = 7, force: bool = F
         sent = 0
         failed = 0
         last_error = ""
+
+        # Detecta qual provider usar
+        use_sendgrid = bool(os.getenv("SENDGRID_API_KEY"))
+        use_brevo = bool(os.getenv("BREVO_API_KEY"))
+
+        if use_sendgrid:
+            print(f"  [Digest] Usando Sendgrid para envio")
+        elif use_brevo:
+            print(f"  [Digest] Usando Brevo (API REST) para envio")
+        else:
+            print(f"  [Digest] Nenhum provedor configurado (SENDGRID_API_KEY ou BREVO_API_KEY)")
+            raise RuntimeError("Nenhum provedor de email configurado")
+
         for sub in subscribers:
             unsubscribe_url = f"{APP_URL}/?token={sub.unsubscribe_token}"
             html = _build_html(list(rows), target_date, unsubscribe_url)
-            ok, err = _send_brevo(sub.email, subject, html)
+
+            # Tenta Sendgrid primeiro, depois Brevo
+            if use_sendgrid:
+                ok, err = _send_sendgrid(sub.email, subject, html)
+            else:
+                ok, err = _send_brevo(sub.email, subject, html)
+
             if ok:
                 sent += 1
             else:
