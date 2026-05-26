@@ -168,8 +168,25 @@ if st.sidebar.checkbox("⚙️ Admin", key="admin_toggle"):
     if admin_pwd == os.getenv("ADMIN_PASSWORD", "obs@manaus"):
         if st.sidebar.button("📤 Disparar digest agora (teste)", type="primary"):
             with st.spinner("Enviando..."):
-                sent = run_digest(force=True)
-            st.sidebar.success(f"Digest enviado para {sent} assinante(s).")
+                sent = run_digest(force=True, min_summaries=1)
+            if sent > 0:
+                st.sidebar.success(f"✓ Digest enviado para {sent} assinante(s).")
+            else:
+                from datetime import timedelta as _td
+                from db.models import DailySummary as _DS, EmailSubscription as _ES
+                from sqlalchemy import text as _text
+                _today = (datetime.utcnow() - timedelta(hours=4)).date()
+                _yesterday = _today - _td(days=1)
+                with get_db().connect() as _c:
+                    _n_sum_today = _c.execute(_text("SELECT COUNT(*) FROM daily_summaries WHERE date = :d"), {"d": _today}).scalar()
+                    _n_sum_yest  = _c.execute(_text("SELECT COUNT(*) FROM daily_summaries WHERE date = :d"), {"d": _yesterday}).scalar()
+                    _n_subs      = _c.execute(_text("SELECT COUNT(*) FROM email_subscriptions WHERE active = 1")).scalar()
+                st.sidebar.warning(
+                    f"Nenhum e-mail enviado.\n\n"
+                    f"- Resumos hoje ({_today}): **{_n_sum_today}**\n"
+                    f"- Resumos ontem ({_yesterday}): **{_n_sum_yest}**\n"
+                    f"- Assinantes ativos: **{_n_subs}**"
+                )
     elif admin_pwd:
         st.sidebar.error("Senha incorreta.")
 
