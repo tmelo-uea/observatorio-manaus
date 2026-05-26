@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import text
 from db.connection import get_engine
 from dashboard.components.summary_card import render_summary_card
-from notifications.email_sender import subscribe, unsubscribe_by_token
+from notifications.email_sender import subscribe, unsubscribe_by_token, run_digest
 
 def manaus_today():
     return (datetime.utcnow() - timedelta(hours=4)).date()
@@ -162,6 +162,16 @@ date_range = st.sidebar.date_input(
 busca = st.sidebar.text_input("Buscar por palavra-chave")
 
 show_all = st.sidebar.checkbox("Incluir notícias não locais", value=False)
+
+if st.sidebar.checkbox("⚙️ Admin", key="admin_toggle"):
+    admin_pwd = st.sidebar.text_input("Senha", type="password", key="admin_pwd")
+    if admin_pwd == os.getenv("ADMIN_PASSWORD", "obs@manaus"):
+        if st.sidebar.button("📤 Disparar digest agora (teste)", type="primary"):
+            with st.spinner("Enviando..."):
+                sent = run_digest(force=True)
+            st.sidebar.success(f"Digest enviado para {sent} assinante(s).")
+    elif admin_pwd:
+        st.sidebar.error("Senha incorreta.")
 
 st.sidebar.divider()
 st.sidebar.markdown("### 📬 Receba as notícias de Manaus no seu e-mail")

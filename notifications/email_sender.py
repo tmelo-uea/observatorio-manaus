@@ -171,21 +171,22 @@ def _send_brevo(to_email: str, subject: str, html: str) -> bool:
         return False
 
 
-def run_digest(min_summaries: int = 3, send_after_hour: int = 7) -> int:
+def run_digest(min_summaries: int = 3, send_after_hour: int = 7, force: bool = False) -> int:
     """Envia o digest diário com os resumos do dia anterior.
 
     Só dispara uma vez por dia, após `send_after_hour` no horário de Manaus.
+    Use force=True para ignorar verificações de horário e DigestLog (testes).
     Retorna o número de e-mails enviados.
     """
     manaus_now = datetime.utcnow() - timedelta(hours=4)
-    if manaus_now.hour < send_after_hour:
+    if not force and manaus_now.hour < send_after_hour:
         return 0
 
     today = _manaus_today()
     yesterday = today - timedelta(days=1)
     session = get_session()
     try:
-        if session.query(DigestLog).filter_by(date=today).first():
+        if not force and session.query(DigestLog).filter_by(date=today).first():
             print("  [Digest] Já enviado hoje.")
             return 0
 
