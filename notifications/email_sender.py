@@ -162,28 +162,47 @@ def _send_brevo(to_email: str, subject: str, html: str) -> tuple[bool, str]:
     msg["To"]      = to_email
     msg.attach(MIMEText(html, "html", "utf-8"))
 
-    try:
-        print(f"  [Email] Conectando a smtp-relay.brevo.com:587...")
-        with smtplib.SMTP("smtp-relay.brevo.com", 587, timeout=30) as server:
-            print(f"  [Email] TCP conectado, iniciando STARTTLS...")
-            server.starttls()
-            print(f"  [Email] STARTTLS OK, autenticando...")
-            server.login(smtp_login, smtp_password)
-            print(f"  [Email] Login bem-sucedido, enviando para {to_email}...")
-            server.sendmail(sender_email, to_email, msg.as_string())
-        print(f"  [Email] ✓ Enviado com sucesso para {to_email}")
-        return True, ""
-    except smtplib.SMTPAuthenticationError as e:
-        err = f"Erro de autenticação SMTP (verifique BREVO_SMTP_LOGIN={smtp_login} e BREVO_API_KEY)"
-        print(f"  [Email] ✗ {err}")
-        return False, err
-    except TimeoutError as e:
-        err = "Timeout na porta 587 — Railway pode estar bloqueando SMTP outbound"
-        print(f"  [Email] ✗ {err}")
-        return False, err
-    except Exception as e:
-        print(f"  [Email] ✗ Erro para {to_email}: {type(e).__name__}: {e}")
-        return False, str(e)
+    # Tenta porta 587 (TLS) primeiro; se falhar, tenta 465 (SSL)
+    for port, use_ssl in [(587, False), (465, True)]:
+        try:
+            print(f"  [Email] Tentando smtp-relay.brevo.com:{port}{'(SSL)' if use_ssl else '(TLS)'}...")
+            if use_ssl:
+                server = smtplib.SMTP_SSL("smtp-relay.brevo.com", port, timeout=30)
+            else:
+                server = smtplib.SMTP("smtp-relay.brevo.com", port, timeout=30)
+
+            with server:
+                if not use_ssl:
+                    print(f"  [Email] TCP conectado, iniciando STARTTLS...")
+                    server.starttls()
+                    print(f"  [Email] STARTTLS OK")
+                else:
+                    print(f"  [Email] SSL conectado")
+
+                print(f"  [Email] Autenticando...")
+                server.login(smtp_login, smtp_password)
+                print(f"  [Email] Login bem-sucedido, enviando para {to_email}...")
+                server.sendmail(sender_email, to_email, msg.as_string())
+
+            print(f"  [Email] ✓ Enviado com sucesso para {to_email} via porta {port}")
+            return True, ""
+
+        except smtplib.SMTPAuthenticationError as e:
+            err = f"Erro de autenticação SMTP (verifique BREVO_SMTP_LOGIN={smtp_login} e BREVO_API_KEY)"
+            print(f"  [Email] ✗ Porta {port}: {err}")
+            if port == 465:  # última tentativa
+                return False, err
+        except (TimeoutError, OSError) as e:
+            err_type = "Timeout" if isinstance(e, TimeoutError) else "Conexão recusada"
+            print(f"  [Email] ✗ Porta {port}: {err_type} — tentando próxima porta...")
+            if port == 465:  # última tentativa
+                return False, f"Nenhuma porta SMTP funcionou (587 e 465 bloqueadas). Railway pode estar bloqueando SMTP outbound. Considere usar Sendgrid."
+        except Exception as e:
+            print(f"  [Email] ✗ Porta {port}: {type(e).__name__}: {e}")
+            if port == 465:  # última tentativa
+                return False, str(e)
+
+    return False, "Falha ao conectar em qualquer porta"
 
 
 def run_digest(min_summaries: int = 3, send_after_hour: int = 7, force: bool = False) -> int:
