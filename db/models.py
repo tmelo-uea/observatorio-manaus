@@ -1,5 +1,6 @@
-from datetime import datetime
-from sqlalchemy import String, Text, DateTime, Integer, Float, ForeignKey, UniqueConstraint, JSON, Date
+import secrets
+from datetime import datetime, date
+from sqlalchemy import String, Text, DateTime, Integer, Float, ForeignKey, UniqueConstraint, JSON, Date, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from db.connection import Base
 
@@ -50,6 +51,26 @@ class Article(Base):
 
     source: Mapped["Source"] = relationship(back_populates="articles")
     topic: Mapped["Topic"] = relationship(back_populates="articles")
+
+
+class EmailSubscription(Base):
+    __tablename__ = "email_subscriptions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    unsubscribe_token: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, default=lambda: secrets.token_urlsafe(32))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class DigestLog(Base):
+    __tablename__ = "digest_logs"
+    __table_args__ = (UniqueConstraint("date", name="uq_digest_date"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    date: Mapped[date] = mapped_column(Date, nullable=False)
+    recipients: Mapped[int] = mapped_column(Integer, default=0)
+    sent_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
 class DailySummary(Base):

@@ -12,6 +12,7 @@ from nlp.classifier import run_classification, reclassify_outros
 from nlp.local_classifier import run_local_classification
 from nlp.summarizer import run_daily_summary, run_topic_summaries
 from scripts.backfill_transcripts import backfill
+from notifications.email_sender import run_digest
 
 Base.metadata.create_all(get_engine())
 run_migrations()
@@ -30,6 +31,7 @@ def job():
     backfill(limit=10)  # processa até 10 transcrições pendentes por ciclo
     run_daily_summary()
     run_topic_summaries(min_articles=5)
+    run_digest()
 
 print("Observatório do Amazonas — Coletor iniciado")
 print("Reclassificando artigos em 'Outros'...")

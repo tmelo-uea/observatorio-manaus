@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import text
 from db.connection import get_engine
 from dashboard.components.summary_card import render_summary_card
+from notifications.email_sender import subscribe
 
 def manaus_today():
     return (datetime.utcnow() - timedelta(hours=4)).date()
@@ -152,6 +153,22 @@ date_range = st.sidebar.date_input(
 busca = st.sidebar.text_input("Buscar por palavra-chave")
 
 show_all = st.sidebar.checkbox("Incluir notícias não locais", value=False)
+
+st.sidebar.divider()
+st.sidebar.markdown("### 📬 Digest diário por e-mail")
+st.sidebar.caption("Receba um resumo dos principais temas todos os dias.")
+with st.sidebar.form("subscribe_form", clear_on_submit=True):
+    email_input = st.text_input("Seu e-mail", placeholder="voce@email.com")
+    submitted = st.form_submit_button("Inscrever-se", use_container_width=True)
+    if submitted:
+        if email_input and "@" in email_input:
+            ok, msg = subscribe(email_input)
+            if ok:
+                st.success(msg)
+            else:
+                st.warning(msg)
+        else:
+            st.error("Informe um e-mail válido.")
 
 # --- Aplicar filtros ---
 filtered = df.copy()
