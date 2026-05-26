@@ -268,6 +268,66 @@ streamlit run "dashboard/0_Visão_Geral.py"
 
 ---
 
+## Digest diário por e-mail
+
+O Observatório envia automaticamente um resumo das notícias do dia anterior para assinantes.
+
+### Configuração
+
+No arquivo `.env`, adicione:
+```env
+# Brevo SMTP (para envio de emails)
+BREVO_API_KEY=sua_chave_api_brevo
+BREVO_SMTP_LOGIN=seu@email.com
+BREVO_SENDER_EMAIL=seu@email.com
+BREVO_SENDER_NAME=Observatório de Manaus
+
+# Senha do painel admin (para disparar testes)
+ADMIN_PASSWORD=sua_senha_secreta
+```
+
+**Obtendo a chave Brevo:**
+1. Crie uma conta em [Brevo](https://www.brevo.com/)
+2. Vá para **SMTP** nas configurações
+3. Crie um login SMTP e copie a senha (chave API)
+
+### Funcionamento
+
+- **Horário de disparo:** 7:00 (horário de Manaus, UTC-4)
+- **Frequência:** Uma vez por dia
+- **Conteúdo:** Resumos por tema gerados por IA (Groq) + contagem de artigos por tema
+- **Inscrição:** Disponível no formulário lateral do dashboard
+- **Cancelamento:** Link "Cancelar inscrição" no rodapé do email
+
+### Testando o digest
+
+**Localmente:**
+```bash
+python scripts/test_digest.py
+```
+
+**Pelo dashboard:**
+1. Abra http://localhost:8501
+2. Clique em "⚙️ Admin" na barra lateral
+3. Informe a senha (`ADMIN_PASSWORD`)
+4. Clique em "📤 Disparar digest agora (teste)"
+
+**Via Railway (serviço Web):**
+1. Acesse o dashboard em produção
+2. Verifique que `BREVO_API_KEY` está configurada
+3. Use o botão de teste no painel admin
+
+### Troubleshooting
+
+| Problema | Solução |
+|----------|---------|
+| "BREVO_API_KEY não configurada" | Adicione a variável de ambiente em `.env` ou no Railway |
+| Email não chegou | Verifique spam, confirme remetente (`BREVO_SENDER_EMAIL`) é autorizado no Brevo |
+| "Apenas N resumos disponíveis — sem envio" | Aguarde o coletor executar (a cada 30 min) e gerar resumos |
+| Erro SMTP no log | Verifique credenciais SMTP (`BREVO_SMTP_LOGIN` e `BREVO_API_KEY`) |
+
+---
+
 ## Deploy no Railway
 
 O projeto usa dois serviços no Railway:
@@ -276,8 +336,16 @@ O projeto usa dois serviços no Railway:
 - **Worker**: `python collector/runner.py`
 
 Variáveis de ambiente necessárias em **ambos os serviços**:
-- `MYSQL_URL` ou `DATABASE_URL` — fornecida automaticamente pelo plugin MySQL do Railway
-- `GROQ_API_KEY` — chave da API do Groq (necessária para resumos por IA e classificação de localidade)
+
+| Variável | Descrição |
+|----------|-----------|
+| `DATABASE_URL` | Fornecida automaticamente pelo plugin MySQL do Railway |
+| `GROQ_API_KEY` | Chave da API do Groq (necessária para resumos por IA) |
+| `BREVO_API_KEY` | Senha SMTP do Brevo (para envio de emails) |
+| `BREVO_SMTP_LOGIN` | Login SMTP do Brevo (ex: seu@email.com) |
+| `BREVO_SENDER_EMAIL` | Email remetente dos digests (ex: seu@email.com) |
+| `BREVO_SENDER_NAME` | Nome exibido no "De:" dos emails |
+| `ADMIN_PASSWORD` | Senha para acessar o painel admin do dashboard |
 
 O deploy é automático a cada push no branch `main`.
 

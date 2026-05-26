@@ -143,6 +143,7 @@ def _build_html(summaries: list[tuple[str, str, str]], today: date, unsubscribe_
 
 
 def _send_brevo(to_email: str, subject: str, html: str) -> tuple[bool, str]:
+    """Envia email via SMTP do Brevo. Retorna (sucesso, mensagem_erro)."""
     import smtplib
     from email.mime.multipart import MIMEMultipart
     from email.mime.text import MIMEText
@@ -181,6 +182,7 @@ def run_digest(min_summaries: int = 3, send_after_hour: int = 7, force: bool = F
     """
     manaus_now = datetime.utcnow() - timedelta(hours=4)
     if not force and manaus_now.hour < send_after_hour:
+        print(f"  [Digest] Aguardando {send_after_hour}:00 (agora {manaus_now.hour}:00 em Manaus)")
         return 0
 
     today = _manaus_today()
@@ -191,7 +193,7 @@ def run_digest(min_summaries: int = 3, send_after_hour: int = 7, force: bool = F
             print("  [Digest] Já enviado hoje.")
             return 0
 
-        # Tenta ontem; se não houver (ex: teste em dia de deploy), usa hoje
+        # Tenta ontem; se não houver resumos suficientes, usa hoje como fallback
         target_date = yesterday
         rows = (
             session.query(DailySummary.summary, Topic.name, DailySummary.article_count)
@@ -200,7 +202,8 @@ def run_digest(min_summaries: int = 3, send_after_hour: int = 7, force: bool = F
             .order_by(Topic.display_order)
             .all()
         )
-        if force and len(rows) < min_summaries:
+        if len(rows) < min_summaries:
+            print(f"  [Digest] Apenas {len(rows)} resumos de ontem — tentando hoje...")
             target_date = today
             rows = (
                 session.query(DailySummary.summary, Topic.name, DailySummary.article_count)
@@ -222,6 +225,7 @@ def run_digest(min_summaries: int = 3, send_after_hour: int = 7, force: bool = F
 
         subject = f"🔭 Observatório de Manaus — {target_date.strftime('%d/%m/%Y')}"
         sent = 0
+        failed = 0
         last_error = ""
         for sub in subscribers:
             unsubscribe_url = f"{APP_URL}/?token={sub.unsubscribe_token}"
@@ -230,14 +234,18 @@ def run_digest(min_summaries: int = 3, send_after_hour: int = 7, force: bool = F
             if ok:
                 sent += 1
             else:
+                failed += 1
                 last_error = err
 
         if sent == 0 and last_error:
-            print(f"  [Digest] Último erro Brevo: {last_error}")
-            raise RuntimeError(f"Brevo: {last_error}")
+            print(f"  [Digest] Erro: {last_error}")
+            raise RuntimeError(f"Nenhum email foi enviado. Último erro: {last_error}")
 
         _log_send(session, today, sent)
-        print(f"  [Digest] Enviado para {sent}/{len(subscribers)} assinantes.")
+        status_msg = f"Enviado para {sent}/{len(subscribers)} assinante(s)"
+        if failed > 0:
+            status_msg += f" ({failed} falhas)"
+        print(f"  [Digest] {status_msg}")
         return sent
     finally:
         session.close()

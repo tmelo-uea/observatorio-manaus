@@ -43,9 +43,10 @@ def test_send():
         for sub in subscribers:
             unsubscribe_url = f"{APP_URL}/?token={sub.unsubscribe_token}"
             html = _build_html(list(rows), target_date, unsubscribe_url)
-            ok = _send_brevo(sub.email, subject, html)
+            ok, err = _send_brevo(sub.email, subject, html)
             status = "✓" if ok else "✗"
-            print(f"  {status} {sub.email}")
+            error_msg = f" ({err})" if not ok and err else ""
+            print(f"  {status} {sub.email}{error_msg}")
     finally:
         session.close()
 
