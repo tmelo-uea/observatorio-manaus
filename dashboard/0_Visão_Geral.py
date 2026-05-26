@@ -155,8 +155,8 @@ busca = st.sidebar.text_input("Buscar por palavra-chave")
 show_all = st.sidebar.checkbox("Incluir notícias não locais", value=False)
 
 st.sidebar.divider()
-st.sidebar.markdown("### 📬 Digest diário por e-mail")
-st.sidebar.caption("Receba um resumo dos principais temas todos os dias.")
+st.sidebar.markdown("### 📬 Receba as notícias de Manaus no seu e-mail")
+st.sidebar.caption("Assine o boletim diário e fique por dentro dos principais acontecimentos.")
 with st.sidebar.form("subscribe_form", clear_on_submit=True):
     email_input = st.text_input("Seu e-mail", placeholder="voce@email.com")
     submitted = st.form_submit_button("Inscrever-se", use_container_width=True)
