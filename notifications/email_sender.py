@@ -190,16 +190,27 @@ def run_digest(min_summaries: int = 3, send_after_hour: int = 7, force: bool = F
             print("  [Digest] Já enviado hoje.")
             return 0
 
+        # Tenta ontem; se não houver (ex: teste em dia de deploy), usa hoje
+        target_date = yesterday
         rows = (
             session.query(DailySummary.summary, Topic.name, DailySummary.article_count)
             .join(Topic, DailySummary.topic_id == Topic.id)
-            .filter(DailySummary.date == yesterday)
+            .filter(DailySummary.date == target_date)
             .order_by(Topic.display_order)
             .all()
         )
+        if force and len(rows) < min_summaries:
+            target_date = today
+            rows = (
+                session.query(DailySummary.summary, Topic.name, DailySummary.article_count)
+                .join(Topic, DailySummary.topic_id == Topic.id)
+                .filter(DailySummary.date == target_date)
+                .order_by(Topic.display_order)
+                .all()
+            )
 
         if len(rows) < min_summaries:
-            print(f"  [Digest] Apenas {len(rows)} resumos de {yesterday} — sem envio.")
+            print(f"  [Digest] Apenas {len(rows)} resumos disponíveis — sem envio.")
             return 0
 
         subscribers = session.query(EmailSubscription).filter_by(active=True).all()
@@ -208,11 +219,11 @@ def run_digest(min_summaries: int = 3, send_after_hour: int = 7, force: bool = F
             _log_send(session, today, 0)
             return 0
 
-        subject = f"🔭 Observatório de Manaus — {yesterday.strftime('%d/%m/%Y')}"
+        subject = f"🔭 Observatório de Manaus — {target_date.strftime('%d/%m/%Y')}"
         sent = 0
         for sub in subscribers:
             unsubscribe_url = f"{APP_URL}/?token={sub.unsubscribe_token}"
-            html = _build_html(list(rows), yesterday, unsubscribe_url)
+            html = _build_html(list(rows), target_date, unsubscribe_url)
             if _send_brevo(sub.email, subject, html):
                 sent += 1
 
