@@ -172,7 +172,7 @@ def _send_brevo(to_email: str, subject: str, html: str) -> bool:
 
 
 def run_digest(min_summaries: int = 3, send_after_hour: int = 7) -> int:
-    """Envia o digest diário a todos os assinantes ativos.
+    """Envia o digest diário com os resumos do dia anterior.
 
     Só dispara uma vez por dia, após `send_after_hour` no horário de Manaus.
     Retorna o número de e-mails enviados.
@@ -182,6 +182,7 @@ def run_digest(min_summaries: int = 3, send_after_hour: int = 7) -> int:
         return 0
 
     today = _manaus_today()
+    yesterday = today - timedelta(days=1)
     session = get_session()
     try:
         if session.query(DigestLog).filter_by(date=today).first():
@@ -191,13 +192,13 @@ def run_digest(min_summaries: int = 3, send_after_hour: int = 7) -> int:
         rows = (
             session.query(DailySummary.summary, Topic.name, DailySummary.article_count)
             .join(Topic, DailySummary.topic_id == Topic.id)
-            .filter(DailySummary.date == today)
+            .filter(DailySummary.date == yesterday)
             .order_by(Topic.display_order)
             .all()
         )
 
         if len(rows) < min_summaries:
-            print(f"  [Digest] Apenas {len(rows)} resumos disponíveis — aguardando mais.")
+            print(f"  [Digest] Apenas {len(rows)} resumos de {yesterday} — sem envio.")
             return 0
 
         subscribers = session.query(EmailSubscription).filter_by(active=True).all()
@@ -206,11 +207,11 @@ def run_digest(min_summaries: int = 3, send_after_hour: int = 7) -> int:
             _log_send(session, today, 0)
             return 0
 
-        subject = f"🔭 Observatório de Manaus — {today.strftime('%d/%m/%Y')}"
+        subject = f"🔭 Observatório de Manaus — {yesterday.strftime('%d/%m/%Y')}"
         sent = 0
         for sub in subscribers:
             unsubscribe_url = f"{APP_URL}/Cancelar_Inscri%C3%A7%C3%A3o?token={sub.unsubscribe_token}"
-            html = _build_html(list(rows), today, unsubscribe_url)
+            html = _build_html(list(rows), yesterday, unsubscribe_url)
             if _send_brevo(sub.email, subject, html):
                 sent += 1
 
