@@ -39,18 +39,31 @@ def _build_prompt(articles, topic_name: str | None) -> str:
     headlines = "\n".join(
         f"- [{a.source.name}] {a.title}" for a in articles[:40]
     )
+
     if topic_name:
+        topic_filter = (
+            f"FOCO EXCLUSIVO NO TEMA '{topic_name}': inclua APENAS manchetes diretamente "
+            f"relacionadas a {topic_name}. Manchetes sobre outros temas (acidentes de trânsito, "
+            f"crimes, política, saúde, etc.) podem ter sido classificadas erroneamente — "
+            f"IGNORE essas manchetes mesmo que estejam na lista. "
+            f"Se não houver manchetes suficientes sobre {topic_name}, "
+            f"escreva apenas sobre as que realmente pertencem ao tema. "
+        )
         context = f"sobre o tema '{topic_name}' na cidade de Manaus"
     else:
+        topic_filter = ""
         context = "sobre a cidade de Manaus"
 
     return (
         f"Você é um jornalista que escreve resumos diários de notícias {context}. "
         f"Com base nas manchetes abaixo, escreva um parágrafo conciso (4 a 6 frases) "
         f"resumindo os principais acontecimentos do dia. "
+        f"{topic_filter}"
         f"Inclua apenas fatos que dizem respeito à cidade de Manaus — ignore notícias "
         f"de outros municípios do Amazonas ou de outros estados. "
         f"Preserve os nomes completos de pessoas, órgãos e locais mencionados nas manchetes. "
+        f"Não use frases genéricas como 'Hoje foi um dia movimentado em Manaus' — "
+        f"comece direto com os fatos mais relevantes. "
         f"Escreva em português, de forma clara e objetiva, sem usar bullet points.\n\n"
         f"Manchetes:\n{headlines}"
     )

@@ -18,12 +18,17 @@ def keyword_matches(keyword: str, text: str) -> bool:
     return bool(re.search(r"\b" + re.escape(kw) + r"\b", text))
 
 
+MIN_SCORE_THRESHOLD = 0.02
+MIN_MATCHES_THRESHOLD = 2
+
+
 def classify_article(text: str, topics: list[Topic]) -> tuple[int, float]:
     normalized = normalize(text)
     outros_id = next((t.id for t in topics if t.slug == "outros"), None)
 
     best_topic_id = outros_id
     best_score = 0.0
+    best_matches = 0
 
     for topic in topics:
         if topic.slug == "outros" or not topic.keywords:
@@ -34,7 +39,11 @@ def classify_article(text: str, topics: list[Topic]) -> tuple[int, float]:
         score = matches / len(topic.keywords)
         if score > best_score:
             best_score = score
+            best_matches = matches
             best_topic_id = topic.id
+
+    if best_score < MIN_SCORE_THRESHOLD and best_matches < MIN_MATCHES_THRESHOLD:
+        return outros_id, round(best_score, 4)
 
     return best_topic_id, round(best_score, 4)
 
