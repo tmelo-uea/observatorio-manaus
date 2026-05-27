@@ -322,6 +322,7 @@ SOURCES = [
     {"name": "Menezes Virtual Eye",  "url": "https://menezesvirtualeye.com",     "rss_url": "https://menezesvirtualeye.com/feed/",                           "type": "blog"},
     {"name": "Portal R5",            "url": "https://portalr5.com.br",           "rss_url": "https://portalr5.com.br/feed/",                                 "type": "portal"},
     {"name": "Nosso Show AM",        "url": "https://nossoshowam.com",           "rss_url": "https://nossoshowam.com/feed",                                  "type": "portal"},
+    {"name": "TechAmazonia",         "url": "https://techamazonia.com",          "rss_url": "https://techamazonia.com/feed",                                 "type": "portal"},
     # Órgãos governamentais do Amazonas
     {"name": "Governo do Amazonas",  "url": "https://www.amazonas.am.gov.br",    "rss_url": "https://www.amazonas.am.gov.br/feed/",                          "type": "portal", "active": False},
     {"name": "ALEAM",                "url": "https://www.aleam.gov.br",          "rss_url": "https://www.aleam.gov.br/feed/",                                "type": "portal"},
