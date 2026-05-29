@@ -267,6 +267,8 @@ SOURCES = [
     {"name": "Blog do Holanda",      "url": "https://blogdoholanda.com",         "rss_url": "https://blogdoholanda.com/feed",                                "type": "blog"},
     {"name": "Blog do Hiel Levy",    "url": "https://blogdohiellevy.com.br",     "rss_url": "https://blogdohiellevy.com.br/feed",                            "type": "blog"},
     {"name": "Portal Marcos Santos", "url": "https://portalmarcossantos.com.br", "rss_url": "https://portalmarcossantos.com.br/feed",                        "type": "blog"},
+    {"name": "Blog do Pávulo",       "url": "https://blogdopavulo.com",          "rss_url": "https://blogdopavulo.com/feed/",                                "type": "blog"},
+    {"name": "Blog do Botelho",      "url": "https://blogdobotelho.com",         "rss_url": "https://blogdobotelho.com/feed/",                               "type": "blog"},
     {"name": "Blog do Jucem",        "url": "https://www.blogdojucem.com",       "rss_url": "https://www.blogdojucem.com/feed",                              "type": "blog",   "active": False},
     {"name": "I9 Brasil",            "url": "https://i9brasil.com.br",           "rss_url": "https://i9brasil.com.br/feed",                                  "type": "portal"},
     {"name": "Fato Amazônico",        "url": "https://fatoamazonico.com",              "rss_url": "https://fatoamazonico.com/feed",                                     "type": "portal"},
