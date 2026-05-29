@@ -19,7 +19,7 @@ def keyword_matches(keyword: str, text: str) -> bool:
 
 
 MIN_SCORE_THRESHOLD = 0.02
-MIN_MATCHES_THRESHOLD = 2
+MIN_MATCHES_THRESHOLD = 1
 
 
 def classify_article(text: str, topics: list[Topic]) -> tuple[int, float]:
