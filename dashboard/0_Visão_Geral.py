@@ -348,41 +348,67 @@ for col in ["title", "summary", "transcript"]:
 all_text = " ".join(t for t in texts if t.strip())
 if all_text.strip():
     stopwords = {
+        # artigos e preposições
         "de", "da", "do", "dos", "das", "em", "no", "na", "nos", "nas",
         "e", "o", "a", "os", "as", "um", "uma", "uns", "umas",
         "com", "por", "para", "que", "se", "ao", "aos", "à", "às",
-        "são", "mais", "foi", "será", "ser", "tem", "ter", "seus", "sua",
-        "seu", "suas", "isso", "este", "esta", "esse", "essa", "esses", "essas",
+        "pelo", "pela", "pelos", "pelas", "neste", "nesta", "nestes", "nestas",
+        "deste", "desta", "destes", "destas", "nesse", "nessa", "nesses", "nessas",
+        "desse", "dessa", "desses", "dessas", "num", "numa",
+        # pronomes
+        "são", "foi", "será", "ser", "tem", "ter", "seus", "sua", "seu", "suas",
+        "isso", "este", "esta", "esse", "essa", "esses", "essas",
         "ele", "ela", "eles", "elas", "nós", "eu", "você", "vocês",
-        "já", "ainda", "também", "sobre", "entre", "após", "até", "como",
+        "mais", "já", "ainda", "também", "sobre", "entre", "após", "até", "como",
         "quando", "onde", "porque", "mas", "ou", "nem", "não", "sim",
         "muito", "bem", "aqui", "lá", "agora", "então", "assim", "tudo",
         "todos", "todas", "outro", "outra", "outros", "outras", "mesmo",
+        # verbos jornalísticos genéricos
         "disse", "diz", "afirmou", "segundo", "conforme", "durante",
+        "foi", "são", "está", "vai", "teve", "teve", "foram", "seja",
+        "pode", "podem", "deve", "devem", "quer", "faz", "fez", "ter",
+        "ocorreu", "realiza", "realizada", "realizado", "realizou",
+        # conjunções e advérbios genéricos
+        "apenas", "desde", "através", "partir", "dentro", "fora", "sem",
+        "caso", "vez", "vezes", "além", "contra", "ante", "perante",
+        # substantivos genéricos sem valor informativo
+        "dia", "dias", "ano", "anos", "mês", "meses", "semana", "semanas",
+        "manhã", "tarde", "noite", "hoje", "ontem", "amanhã",
+        "meio", "nova", "novo", "novos", "novas", "grande", "grandes",
+        "pais", "país", "área", "áreas", "grupo", "grupos", "equipe",
+        "momento", "parte", "local", "região", "vez", "total",
+        "acordo", "apoio", "agenda", "projeto", "ação", "iniciativa",
+        "serviço", "serviços", "encontro", "debate", "proposta",
+        "edição", "escala", "volta", "interior", "capital",
+        # boilerplate de portais e redes sociais
         "http", "https", "br", "href", "src", "img", "bit", "www",
-        "apareceu", "primeiro", "post", "vivo", "acompanhe", "inscreva",
-        "canal", "site", "neste", "nesta", "pelo", "pela", "pelos", "pelas",
-        "notificações", "conteúdo", "conteúdos", "exclusivos", "informações",
         "instagram", "facebook", "tiktok", "youtube", "twitter", "whatsapp",
-        # dias da semana — aparecem sem hífen por limitação da regex de tokenização
-        "segunda", "terça", "terca", "quarta", "quinta", "sexta", "sábado", "sabado", "domingo", "feira",
-        # boilerplate de portais
-        "notícia", "notícias", "noticias", "noticia", "últimas", "ultimas", "leia", "veja", "segue",
-        # genéricos jornalísticos
-        "dia", "ano", "meio", "está", "esta", "vai", "vídeo", "video", "ocorreu", "visita",
-        # referências a horário de transmissão
-        "horário", "horario", "Brasília", "brasilia", "brasília",
-        # nomes de fontes que aparecem nos próprios textos
-        "atual", "notícias", "portais",
+        "redes", "sociais", "canal", "site", "post", "vivo",
+        "notificações", "conteúdo", "conteúdos", "exclusivos", "informações",
+        "apareceu", "acompanhe", "inscreva", "leia", "veja", "segue", "acesse",
+        "notícia", "notícias", "noticias", "noticia", "últimas", "ultimas",
+        "portais", "atual", "visita",
+        # dias da semana
+        "segunda", "terça", "terca", "quarta", "quinta", "sexta",
+        "sábado", "sabado", "domingo", "feira",
+        # palavras em inglês que escapam
+        "the", "and", "for", "this", "that", "with",
+        # referências de localização/transmissão genéricas
+        "horário", "horario", "brasília", "brasilia",
+        "primeiro", "segunda", "terceiro",
+        # nomes de fontes que aparecem no próprio conteúdo
+        "critica", "crítica", "radar", "holanda",
     }
     wc = WordCloud(
-        width=1200, height=350, background_color="white",
+        width=1600, height=500, background_color="white",
         collocations=True, max_words=120, stopwords=stopwords,
-        regexp=r"\b[^\W\d_]{2,}\b",
+        regexp=r"\b[^\W\d_]{3,}\b",
+        margin=6,
     ).generate(all_text)
-    fig_wc, ax = plt.subplots(figsize=(14, 4))
+    fig_wc, ax = plt.subplots(figsize=(16, 5))
     ax.imshow(wc, interpolation="bilinear")
     ax.axis("off")
+    fig_wc.tight_layout(pad=0.5)
     st.pyplot(fig_wc)
     plt.close(fig_wc)
 
