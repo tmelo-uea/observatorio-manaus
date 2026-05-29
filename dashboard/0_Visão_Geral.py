@@ -399,9 +399,10 @@ if all_text.strip():
         # nomes de fontes que aparecem no próprio conteúdo
         "critica", "crítica", "radar", "holanda",
         # termos onipresentes no observatório — não distinguem nada
-        "Manaus", "manaus", "Amazonas", "amazonas", "Amazona", "amazona",
-        "Amazônia", "amazônia", "amazonia", "amazonense", "Amazonense",
-        "Amazon", "amazon",
+        "Manaus", "manaus", "Manau", "manau",
+        "Amazonas", "amazonas", "Amazona", "amazona",
+        "Amazônia", "amazônia", "amazonia", "Amazônico", "amazônico", "Amazônica", "amazônica",
+        "amazonense", "Amazonense", "Amazon", "amazon",
     }
     wc = WordCloud(
         width=1600, height=500, background_color="white",
