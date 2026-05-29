@@ -403,7 +403,7 @@ if all_text.strip():
         width=1600, height=500, background_color="white",
         collocations=True, max_words=120, stopwords=stopwords,
         regexp=r"\b[^\W\d_]{3,}\b",
-        margin=6,
+        margin=6, max_font_size=120,
     ).generate(all_text)
     fig_wc, ax = plt.subplots(figsize=(16, 5))
     ax.imshow(wc, interpolation="bilinear")
