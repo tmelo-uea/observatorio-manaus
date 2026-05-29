@@ -323,6 +323,9 @@ SOURCES = [
     {"name": "Portal R5",            "url": "https://portalr5.com.br",           "rss_url": "https://portalr5.com.br/?feed=rss2",                            "type": "portal"},
     {"name": "Nosso Show AM",        "url": "https://nossoshowam.com",           "rss_url": "https://nossoshowam.com/feed",                                  "type": "portal"},
     {"name": "TechAmazonia",         "url": "https://techamazonia.com",          "rss_url": "https://techamazonia.com/feed",                                 "type": "portal"},
+    {"name": "Amazonas365",          "url": "https://amazonas365.com.br",        "rss_url": "https://amazonas365.com.br/feed/",                              "type": "portal"},
+    {"name": "Portal Web Manaus",    "url": "https://portalwebmanaus.com",       "rss_url": "https://portalwebmanaus.com/feed/",                             "type": "portal"},
+    {"name": "Portal Amazônia",      "url": "https://portalamazonia.com",        "rss_url": "https://portalamazonia.com/feed/",                              "type": "portal"},
     # Órgãos governamentais do Amazonas
     {"name": "Governo do Amazonas",  "url": "https://www.amazonas.am.gov.br",    "rss_url": "https://www.amazonas.am.gov.br/feed/",                          "type": "portal", "active": False},
     {"name": "ALEAM",                "url": "https://www.aleam.gov.br",          "rss_url": "https://www.aleam.gov.br/feed/",                                "type": "portal"},
@@ -331,6 +334,9 @@ SOURCES = [
     {"name": "DETRAN-AM",            "url": "https://www.detran.am.gov.br",      "rss_url": "https://www.detran.am.gov.br/feed/",                            "type": "portal"},
     {"name": "Cultura AM",           "url": "https://cultura.am.gov.br",         "rss_url": "https://www.cultura.am.gov.br/feed/",                           "type": "portal", "active": False},
     {"name": "Prefeitura de Manaus", "url": "https://www.manaus.am.gov.br",      "rss_url": "https://www.manaus.am.gov.br/feed/",                            "type": "portal"},
+    {"name": "PGE-AM",              "url": "https://www.pge.am.gov.br",         "rss_url": "https://www.pge.am.gov.br/feed/",                               "type": "portal"},
+    {"name": "Amazonastur",         "url": "https://www.amazonastur.am.gov.br", "rss_url": "https://www.amazonastur.am.gov.br/feed/",                        "type": "portal"},
+    {"name": "ARSEPAM",             "url": "https://www.arsepam.am.gov.br",     "rss_url": "https://www.arsepam.am.gov.br/feed/",                            "type": "portal"},
     {"name": "TRE-AM",              "url": "https://www.tre-am.jus.br",         "rss_url": "https://www.tre-am.jus.br/rss",                                 "type": "portal"},
 ]
 
