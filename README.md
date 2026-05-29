@@ -4,7 +4,7 @@ Plataforma de monitoramento contínuo de notícias e publicações sobre a cidad
 
 Uma iniciativa do **LSI — Laboratório de Sistemas Inteligentes** da **Universidade do Estado do Amazonas (UEA)**.
 
-🌐 **Acesso público:** https://observatorio-manaus-production.up.railway.app
+🌐 **Acesso público:** https://observatorio.manaus.br
 
 ---
 

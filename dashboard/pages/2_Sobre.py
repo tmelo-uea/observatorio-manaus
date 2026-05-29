@@ -115,7 +115,7 @@ da **Universidade do Estado do Amazonas (UEA)**.
 
 **Coordenação:** Tiago Eugenio de Melo
 **Equipe:** Elloá Guedes, Carlos Maurício, Fábio Santos
-**Contato:** tmelo@uea.edu.br
+**Contato:** tmelo@uea.edu.br | resumo@observatorio.manaus.br
 """)
 
 st.divider()
