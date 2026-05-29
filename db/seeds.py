@@ -256,7 +256,7 @@ SOURCES = [
     {"name": "Em Tempo",             "url": "https://emtempo.com.br",            "rss_url": "https://emtempo.com.br/feed",                                   "type": "portal"},
     {"name": "D24am",                "url": "https://www.d24am.com",             "rss_url": "https://www.d24am.com/feed",                                    "type": "portal",  "active": False},
     {"name": "Portal do Holanda",    "url": "https://portaldoholanda.com.br",    "rss_url": "https://portaldoholanda.com.br/feed",                           "type": "portal"},
-    {"name": "Amazonas Atual",       "url": "https://amazonasatual.com.br",      "rss_url": "https://amazonasatual.com.br/feed",                             "type": "portal"},
+    {"name": "Amazonas Atual",       "url": "https://amazonasatual.com.br",      "rss_url": "https://amazonasatual.com.br/feed/",                            "type": "portal"},
     {"name": "A Gazeta do Amazonas", "url": "https://agazetadoamazonas.com",     "rss_url": "https://agazetadoamazonas.com/feed",                            "type": "portal", "active": False},
     {"name": "Amazonas 1",           "url": "https://amazonas1.com.br",          "rss_url": "https://amazonas1.com.br/feed",                                 "type": "portal"},
     {"name": "AM POST",              "url": "https://ampost.com.br",             "rss_url": "https://ampost.com.br/feed",                                    "type": "portal"},
@@ -320,7 +320,7 @@ SOURCES = [
     {"name": "Portal Amazôn Online", "url": "https://portalamazononline.com.br", "rss_url": "https://portalamazononline.com.br/feed/",                       "type": "portal"},
     {"name": "No Ar Portal",         "url": "https://noarportal.com.br",         "rss_url": "https://noarportal.com.br/feed/",                               "type": "portal"},
     {"name": "Menezes Virtual Eye",  "url": "https://menezesvirtualeye.com",     "rss_url": "https://menezesvirtualeye.com/feed/",                           "type": "blog"},
-    {"name": "Portal R5",            "url": "https://portalr5.com.br",           "rss_url": "https://portalr5.com.br/feed/",                                 "type": "portal"},
+    {"name": "Portal R5",            "url": "https://portalr5.com.br",           "rss_url": "https://portalr5.com.br/?feed=rss2",                            "type": "portal"},
     {"name": "Nosso Show AM",        "url": "https://nossoshowam.com",           "rss_url": "https://nossoshowam.com/feed",                                  "type": "portal"},
     {"name": "TechAmazonia",         "url": "https://techamazonia.com",          "rss_url": "https://techamazonia.com/feed",                                 "type": "portal"},
     # Órgãos governamentais do Amazonas
@@ -329,7 +329,7 @@ SOURCES = [
     {"name": "IPAAM",                "url": "https://www.ipaam.am.gov.br",       "rss_url": "https://www.ipaam.am.gov.br/feed/",                             "type": "portal"},
     {"name": "SSP-AM",               "url": "https://www.ssp.am.gov.br",         "rss_url": "https://www.ssp.am.gov.br/feed/",                               "type": "portal"},
     {"name": "DETRAN-AM",            "url": "https://www.detran.am.gov.br",      "rss_url": "https://www.detran.am.gov.br/feed/",                            "type": "portal"},
-    {"name": "Cultura AM",           "url": "https://cultura.am.gov.br",         "rss_url": "https://www.cultura.am.gov.br/feed/",                           "type": "portal"},
+    {"name": "Cultura AM",           "url": "https://cultura.am.gov.br",         "rss_url": "https://www.cultura.am.gov.br/feed/",                           "type": "portal", "active": False},
     {"name": "Prefeitura de Manaus", "url": "https://www.manaus.am.gov.br",      "rss_url": "https://www.manaus.am.gov.br/feed/",                            "type": "portal"},
     {"name": "TRE-AM",              "url": "https://www.tre-am.jus.br",         "rss_url": "https://www.tre-am.jus.br/rss",                                 "type": "portal"},
 ]
