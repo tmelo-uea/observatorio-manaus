@@ -3,6 +3,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -47,6 +48,44 @@ def init_db():
     seed_all()
 
 init_db()
+
+# Traduz o calendário do date_input para português via DOM manipulation
+components.html("""
+<script>
+(function() {
+    const MONTHS_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                       'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    const DAYS_PT   = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+
+    function translate(root) {
+        // Meses no dropdown de seleção (option value="0".."11")
+        root.querySelectorAll('.react-datepicker__month-select option').forEach(el => {
+            const idx = parseInt(el.value);
+            if (!isNaN(idx) && idx >= 0 && idx < 12) el.textContent = MONTHS_PT[idx];
+        });
+        // Cabeçalho estático "Month Year" (quando não usa dropdown)
+        root.querySelectorAll('.react-datepicker__current-month').forEach(el => {
+            const parts = el.textContent.trim().split(' ');
+            if (parts.length === 2) {
+                const d = new Date(parts[0] + ' 1 2000');
+                if (!isNaN(d)) el.textContent = MONTHS_PT[d.getMonth()] + ' ' + parts[1];
+            }
+        });
+        // Abreviações dos dias da semana
+        root.querySelectorAll('.react-datepicker__day-names').forEach(container => {
+            container.querySelectorAll('.react-datepicker__day-name').forEach((el, i) => {
+                if (i < DAYS_PT.length) el.textContent = DAYS_PT[i];
+            });
+        });
+    }
+
+    const parent = window.parent.document;
+    const observer = new MutationObserver(() => translate(parent));
+    observer.observe(parent.body, { childList: true, subtree: true });
+    translate(parent);
+})();
+</script>
+""", height=0)
 
 @st.cache_data(ttl=3600)
 def load_date_bounds():
