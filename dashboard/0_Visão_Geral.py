@@ -48,24 +48,38 @@ def init_db():
 
 init_db()
 
+@st.cache_data(ttl=3600)
+def load_date_bounds():
+    with get_db().connect() as conn:
+        min_utc = conn.execute(text("SELECT MIN(published_at) FROM articles WHERE published_at IS NOT NULL")).scalar()
+        max_utc = conn.execute(text("SELECT MAX(published_at) FROM articles WHERE published_at IS NOT NULL")).scalar()
+    today = pd.Timestamp.today().date()
+    date_min = (pd.Timestamp(min_utc) - pd.Timedelta(hours=4)).date() if min_utc else today
+    date_max = (pd.Timestamp(max_utc) - pd.Timedelta(hours=4)).date() if max_utc else today
+    return date_min, date_max
+
+
 @st.cache_data(ttl=300)
-def load_articles():
+def load_articles(date_start, date_end):
     engine = get_db()
-    query = text("""
-        SELECT
-            a.id, a.title, a.url,
-            LEFT(a.summary, 500) AS summary,
-            a.published_at, a.collected_at, a.topic_score, a.is_local,
-            s.name AS source, s.type AS source_type,
-            t.name AS topic, t.slug AS topic_slug, t.color AS topic_color
-        FROM articles a
-        JOIN sources s ON a.source_id = s.id
-        LEFT JOIN topics t ON a.topic_id = t.id
-        ORDER BY a.published_at DESC
-        LIMIT 5000
-    """)
+    start_utc = datetime(date_start.year, date_start.month, date_start.day, 4, 0, 0)
+    end_utc = datetime(date_end.year, date_end.month, date_end.day, 4, 0, 0) + timedelta(days=1)
     with engine.connect() as conn:
-        df = pd.read_sql(query, conn)
+        result = conn.execute(text("""
+            SELECT
+                a.id, a.title, a.url,
+                LEFT(a.summary, 500) AS summary,
+                a.published_at, a.collected_at, a.topic_score, a.is_local,
+                s.name AS source, s.type AS source_type,
+                t.name AS topic, t.slug AS topic_slug, t.color AS topic_color
+            FROM articles a
+            JOIN sources s ON a.source_id = s.id
+            LEFT JOIN topics t ON a.topic_id = t.id
+            WHERE a.published_at >= :start AND a.published_at < :end
+            ORDER BY a.published_at DESC
+            LIMIT 5000
+        """), {"start": start_utc, "end": end_utc})
+        df = pd.DataFrame(result.fetchall(), columns=result.keys())
     df["published_at"] = pd.to_datetime(df["published_at"])
     df["published_at_manaus"] = df["published_at"] - pd.Timedelta(hours=4)
     df["date"] = df["published_at_manaus"].dt.date
@@ -124,23 +138,38 @@ if _unsubscribe_token:
     st.query_params.clear()
 
 try:
-    df = load_articles()
     topics_df = load_topics()
     totals = load_totals()
+    date_min, date_max = load_date_bounds()
+except Exception as e:
+    st.error(f"Erro ao conectar ao banco de dados: {e}")
+    st.stop()
+
+# --- Sidebar / Filtros (período antes de carregar artigos) ---
+st.sidebar.header("🔍 Filtros")
+
+topic_options = ["Todos"] + topics_df["name"].tolist()
+selected_topic = st.sidebar.selectbox("Tema", topic_options)
+
+default_start = max(date_min, (pd.Timestamp.today() - pd.Timedelta(days=7)).date())
+date_range = st.sidebar.date_input(
+    "Período", value=(default_start, date_max),
+    min_value=date_min, max_value=date_max
+)
+
+# Carrega artigos para o período selecionado
+_d_start = date_range[0] if len(date_range) >= 1 else default_start
+_d_end = date_range[1] if len(date_range) == 2 else date_max
+try:
+    df = load_articles(_d_start, _d_end)
     render_summary_card(get_db())
 except Exception as e:
     st.error(f"Erro ao conectar ao banco de dados: {e}")
     st.stop()
 
 if df.empty:
-    st.warning("Nenhum artigo coletado ainda. Aguarde o coletor rodar.")
+    st.warning("Nenhum artigo coletado para o período selecionado.")
     st.stop()
-
-# --- Sidebar / Filtros ---
-st.sidebar.header("🔍 Filtros")
-
-topic_options = ["Todos"] + topics_df["name"].tolist()
-selected_topic = st.sidebar.selectbox("Tema", topic_options)
 
 source_options = ["Todos"] + sorted(df["source"].unique().tolist())
 selected_source = st.sidebar.selectbox("Portal / Blog", source_options)
@@ -149,15 +178,6 @@ with get_db().connect() as _conn:
     _types = [r[0] for r in _conn.execute(text("SELECT DISTINCT type FROM sources WHERE active = 1 ORDER BY type"))]
 source_type_options = ["Todos"] + _types
 selected_type = st.sidebar.selectbox("Tipo de fonte", source_type_options)
-
-dates_valid = df["date"].dropna()
-date_min = dates_valid.min() if not dates_valid.empty else pd.Timestamp.today().date()
-date_max = dates_valid.max() if not dates_valid.empty else pd.Timestamp.today().date()
-default_start = max(date_min, (pd.Timestamp.today() - pd.Timedelta(days=7)).date())
-date_range = st.sidebar.date_input(
-    "Período", value=(default_start, date_max),
-    min_value=date_min, max_value=date_max
-)
 
 busca = st.sidebar.text_input("Buscar por palavra-chave")
 
@@ -222,10 +242,6 @@ if selected_source != "Todos":
     filtered = filtered[filtered["source"] == selected_source]
 if selected_type != "Todos":
     filtered = filtered[filtered["source_type"] == selected_type]
-if len(date_range) == 2:
-    filtered = filtered[
-        (filtered["date"] >= date_range[0]) & (filtered["date"] <= date_range[1])
-    ]
 if not show_all and "is_local" in filtered.columns:
     filtered = filtered[filtered["is_local"] == True]
 if busca:
