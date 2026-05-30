@@ -224,9 +224,22 @@ def load_topics():
 # --- Header ---
 col_title, col_refresh = st.columns([8, 1])
 with col_title:
-    st.title("🔭 Observatório de Manaus")
-    st.caption("Monitoramento contínuo de notícias e publicações sobre a cidade de Manaus")
+    st.markdown("""
+<div style="padding: 18px 0 10px 0;">
+    <div style="font-size: 2rem; font-weight: 800; color: #0f172a; line-height: 1.2;">
+        🔭 Observatório de Manaus
+    </div>
+    <div style="margin-top: 8px; font-size: 0.97rem; color: #475569; line-height: 1.6; max-width: 780px;">
+        Uma iniciativa do <strong>Laboratório de Sistemas Inteligentes (LSI)</strong> da
+        Universidade do Estado do Amazonas (UEA). Monitora automaticamente notícias sobre
+        Manaus e o Amazonas a partir de mais de 50 fontes — portais, blogs, canais do YouTube
+        e órgãos públicos —, com atualização a cada 30 minutos.
+    </div>
+</div>
+""", unsafe_allow_html=True)
 with col_refresh:
+    st.write("")
+    st.write("")
     if st.button("↻ Atualizar"):
         st.cache_data.clear()
         st.rerun()
