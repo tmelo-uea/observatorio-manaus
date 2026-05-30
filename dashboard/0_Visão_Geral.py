@@ -33,6 +33,8 @@ st.markdown("""
 <style>
     .metric-card { background: #f8f9fa; border-radius: 8px; padding: 16px; }
     .stMetric label { font-size: 0.85rem; color: #6c757d; }
+    /* Reduz espaço em branco padrão do Streamlit no topo */
+    [data-testid="stAppViewContainer"] > .main > .block-container { padding-top: 1.2rem !important; }
 
     /* Dias da semana em português — múltiplos seletores para garantir aplicação */
     [class*="react-datepicker__day-name"],
@@ -222,24 +224,26 @@ def load_topics():
         return pd.read_sql(query, conn)
 
 # --- Header ---
-col_title, col_refresh = st.columns([8, 1])
-with col_title:
-    st.markdown("""
-<div style="padding: 18px 0 10px 0;">
-    <div style="font-size: 2rem; font-weight: 800; color: #0f172a; line-height: 1.2;">
+st.markdown("""
+<div style="
+    background: linear-gradient(135deg, #1a3a5c 0%, #1e6091 100%);
+    border-radius: 14px;
+    padding: 28px 36px;
+    margin-bottom: 8px;
+">
+    <div style="font-size: 2rem; font-weight: 800; color: #ffffff; margin-bottom: 10px; line-height: 1.2;">
         🔭 Observatório de Manaus
     </div>
-    <div style="margin-top: 8px; font-size: 0.97rem; color: #475569; line-height: 1.6; max-width: 780px;">
-        Uma iniciativa do <strong>Laboratório de Sistemas Inteligentes (LSI)</strong> da
-        Universidade do Estado do Amazonas (UEA). Monitora automaticamente notícias sobre
-        Manaus e o Amazonas a partir de mais de 50 fontes — portais, blogs, canais do YouTube
-        e órgãos públicos —, com atualização a cada 30 minutos.
+    <div style="font-size: 0.95rem; color: #bfdbfe; line-height: 1.7; max-width: 760px;">
+        Uma iniciativa do <strong style="color:#ffffff;">Laboratório de Sistemas Inteligentes (LSI)</strong>
+        da Universidade do Estado do Amazonas (UEA). Monitora automaticamente notícias sobre Manaus
+        e o Amazonas a partir de mais de 50 fontes — portais, blogs, canais do YouTube e órgãos públicos —,
+        com atualização a cada 30 minutos.
     </div>
 </div>
 """, unsafe_allow_html=True)
+col_spacer, col_refresh = st.columns([11, 1])
 with col_refresh:
-    st.write("")
-    st.write("")
     if st.button("↻ Atualizar"):
         st.cache_data.clear()
         st.rerun()
