@@ -224,17 +224,19 @@ def load_topics():
         return pd.read_sql(query, conn)
 
 # --- Header ---
-st.markdown("""
+col_banner, col_refresh = st.columns([11, 1])
+with col_banner:
+    st.markdown("""
 <div style="
     background: linear-gradient(135deg, #1a3a5c 0%, #1e6091 100%);
     border-radius: 14px;
     padding: 28px 36px;
-    margin-bottom: 8px;
+    margin-bottom: 0;
 ">
     <div style="font-size: 2rem; font-weight: 800; color: #ffffff; margin-bottom: 10px; line-height: 1.2;">
         🔭 Observatório de Manaus
     </div>
-    <div style="font-size: 0.95rem; color: #bfdbfe; line-height: 1.7; max-width: 760px;">
+    <div style="font-size: 0.95rem; color: #bfdbfe; line-height: 1.7; text-align: justify;">
         Uma iniciativa do <strong style="color:#ffffff;">Laboratório de Sistemas Inteligentes (LSI)</strong>
         da Universidade do Estado do Amazonas (UEA). Monitora automaticamente notícias sobre Manaus
         e o Amazonas a partir de mais de 50 fontes — portais, blogs, canais do YouTube e órgãos públicos —,
@@ -242,8 +244,10 @@ st.markdown("""
     </div>
 </div>
 """, unsafe_allow_html=True)
-col_spacer, col_refresh = st.columns([11, 1])
 with col_refresh:
+    st.write("")
+    st.write("")
+    st.write("")
     if st.button("↻ Atualizar"):
         st.cache_data.clear()
         st.rerun()
