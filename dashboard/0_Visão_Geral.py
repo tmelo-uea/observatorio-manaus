@@ -240,7 +240,7 @@ with col_banner:
         Uma iniciativa do <strong style="color:#ffffff;">Laboratório de Sistemas Inteligentes (LSI)</strong>
         da Universidade do Estado do Amazonas (UEA). Monitora automaticamente notícias sobre Manaus
         e o Amazonas a partir de mais de 50 fontes (portais, blogs, canais do YouTube e órgãos públicos),
-        com atualização a cada 30 minutos.
+        com monitoramento contínuo e atualização automática.
     </div>
 </div>
 """, unsafe_allow_html=True)
