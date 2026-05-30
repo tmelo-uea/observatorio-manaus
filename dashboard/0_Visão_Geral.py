@@ -33,6 +33,17 @@ st.markdown("""
 <style>
     .metric-card { background: #f8f9fa; border-radius: 8px; padding: 16px; }
     .stMetric label { font-size: 0.85rem; color: #6c757d; }
+
+    /* Dias da semana em português via CSS (funciona independente de JS) */
+    .react-datepicker__day-name { font-size: 0 !important; }
+    .react-datepicker__day-names .react-datepicker__day-name::after { font-size: 0.7rem; }
+    .react-datepicker__day-names .react-datepicker__day-name:nth-child(1)::after { content: 'Dom'; }
+    .react-datepicker__day-names .react-datepicker__day-name:nth-child(2)::after { content: 'Seg'; }
+    .react-datepicker__day-names .react-datepicker__day-name:nth-child(3)::after { content: 'Ter'; }
+    .react-datepicker__day-names .react-datepicker__day-name:nth-child(4)::after { content: 'Qua'; }
+    .react-datepicker__day-names .react-datepicker__day-name:nth-child(5)::after { content: 'Qui'; }
+    .react-datepicker__day-names .react-datepicker__day-name:nth-child(6)::after { content: 'Sex'; }
+    .react-datepicker__day-names .react-datepicker__day-name:nth-child(7)::after { content: 'Sáb'; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -49,40 +60,38 @@ def init_db():
 
 init_db()
 
-# Traduz o calendário do date_input para português via DOM manipulation
+# Traduz nomes de meses do calendário para português via JS
+# (abreviações de dias são tratadas por CSS acima)
 components.html("""
 <script>
 (function() {
-    const MONTHS_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
-                       'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-    const DAYS_PT   = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    var MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                  'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    var doc;
+    try { doc = window.parent.document; } catch(e) { return; }
+    if (!doc || !doc.body) return;
 
-    function translate(root) {
-        // Meses no dropdown de seleção (option value="0".."11")
-        root.querySelectorAll('.react-datepicker__month-select option').forEach(el => {
-            const idx = parseInt(el.value);
-            if (!isNaN(idx) && idx >= 0 && idx < 12) el.textContent = MONTHS_PT[idx];
+    var timer;
+    function translate() {
+        // Dropdown de meses (option value="0".."11")
+        doc.querySelectorAll('.react-datepicker__month-select option').forEach(function(opt) {
+            var v = parseInt(opt.value);
+            if (!isNaN(v) && v >= 0 && v < 12) opt.textContent = MONTHS[v];
         });
-        // Cabeçalho estático "Month Year" (quando não usa dropdown)
-        root.querySelectorAll('.react-datepicker__current-month').forEach(el => {
-            const parts = el.textContent.trim().split(' ');
-            if (parts.length === 2) {
-                const d = new Date(parts[0] + ' 1 2000');
-                if (!isNaN(d)) el.textContent = MONTHS_PT[d.getMonth()] + ' ' + parts[1];
+        // Cabeçalho estático "Month Year" (sem dropdown)
+        doc.querySelectorAll('.react-datepicker__current-month').forEach(function(el) {
+            var parts = el.textContent.trim().split(' ');
+            if (parts.length === 2 && !/^[A-ZÁÉÍÓÚ]/.test(el.textContent.split(' ')[0].slice(1))) {
+                var d = new Date(parts[0] + ' 1 2000');
+                if (!isNaN(d.getTime())) el.textContent = MONTHS[d.getMonth()] + ' ' + parts[1];
             }
-        });
-        // Abreviações dos dias da semana
-        root.querySelectorAll('.react-datepicker__day-names').forEach(container => {
-            container.querySelectorAll('.react-datepicker__day-name').forEach((el, i) => {
-                if (i < DAYS_PT.length) el.textContent = DAYS_PT[i];
-            });
         });
     }
 
-    const parent = window.parent.document;
-    const observer = new MutationObserver(() => translate(parent));
-    observer.observe(parent.body, { childList: true, subtree: true });
-    translate(parent);
+    new MutationObserver(function() {
+        clearTimeout(timer);
+        timer = setTimeout(translate, 40);
+    }).observe(doc.body, { childList: true, subtree: true });
 })();
 </script>
 """, height=0)
