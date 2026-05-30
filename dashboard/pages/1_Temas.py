@@ -109,7 +109,8 @@ def load_today_titles(topic_id: int) -> list[str]:
     start_utc, end_utc = manaus_day_utc_range(manaus_today())
     query = text("""
         SELECT a.title FROM articles a
-        WHERE a.topic_id = :tid AND a.published_at >= :start_utc AND a.published_at < :end_utc
+        WHERE a.topic_id = :tid AND a.is_local = 1
+          AND a.published_at >= :start_utc AND a.published_at < :end_utc
         ORDER BY a.published_at DESC
     """)
     with engine.connect() as conn:
@@ -125,7 +126,8 @@ def load_top_sources_today(topic_id: int, limit: int = 3):
         SELECT s.name, COUNT(a.id) AS total
         FROM articles a
         JOIN sources s ON a.source_id = s.id
-        WHERE a.topic_id = :tid AND a.published_at >= :start_utc AND a.published_at < :end_utc
+        WHERE a.topic_id = :tid AND a.is_local = 1
+          AND a.published_at >= :start_utc AND a.published_at < :end_utc
         GROUP BY s.id, s.name
         ORDER BY total DESC
         LIMIT :lim
