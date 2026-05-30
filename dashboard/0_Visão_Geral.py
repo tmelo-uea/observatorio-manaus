@@ -147,6 +147,49 @@ def load_articles(date_start, date_end):
 
 
 @st.cache_data(ttl=300)
+def load_daily_counts(date_start, date_end, show_all, topic, source, source_type):
+    """Agregação por dia sem LIMIT — usada exclusivamente no gráfico de volume."""
+    engine = get_db()
+    start_utc = datetime(date_start.year, date_start.month, date_start.day, 4, 0, 0)
+    end_utc = datetime(date_end.year, date_end.month, date_end.day, 4, 0, 0) + timedelta(days=1)
+
+    filters = ["a.published_at >= :start", "a.published_at < :end"]
+    params = {"start": start_utc, "end": end_utc}
+
+    if not show_all:
+        filters.append("a.is_local = 1")
+    if topic and topic != "Todos":
+        filters.append("t.name = :topic")
+        params["topic"] = topic
+    if source and source != "Todos":
+        filters.append("s.name = :source")
+        params["source"] = source
+    if source_type and source_type != "Todos":
+        filters.append("s.type = :stype")
+        params["stype"] = source_type
+
+    where = " AND ".join(filters)
+    sql = f"""
+        SELECT
+            DATE(a.published_at - INTERVAL 4 HOUR) AS day,
+            s.type AS source_type,
+            COUNT(*) AS cnt
+        FROM articles a
+        JOIN sources s ON a.source_id = s.id
+        LEFT JOIN topics t ON a.topic_id = t.id
+        WHERE {where}
+        GROUP BY DATE(a.published_at - INTERVAL 4 HOUR), s.type
+        ORDER BY day
+    """
+    with engine.connect() as conn:
+        result = conn.execute(text(sql), params)
+        df = pd.DataFrame(result.fetchall(), columns=result.keys())
+    if not df.empty:
+        df["day"] = pd.to_datetime(df["day"])
+    return df
+
+
+@st.cache_data(ttl=300)
 def load_totals():
     """Contagens reais do banco, sem o limite de 5000."""
     engine = get_db()
@@ -311,11 +354,15 @@ if busca:
     )
     filtered = filtered[mask]
 
+# Contagem real por dia (sem LIMIT) — usada no gráfico e na métrica de período
+_daily_raw = load_daily_counts(_d_start, _d_end, show_all, selected_topic, selected_source, selected_type)
+_period_count = int(_daily_raw["cnt"].sum()) if not _daily_raw.empty else 0
+
 # --- Métricas rápidas ---
 st.divider()
 c1, c2, c3, c4, c5, c6 = st.columns(6)
 c1.metric("Total coletado", f"{totals['total']:,}")
-c2.metric("Notícias no período", f"{len(filtered):,}")
+c2.metric("Notícias no período", f"{_period_count:,}")
 c3.metric("Portais monitorados", filtered["source"].nunique())
 c4.metric("Temas identificados", filtered["topic"].nunique())
 c5.metric("Hoje", f"{totals['hoje']:,}")
@@ -340,10 +387,10 @@ _MESES_ABR = {1:"jan",2:"fev",3:"mar",4:"abr",5:"mai",6:"jun",
 st.subheader("Volume de notícias por dia")
 _TYPE_LABELS = {"portal": "Portal", "blog": "Blog", "youtube": "YouTube", "orgao_publico": "Órgão público"}
 _TYPE_COLORS = {"Portal": "#2980b9", "Blog": "#e67e22", "YouTube": "#e74c3c", "Órgão público": "#27ae60"}
-daily = filtered.copy()
+daily = _daily_raw.copy()
 daily["tipo"] = daily["source_type"].map(_TYPE_LABELS).fillna("Outros")
-daily = daily.groupby(["date", "tipo"]).size().reset_index(name="count")
-daily["date_ts"] = pd.to_datetime(daily["date"])
+daily = daily.groupby(["day", "tipo"])["cnt"].sum().reset_index(name="count")
+daily = daily.rename(columns={"day": "date_ts"})
 # Eixo X cobre todos os dias do período selecionado (inclusive os sem dados)
 if len(date_range) == 2:
     _all_days = pd.date_range(date_range[0], date_range[1], freq="D")
