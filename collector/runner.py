@@ -9,7 +9,7 @@ from db.seeds import seed_all
 from collector.rss_collector import run_collection
 from collector.youtube_collector import run_youtube_collection
 from nlp.classifier import run_classification, reclassify_outros
-from nlp.local_classifier import run_local_classification
+from nlp.local_classifier import run_local_classification, backfill_local_keywords
 from nlp.summarizer import run_daily_summary, run_topic_summaries
 from scripts.backfill_transcripts import backfill
 from notifications.email_sender import run_digest
@@ -36,6 +36,9 @@ def job():
 print("Observatório do Amazonas — Coletor iniciado")
 print("Reclassificando artigos em 'Outros'...")
 reclassify_outros(batch_size=2000)
+print("Classificando localidade de artigos históricos (keywords)...")
+n_backfill = backfill_local_keywords(batch_size=10000)
+print(f"  Backfill is_local: {n_backfill} artigos classificados")
 print("Gerando resumos iniciais...")
 run_daily_summary()
 run_topic_summaries(min_articles=5)

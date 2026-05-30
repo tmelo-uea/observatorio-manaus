@@ -389,3 +389,30 @@ def run_local_classification(batch_size: int = 200) -> int:
     finally:
         session.close()
     return classified
+
+
+def backfill_local_keywords(batch_size: int = 5000) -> int:
+    """Classifica artigos antigos com is_local=NULL usando só palavras-chave.
+
+    Artigos sem nenhum match ficam marcados como False (não-local).
+    Rápido e sem chamadas à API — ideal para processar o backlog histórico.
+    """
+    session = get_session()
+    classified = 0
+    try:
+        pending = (
+            session.query(Article)
+            .filter(Article.is_local.is_(None))
+            .order_by(Article.published_at.asc())
+            .limit(batch_size)
+            .all()
+        )
+        for article in pending:
+            text = f"{article.title or ''} {article.summary or ''}"
+            result = _keyword_match(text)
+            article.is_local = result if result is not None else False
+            classified += 1
+        session.commit()
+    finally:
+        session.close()
+    return classified
