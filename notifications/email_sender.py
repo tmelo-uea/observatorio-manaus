@@ -4,7 +4,7 @@ from sqlalchemy.exc import IntegrityError
 from db.connection import get_session
 from db.models import EmailSubscription, DigestLog, DailySummary, Topic
 
-APP_URL = os.getenv("APP_URL", "https://observatorio.manaus.br")
+APP_URL = os.getenv("APP_URL", "https://www.observatorio.manaus.br")
 
 TOPIC_ICONS = {
     "Saúde": "🏥",
