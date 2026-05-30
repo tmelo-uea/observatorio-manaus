@@ -34,15 +34,27 @@ st.markdown("""
     .metric-card { background: #f8f9fa; border-radius: 8px; padding: 16px; }
     .stMetric label { font-size: 0.85rem; color: #6c757d; }
 
-    /* Dias da semana em português via CSS (funciona independente de JS) */
-    .react-datepicker__day-name { font-size: 0 !important; }
-    .react-datepicker__day-names .react-datepicker__day-name::after { font-size: 0.7rem; }
+    /* Dias da semana em português — múltiplos seletores para garantir aplicação */
+    [class*="react-datepicker__day-name"],
+    .react-datepicker__day-name { font-size: 0 !important; color: transparent !important; }
+
+    [class*="react-datepicker__day-names"] [class*="react-datepicker__day-name"]::after,
+    .react-datepicker__day-names .react-datepicker__day-name::after {
+        font-size: 0.7rem !important; color: #666;
+    }
+    [class*="react-datepicker__day-names"] [class*="react-datepicker__day-name"]:nth-child(1)::after,
     .react-datepicker__day-names .react-datepicker__day-name:nth-child(1)::after { content: 'Dom'; }
+    [class*="react-datepicker__day-names"] [class*="react-datepicker__day-name"]:nth-child(2)::after,
     .react-datepicker__day-names .react-datepicker__day-name:nth-child(2)::after { content: 'Seg'; }
+    [class*="react-datepicker__day-names"] [class*="react-datepicker__day-name"]:nth-child(3)::after,
     .react-datepicker__day-names .react-datepicker__day-name:nth-child(3)::after { content: 'Ter'; }
+    [class*="react-datepicker__day-names"] [class*="react-datepicker__day-name"]:nth-child(4)::after,
     .react-datepicker__day-names .react-datepicker__day-name:nth-child(4)::after { content: 'Qua'; }
+    [class*="react-datepicker__day-names"] [class*="react-datepicker__day-name"]:nth-child(5)::after,
     .react-datepicker__day-names .react-datepicker__day-name:nth-child(5)::after { content: 'Qui'; }
+    [class*="react-datepicker__day-names"] [class*="react-datepicker__day-name"]:nth-child(6)::after,
     .react-datepicker__day-names .react-datepicker__day-name:nth-child(6)::after { content: 'Sex'; }
+    [class*="react-datepicker__day-names"] [class*="react-datepicker__day-name"]:nth-child(7)::after,
     .react-datepicker__day-names .react-datepicker__day-name:nth-child(7)::after { content: 'Sáb'; }
 </style>
 """, unsafe_allow_html=True)
@@ -199,10 +211,10 @@ st.sidebar.header("🔍 Filtros")
 topic_options = ["Todos"] + topics_df["name"].tolist()
 selected_topic = st.sidebar.selectbox("Tema", topic_options)
 
-default_start = max(date_min, (pd.Timestamp.today() - pd.Timedelta(days=6)).date())
+default_start = (pd.Timestamp.today() - pd.Timedelta(days=6)).date()
 date_range = st.sidebar.date_input(
     "Período", value=(default_start, date_max),
-    min_value=date_min, max_value=date_max
+    min_value=min(date_min, default_start), max_value=date_max
 )
 
 # Carrega artigos para o período selecionado
@@ -332,18 +344,26 @@ daily = filtered.copy()
 daily["tipo"] = daily["source_type"].map(_TYPE_LABELS).fillna("Outros")
 daily = daily.groupby(["date", "tipo"]).size().reset_index(name="count")
 daily["date_ts"] = pd.to_datetime(daily["date"])
-_dates = sorted(daily["date"].unique())
-_tickvals = [pd.Timestamp(d) for d in _dates]
-_ticktext = [f"{d.day} {_MESES_ABR[d.month]}" for d in _dates]
-if _dates:
-    _ticktext[0] = f"{_dates[0].day} {_MESES_ABR[_dates[0].month]}\n{_dates[0].year}"
+# Eixo X cobre todos os dias do período selecionado (inclusive os sem dados)
+if len(date_range) == 2:
+    _all_days = pd.date_range(date_range[0], date_range[1], freq="D")
+else:
+    _all_days = pd.date_range(default_start, date_max, freq="D")
+_tickvals = list(_all_days)
+_ticktext = [f"{d.day} {_MESES_ABR[d.month]}" for d in _all_days]
+if len(_ticktext) > 0:
+    _ticktext[0] = f"{_all_days[0].day} {_MESES_ABR[_all_days[0].month]}\n{_all_days[0].year}"
 fig_timeline = px.bar(
     daily, x="date_ts", y="count", color="tipo",
     labels={"date_ts": "Data", "count": "Notícias", "tipo": "Tipo"},
     color_discrete_map=_TYPE_COLORS,
     category_orders={"tipo": ["Portal", "Blog", "YouTube", "Órgão público"]},
 )
-fig_timeline.update_xaxes(tickvals=_tickvals, ticktext=_ticktext)
+fig_timeline.update_xaxes(
+    tickvals=_tickvals, ticktext=_ticktext,
+    range=[_all_days[0] - pd.Timedelta(hours=12),
+           _all_days[-1] + pd.Timedelta(hours=12)],
+)
 fig_timeline.update_layout(
     barmode="stack",
     legend=dict(orientation="h", yanchor="bottom", y=1.02, title_text=""),
