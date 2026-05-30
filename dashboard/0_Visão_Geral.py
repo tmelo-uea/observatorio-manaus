@@ -254,7 +254,7 @@ st.sidebar.header("🔍 Filtros")
 topic_options = ["Todos"] + topics_df["name"].tolist()
 selected_topic = st.sidebar.selectbox("Tema", topic_options)
 
-default_start = (pd.Timestamp.today() - pd.Timedelta(days=6)).date()
+default_start = manaus_today() - timedelta(days=6)
 date_range = st.sidebar.date_input(
     "Período", value=(default_start, date_max),
     min_value=min(date_min, default_start), max_value=date_max
