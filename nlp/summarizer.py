@@ -62,6 +62,8 @@ def _build_prompt(articles, topic_name: str | None) -> str:
         f"Inclua apenas fatos que dizem respeito à cidade de Manaus — ignore notícias "
         f"de outros municípios do Amazonas ou de outros estados. "
         f"Preserve os nomes completos de pessoas, órgãos e locais mencionados nas manchetes. "
+        f"Ao mencionar pessoas, use apenas o nome e o cargo exatamente como aparecem nas manchetes — "
+        f"não atribua, infira ou complete cargos, títulos ou funções que não estejam explicitamente escritos. "
         f"IMPORTANTE: nunca use a palavra 'hoje' — use 'ontem' ou o contexto temporal adequado. "
         f"Não use frases genéricas como 'Ontem foi um dia movimentado em Manaus' — "
         f"comece direto com os fatos mais relevantes. "
