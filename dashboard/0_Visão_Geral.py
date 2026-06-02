@@ -32,31 +32,7 @@ st.markdown("""
 <style>
     .metric-card { background: #f8f9fa; border-radius: 8px; padding: 16px; }
     .stMetric label { font-size: 0.85rem; color: #6c757d; }
-    /* Reduz espaço em branco padrão do Streamlit no topo */
     [data-testid="stAppViewContainer"] > .main > .block-container { padding-top: 1.2rem !important; }
-
-    /* Dias da semana em português — múltiplos seletores para garantir aplicação */
-    [class*="react-datepicker__day-name"],
-    .react-datepicker__day-name { font-size: 0 !important; color: transparent !important; }
-
-    [class*="react-datepicker__day-names"] [class*="react-datepicker__day-name"]::after,
-    .react-datepicker__day-names .react-datepicker__day-name::after {
-        font-size: 0.7rem !important; color: #666;
-    }
-    [class*="react-datepicker__day-names"] [class*="react-datepicker__day-name"]:nth-child(1)::after,
-    .react-datepicker__day-names .react-datepicker__day-name:nth-child(1)::after { content: 'Dom'; }
-    [class*="react-datepicker__day-names"] [class*="react-datepicker__day-name"]:nth-child(2)::after,
-    .react-datepicker__day-names .react-datepicker__day-name:nth-child(2)::after { content: 'Seg'; }
-    [class*="react-datepicker__day-names"] [class*="react-datepicker__day-name"]:nth-child(3)::after,
-    .react-datepicker__day-names .react-datepicker__day-name:nth-child(3)::after { content: 'Ter'; }
-    [class*="react-datepicker__day-names"] [class*="react-datepicker__day-name"]:nth-child(4)::after,
-    .react-datepicker__day-names .react-datepicker__day-name:nth-child(4)::after { content: 'Qua'; }
-    [class*="react-datepicker__day-names"] [class*="react-datepicker__day-name"]:nth-child(5)::after,
-    .react-datepicker__day-names .react-datepicker__day-name:nth-child(5)::after { content: 'Qui'; }
-    [class*="react-datepicker__day-names"] [class*="react-datepicker__day-name"]:nth-child(6)::after,
-    .react-datepicker__day-names .react-datepicker__day-name:nth-child(6)::after { content: 'Sex'; }
-    [class*="react-datepicker__day-names"] [class*="react-datepicker__day-name"]:nth-child(7)::after,
-    .react-datepicker__day-names .react-datepicker__day-name:nth-child(7)::after { content: 'Sáb'; }
 </style>
 """, unsafe_allow_html=True)
 
