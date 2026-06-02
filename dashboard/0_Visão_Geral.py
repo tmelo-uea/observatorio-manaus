@@ -216,6 +216,13 @@ def load_totals():
         )).scalar()
     return {"total": total, "hoje": hoje, "semana": semana, "fontes": fontes, "ultima": ultima}
 
+@st.cache_data(ttl=300)
+def load_subscriber_count():
+    engine = get_db()
+    with engine.connect() as conn:
+        return conn.execute(text("SELECT COUNT(*) FROM email_subscriptions WHERE active = 1")).scalar() or 0
+
+
 @st.cache_data(ttl=3600)
 def load_topics():
     engine = get_db()
@@ -344,6 +351,15 @@ if st.sidebar.checkbox("⚙️ Admin", key="admin_toggle"):
 
 st.sidebar.divider()
 st.sidebar.markdown("### 📬 Receba as notícias de Manaus no seu e-mail")
+_subs_count = load_subscriber_count()
+if _subs_count > 0:
+    _plural = "assinantes" if _subs_count != 1 else "assinante"
+    st.sidebar.markdown(
+        f"<div style='background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;"
+        f"padding:8px 12px;margin-bottom:8px;font-size:0.88rem;color:#1e40af;'>"
+        f"👥 Junte-se a <strong>{_subs_count}</strong> {_plural}.</div>",
+        unsafe_allow_html=True,
+    )
 st.sidebar.caption("Assine o boletim diário e fique por dentro dos principais acontecimentos.")
 with st.sidebar.form("subscribe_form", clear_on_submit=True):
     email_input = st.text_input("Seu e-mail", placeholder="voce@email.com")
