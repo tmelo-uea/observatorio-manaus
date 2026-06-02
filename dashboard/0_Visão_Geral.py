@@ -194,14 +194,12 @@ def load_topics():
         return pd.read_sql(query, conn)
 
 # --- Header ---
-col_banner, col_refresh = st.columns([11, 1])
-with col_banner:
-    st.markdown("""
+st.markdown("""
 <div style="
     background: linear-gradient(135deg, #1a3a5c 0%, #1e6091 100%);
     border-radius: 14px;
     padding: 28px 36px;
-    margin-bottom: 0;
+    margin-bottom: 12px;
 ">
     <div style="font-size: 2rem; font-weight: 800; color: #ffffff; margin-bottom: 10px; line-height: 1.2;">
         🔭 Observatório de Manaus
@@ -214,10 +212,8 @@ with col_banner:
     </div>
 </div>
 """, unsafe_allow_html=True)
-with col_refresh:
-    st.write("")
-    st.write("")
-    st.write("")
+_col_left, _col_right = st.columns([8, 1])
+with _col_right:
     if st.button("↻ Atualizar"):
         st.cache_data.clear()
         st.rerun()
