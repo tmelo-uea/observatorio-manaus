@@ -3,7 +3,6 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import streamlit as st
-import streamlit.components.v1 as components
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -73,42 +72,6 @@ def init_db():
     seed_all()
 
 init_db()
-
-# Traduz nomes de meses do calendário para português via JS
-# (abreviações de dias são tratadas por CSS acima)
-components.html("""
-<script>
-(function() {
-    var MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
-                  'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-    var doc;
-    try { doc = window.parent.document; } catch(e) { return; }
-    if (!doc || !doc.body) return;
-
-    var timer;
-    function translate() {
-        // Dropdown de meses (option value="0".."11")
-        doc.querySelectorAll('.react-datepicker__month-select option').forEach(function(opt) {
-            var v = parseInt(opt.value);
-            if (!isNaN(v) && v >= 0 && v < 12) opt.textContent = MONTHS[v];
-        });
-        // Cabeçalho estático "Month Year" (sem dropdown)
-        doc.querySelectorAll('.react-datepicker__current-month').forEach(function(el) {
-            var parts = el.textContent.trim().split(' ');
-            if (parts.length === 2 && !/^[A-ZÁÉÍÓÚ]/.test(el.textContent.split(' ')[0].slice(1))) {
-                var d = new Date(parts[0] + ' 1 2000');
-                if (!isNaN(d.getTime())) el.textContent = MONTHS[d.getMonth()] + ' ' + parts[1];
-            }
-        });
-    }
-
-    new MutationObserver(function() {
-        clearTimeout(timer);
-        timer = setTimeout(translate, 40);
-    }).observe(doc.body, { childList: true, subtree: true });
-})();
-</script>
-""", height=0)
 
 @st.cache_data(ttl=3600)
 def load_date_bounds():
