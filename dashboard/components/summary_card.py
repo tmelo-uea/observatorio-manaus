@@ -28,7 +28,7 @@ def _build_share_links(summary_text: str, date_fmt: str) -> dict:
 
     return {
         "full_text": full_text,
-        "whatsapp": f"https://wa.me/?text={urllib.parse.quote(full_text)}",
+        "whatsapp": f"https://web.whatsapp.com/send?text={urllib.parse.quote(full_text)}",
         "telegram": (
             f"https://t.me/share/url?url={urllib.parse.quote(SITE_URL)}"
             f"&text={urllib.parse.quote(full_text)}"
@@ -244,6 +244,3 @@ def render_summary_card(engine, topic_id: int | None = None, topic_name: str | N
     </div>
 </div>
 """, unsafe_allow_html=True)
-
-    with st.expander("📋 Copiar texto do resumo"):
-        st.code(share["full_text"], language=None)
