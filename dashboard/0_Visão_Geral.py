@@ -28,6 +28,18 @@ st.set_page_config(
     layout="wide",
 )
 
+# Meta tags para preview em redes sociais (WhatsApp, Telegram, X, Facebook)
+st.markdown("""
+<meta property="og:title" content="Observatório de Manaus">
+<meta property="og:description" content="Monitoramento automático de notícias sobre Manaus e o Amazonas. Iniciativa do LSI/UEA.">
+<meta property="og:url" content="https://www.observatorio.manaus.br">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Observatório de Manaus">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Observatório de Manaus">
+<meta name="twitter:description" content="Monitoramento automático de notícias sobre Manaus e o Amazonas. Iniciativa do LSI/UEA.">
+""", unsafe_allow_html=True)
+
 st.markdown("""
 <style>
     .metric-card { background: #f8f9fa; border-radius: 8px; padding: 16px; }
