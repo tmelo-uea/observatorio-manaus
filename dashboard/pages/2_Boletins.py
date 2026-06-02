@@ -71,7 +71,11 @@ def get_source_names(article_ids_tuple):
 
 
 st.title("📰 Boletins anteriores")
-st.caption("Arquivo dos resumos diários gerados automaticamente pelo Observatório")
+st.caption(
+    "Aqui você encontra um resumo dos principais acontecimentos de Manaus em cada dia. "
+    "Tudo o que foi notícia reunido em um só lugar: política, saúde, segurança, esporte e muito mais. "
+    "Volte no tempo e acompanhe como a cidade vem se transformando dia a dia."
+)
 
 total = count_summaries()
 if total == 0:
