@@ -32,7 +32,6 @@ st.markdown("""
 <style>
     .metric-card { background: #f8f9fa; border-radius: 8px; padding: 16px; }
     .stMetric label { font-size: 0.85rem; color: #6c757d; }
-    [data-testid="stAppViewContainer"] > .main > .block-container { padding-top: 1.2rem !important; }
 </style>
 """, unsafe_allow_html=True)
 
