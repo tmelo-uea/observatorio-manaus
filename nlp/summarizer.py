@@ -24,7 +24,7 @@ def _call_groq(prompt: str) -> str | None:
         from groq import Groq
         client = Groq(api_key=api_key)
         response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=400,
             temperature=0.4,
