@@ -95,32 +95,7 @@ def _get_summary_for_date(engine, d: date, topic_id: int | None):
 
 
 def _inject_nav_css():
-    st.markdown("""
-<style>
-.summary-nav button[kind="secondary"] {
-    border-radius: 50% !important;
-    width: 2.4rem !important;
-    height: 2.4rem !important;
-    padding: 0 !important;
-    font-size: 1.1rem !important;
-    border: 2px solid #4a90d9 !important;
-    color: #4a90d9 !important;
-    background: white !important;
-    line-height: 1 !important;
-    min-height: unset !important;
-}
-.summary-nav button[kind="secondary"]:hover {
-    background: #4a90d9 !important;
-    color: white !important;
-}
-.summary-nav button[kind="secondary"]:disabled,
-.summary-nav button[disabled] {
-    border-color: #ddd !important;
-    color: #ccc !important;
-    cursor: not-allowed !important;
-}
-</style>
-""", unsafe_allow_html=True)
+    pass
 
 
 def render_summary_card(engine, topic_id: int | None = None, topic_name: str | None = None):
@@ -169,25 +144,18 @@ def render_summary_card(engine, topic_id: int | None = None, topic_name: str | N
 
     _inject_nav_css()
 
-    # Navegação
-    st.markdown('<div class="summary-nav">', unsafe_allow_html=True)
-    col_prev, col_info, col_next = st.columns([1, 10, 1])
-
-    with col_prev:
-        st.write("")
+    # Navegação compacta
+    nav_cols = st.columns([0.5, 0.5, 11])
+    with nav_cols[0]:
         if has_prev:
             if st.button("‹", key=f"prev_{nav_key}", help=f"Ver {available[idx+1].strftime('%d/%m/%Y')}"):
                 st.session_state[nav_key] = available[idx + 1]
                 st.rerun()
-
-    with col_next:
-        st.write("")
+    with nav_cols[1]:
         if has_next:
             if st.button("›", key=f"next_{nav_key}", help=f"Ver {available[idx-1].strftime('%d/%m/%Y')}"):
                 st.session_state[nav_key] = available[idx - 1]
                 st.rerun()
-
-    st.markdown('</div>', unsafe_allow_html=True)
 
     # Indicador de posição (ex: "2 de 5 dias")
     pos_label = f"dia {idx + 1} de {total}" if total > 1 else ""

@@ -187,11 +187,6 @@ st.markdown("""
     </div>
 </div>
 """, unsafe_allow_html=True)
-_col_left, _col_right = st.columns([8, 1])
-with _col_right:
-    if st.button("↻ Atualizar"):
-        st.cache_data.clear()
-        st.rerun()
 
 _unsubscribe_token = st.query_params.get("token", "")
 if _unsubscribe_token:
@@ -247,6 +242,10 @@ selected_type = st.sidebar.selectbox("Tipo de fonte", source_type_options)
 busca = st.sidebar.text_input("Buscar por palavra-chave")
 
 show_all = st.sidebar.checkbox("Incluir notícias não locais", value=False)
+
+if st.sidebar.button("↻ Atualizar dados"):
+    st.cache_data.clear()
+    st.rerun()
 
 if st.sidebar.checkbox("⚙️ Admin", key="admin_toggle"):
     admin_pwd = st.sidebar.text_input("Senha", type="password", key="admin_pwd")
