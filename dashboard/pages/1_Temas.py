@@ -334,7 +334,11 @@ except Exception as e:
 
 # --- Visão geral ---
 st.title("🏷️ Temas")
-st.caption("Distribuição e resumos automáticos por tema")
+st.caption(
+    "Acompanhe os principais assuntos que estão em pauta em Manaus, organizados por área de interesse. "
+    "Para cada tema — saúde, segurança, política, esporte e outros — você confere um resumo do dia, "
+    "o volume de notícias publicadas e como a cobertura vem evoluindo ao longo da semana."
+)
 
 counts_df = stats_df[stats_df["name"] != "Outros"].copy()
 color_map = dict(zip(counts_df["name"], counts_df["color"]))
