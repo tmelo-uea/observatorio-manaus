@@ -9,12 +9,25 @@ def _manaus_yesterday() -> date:
     return (datetime.utcnow() - timedelta(hours=4)).date() - timedelta(days=1)
 
 
-def _build_prompt(summary_text: str, summary_date: date) -> str:
+def _trim(text: str, max_chars: int = 120) -> str:
+    """Corta no último ponto completo dentro do limite."""
+    if len(text) <= max_chars:
+        return text.strip()
+    cut = text[:max_chars]
+    last = max(cut.rfind(". "), cut.rfind(".\n"))
+    return cut[:last + 1].strip() if last > 30 else cut.strip()
+
+
+def _build_prompt(topic_summaries: list[tuple[str, str]], summary_date: date) -> str:
+    """Constrói o prompt usando os resumos por tema (mais ricos que o geral)."""
     date_str = summary_date.strftime("%d/%m/%Y")
-    # Corta no último ponto antes de 400 chars para não quebrar no meio de frase
-    cut = summary_text[:400]
-    last_period = max(cut.rfind(". "), cut.rfind(".\n"))
-    excerpt = cut[:last_period + 1].strip() if last_period > 100 else cut.strip()
+
+    # Seleciona até 6 temas com maior conteúdo e resume cada um
+    temas_texto = "\n".join(
+        f"- {nome}: {_trim(texto)}"
+        for nome, texto in topic_summaries[:6]
+    )
+
     return (
         f"Infográfico editorial digital ilustrado, estilo desenho moderno limpo e informativo, "
         f"formato horizontal 16:9, alta qualidade visual. "
@@ -22,7 +35,7 @@ def _build_prompt(summary_text: str, summary_date: date) -> str:
         f"Cena central: avenida movimentada de Manaus ao final do dia, arquitetura tropical, "
         f"vegetação amazônica exuberante ao fundo, céu com tons quentes. "
         f"Moradores anônimos (sem rostos identificáveis) consultando celulares com notícias. "
-        f"Painéis temáticos ao redor da cena central ilustrando visualmente os acontecimentos: {excerpt}. "
+        f"Painéis temáticos ao redor da cena central, um por tema, ilustrando visualmente:\n{temas_texto}\n"
         f"Rodapé com texto 'Observatório de Manaus' e 'Informação que conecta. Dados que transformam Manaus.' "
         f"Estilo jornalístico editorial, informativo e leve, sem humor, sem rostos identificáveis, "
         f"sem marcas comerciais, sem representação de políticos reais. "
@@ -52,8 +65,25 @@ def generate_daily_image() -> bool:
             print(f"  [ImageGen] Imagem de {yesterday} já existe — pulando.")
             return False
 
-        print(f"  [ImageGen] Gerando imagem para {yesterday}...")
-        prompt = _build_prompt(summary.summary, yesterday)
+        # Busca resumos por tema (mais ricos que o geral)
+        topic_summaries = (
+            session.query(DailySummary)
+            .filter(
+                DailySummary.date == yesterday,
+                DailySummary.topic_id.isnot(None),
+            )
+            .all()
+        )
+        if not topic_summaries:
+            print(f"  [ImageGen] Sem resumos por tema para {yesterday} — usando resumo geral.")
+            topic_summaries_data = [("Geral", summary.summary)]
+        else:
+            # Ordena por quantidade de artigos (temas mais relevantes primeiro)
+            topic_summaries.sort(key=lambda s: s.article_count, reverse=True)
+            topic_summaries_data = [(s.topic.name, s.summary) for s in topic_summaries]
+
+        print(f"  [ImageGen] Gerando imagem para {yesterday} ({len(topic_summaries_data)} temas)...")
+        prompt = _build_prompt(topic_summaries_data, yesterday)
 
         from openai import OpenAI
         client = OpenAI(api_key=api_key)
