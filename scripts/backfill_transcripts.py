@@ -1,6 +1,7 @@
 import sys
 import os
 import time
+import random
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from db.connection import get_session
@@ -46,6 +47,9 @@ def backfill(limit: int = 50):
                 print(f"[{i}/{batch}] OK ({elapsed}s): {article.title[:60]}")
             else:
                 print(f"[{i}/{batch}] Sem transcrição: {article.title[:60]}")
+
+            # Pausa entre requisições para evitar HTTP 429 do YouTube
+            time.sleep(random.uniform(8, 15))
 
     finally:
         session.close()
