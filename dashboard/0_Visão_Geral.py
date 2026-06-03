@@ -61,10 +61,10 @@ def _render_daily_image(engine):
             "SELECT image_data FROM daily_summaries WHERE date = :d AND topic_id IS NULL"
         ), {"d": yesterday}).fetchone()
     if row and row[0]:
-        col1, col2, col3 = st.columns([1, 3, 1])
+        col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
             st.image(row[0], use_column_width=True,
-                     caption=f"Manaus em Pauta — {yesterday.strftime('%d/%m/%Y')}")
+                     caption=f"Ilustração do dia — {yesterday.strftime('%d/%m/%Y')}")
         st.divider()
 
 @st.cache_resource

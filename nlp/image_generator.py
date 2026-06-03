@@ -30,17 +30,13 @@ def _build_prompt(topic_summaries: list[tuple[str, str]], summary_date: date) ->
     )
 
     return (
-        f"Infográfico editorial digital ilustrado, estilo desenho moderno limpo e informativo, "
-        f"formato horizontal 16:9, alta qualidade visual. "
-        f"Título 'Manaus em Pauta – {date_str}' em destaque no topo da imagem. "
-        f"Cena central: avenida movimentada de Manaus ao final do dia, arquitetura tropical, "
-        f"vegetação amazônica exuberante ao fundo, céu com tons quentes. "
-        f"Moradores anônimos (sem rostos identificáveis) consultando celulares com notícias. "
-        f"Painéis temáticos ao redor da cena central, um por tema, ilustrando visualmente:\n{temas_texto}\n"
-        f"Rodapé com texto 'Observatório de Manaus' e 'Informação que conecta. Dados que transformam Manaus.' "
-        f"Estilo jornalístico editorial, informativo e leve, sem humor, sem rostos identificáveis, "
-        f"sem marcas comerciais, sem representação de políticos reais. "
-        f"Paleta de cores: verdes tropicais, azul céu, âmbar e branco. Todo texto em português."
+        f"Ilustração editorial digital, estilo flat moderno, formato horizontal 16:9, sem texto. "
+        f"Cena urbana de Manaus ao entardecer: avenida movimentada com tráfego, arquitetura tropical, "
+        f"palmeiras e vegetação amazônica ao fundo, céu alaranjado. "
+        f"Pessoas anônimas (sem rostos identificáveis) na calçada olhando celulares. "
+        f"Elementos visuais espalhados pela cena representando simbolicamente os temas do dia: {temas_texto}. "
+        f"Estilo jornalístico, informativo, leve, sem humor, sem marcas, sem políticos reais, sem texto na imagem. "
+        f"Paleta: verdes tropicais, azul céu, âmbar e branco."
     )
 
 
