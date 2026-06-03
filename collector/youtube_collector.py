@@ -38,7 +38,8 @@ def _captions(video_id: str) -> str | None:
             video_id, languages=["pt", "pt-BR", "en"]
         )
         return " ".join(s["text"] for s in segments)
-    except Exception:
+    except Exception as e:
+        print(f"  [captions] {video_id}: {e}")
         return None
 
 
@@ -54,7 +55,7 @@ def _groq_transcribe(video_url: str, video_id: str) -> str | None:
             [
                 "yt-dlp", "-x",
                 "--audio-format", "mp3",
-                "--audio-quality", "9",       # menor bitrate (melhor para tamanho)
+                "--audio-quality", "9",
                 "-o", audio_path,
                 "--no-playlist",
                 "--quiet",
@@ -64,6 +65,8 @@ def _groq_transcribe(video_url: str, video_id: str) -> str | None:
             timeout=180,
         )
         if proc.returncode != 0 or not os.path.exists(audio_path):
+            stderr = proc.stderr.decode(errors="replace").strip()
+            print(f"  [yt-dlp] {video_id} falhou (code {proc.returncode}): {stderr[:200]}")
             return None
 
         if os.path.getsize(audio_path) > 24 * 1024 * 1024:  # limite 25 MB do Groq
@@ -77,9 +80,10 @@ def _groq_transcribe(video_url: str, video_id: str) -> str | None:
                 model="whisper-large-v3",
                 language="pt",
             )
+        print(f"  [Groq] {video_id}: transcrição OK ({len(result.text)} chars)")
         return result.text
     except Exception as e:
-        print(f"  [Groq] Erro: {e}")
+        print(f"  [Groq] {video_id} erro: {e}")
         return None
     finally:
         if os.path.exists(audio_path):

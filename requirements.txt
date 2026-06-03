@@ -4,7 +4,7 @@ requests==2.31.0
 beautifulsoup4==4.12.3
 schedule==1.2.2
 youtube-transcript-api==0.6.2
-yt-dlp==2024.5.27
+yt-dlp>=2025.1.1
 groq==1.2.0
 
 # Banco de dados
