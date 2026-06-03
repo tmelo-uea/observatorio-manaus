@@ -11,7 +11,10 @@ def _manaus_yesterday() -> date:
 
 def _build_prompt(summary_text: str, summary_date: date) -> str:
     date_str = summary_date.strftime("%d/%m/%Y")
-    excerpt = summary_text[:400].strip()
+    # Corta no último ponto antes de 400 chars para não quebrar no meio de frase
+    cut = summary_text[:400]
+    last_period = max(cut.rfind(". "), cut.rfind(".\n"))
+    excerpt = cut[:last_period + 1].strip() if last_period > 100 else cut.strip()
     return (
         f"Infográfico editorial digital ilustrado, estilo desenho moderno limpo e informativo, "
         f"formato horizontal 16:9, alta qualidade visual. "
