@@ -61,8 +61,10 @@ def _render_daily_image(engine):
             "SELECT image_data FROM daily_summaries WHERE date = :d AND topic_id IS NULL"
         ), {"d": yesterday}).fetchone()
     if row and row[0]:
-        st.image(row[0], use_column_width=True,
-                 caption=f"Manaus em Pauta — {yesterday.strftime('%d/%m/%Y')}")
+        col1, col2, col3 = st.columns([1, 3, 1])
+        with col2:
+            st.image(row[0], use_column_width=True,
+                     caption=f"Manaus em Pauta — {yesterday.strftime('%d/%m/%Y')}")
         st.divider()
 
 @st.cache_resource
@@ -247,16 +249,16 @@ date_range = st.sidebar.date_input(
 _d_start = date_range[0] if len(date_range) >= 1 else default_start
 _d_end = date_range[1] if len(date_range) == 2 else date_max
 try:
-    _render_daily_image(get_db())
-except Exception:
-    pass
-
-try:
     df = load_articles(_d_start, _d_end)
     render_summary_card(get_db())
 except Exception as e:
     st.error(f"Erro ao conectar ao banco de dados: {e}")
     st.stop()
+
+try:
+    _render_daily_image(get_db())
+except Exception:
+    pass
 
 if df.empty:
     st.warning("Nenhum artigo coletado para o período selecionado.")
