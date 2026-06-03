@@ -35,19 +35,30 @@ def _call_groq(prompt: str) -> str | None:
         return None
 
 
+def _format_article(article) -> str:
+    """Título para RSS; título + trecho do transcript para YouTube."""
+    is_youtube = getattr(article.source, "type", None) == "youtube"
+    if is_youtube and article.transcript:
+        trecho = article.transcript[:500].strip()
+        return f"- [{article.source.name}] {article.title}\n  Trecho: {trecho}"
+    return f"- [{article.source.name}] {article.title}"
+
+
 def _build_prompt(articles, topic_name: str | None) -> str:
-    headlines = "\n".join(
-        f"- [{a.source.name}] {a.title}" for a in articles[:40]
-    )
+    # YouTube com transcript primeiro (mais conteúdo), depois RSS — limites para não estourar contexto
+    youtube = [a for a in articles if getattr(a.source, "type", None) == "youtube" and a.transcript]
+    rss = [a for a in articles if a not in youtube]
+    selected = youtube[:10] + rss[:30]
+
+    headlines = "\n".join(_format_article(a) for a in selected)
 
     if topic_name:
         topic_filter = (
-            f"FOCO EXCLUSIVO NO TEMA '{topic_name}': inclua APENAS manchetes diretamente "
-            f"relacionadas a {topic_name}. Manchetes sobre outros temas (acidentes de trânsito, "
-            f"crimes, política, saúde, etc.) podem ter sido classificadas erroneamente — "
-            f"IGNORE essas manchetes mesmo que estejam na lista. "
-            f"Se não houver manchetes suficientes sobre {topic_name}, "
-            f"escreva apenas sobre as que realmente pertencem ao tema. "
+            f"FOCO EXCLUSIVO NO TEMA '{topic_name}': inclua APENAS conteúdo diretamente "
+            f"relacionado a {topic_name}. Conteúdo sobre outros temas pode ter sido classificado "
+            f"erroneamente — IGNORE esses itens mesmo que estejam na lista. "
+            f"Se não houver conteúdo suficiente sobre {topic_name}, "
+            f"escreva apenas sobre o que realmente pertence ao tema. "
         )
         context = f"sobre o tema '{topic_name}' na cidade de Manaus"
     else:
@@ -56,19 +67,19 @@ def _build_prompt(articles, topic_name: str | None) -> str:
 
     return (
         f"Você é um jornalista que escreve resumos diários de notícias {context}. "
-        f"Com base nas manchetes abaixo, escreva um parágrafo conciso (4 a 6 frases) "
+        f"Com base nas manchetes e trechos de vídeos abaixo, escreva um parágrafo conciso (4 a 6 frases) "
         f"resumindo os principais acontecimentos do dia anterior. "
         f"{topic_filter}"
         f"Inclua apenas fatos que dizem respeito à cidade de Manaus — ignore notícias "
         f"de outros municípios do Amazonas ou de outros estados. "
-        f"Preserve os nomes completos de pessoas, órgãos e locais mencionados nas manchetes. "
-        f"Ao mencionar pessoas, use apenas o nome e o cargo exatamente como aparecem nas manchetes — "
+        f"Preserve os nomes completos de pessoas, órgãos e locais mencionados. "
+        f"Ao mencionar pessoas, use apenas o nome e o cargo exatamente como aparecem nas fontes — "
         f"não atribua, infira ou complete cargos, títulos ou funções que não estejam explicitamente escritos. "
         f"IMPORTANTE: nunca use a palavra 'hoje' — use 'ontem' ou o contexto temporal adequado. "
         f"Não use frases genéricas como 'Ontem foi um dia movimentado em Manaus' — "
         f"comece direto com os fatos mais relevantes. "
         f"Escreva em português, de forma clara e objetiva, sem usar bullet points.\n\n"
-        f"Manchetes:\n{headlines}"
+        f"Fontes:\n{headlines}"
     )
 
 
