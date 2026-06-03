@@ -61,7 +61,7 @@ def _render_daily_image(engine):
             "SELECT image_data FROM daily_summaries WHERE date = :d AND topic_id IS NULL"
         ), {"d": yesterday}).fetchone()
     if row and row[0]:
-        st.image(row[0], use_container_width=True,
+        st.image(row[0], use_column_width=True,
                  caption=f"Manaus em Pauta — {yesterday.strftime('%d/%m/%Y')}")
         st.divider()
 
