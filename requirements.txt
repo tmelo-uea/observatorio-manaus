@@ -6,6 +6,8 @@ schedule==1.2.2
 youtube-transcript-api==0.6.2
 yt-dlp>=2025.1.1
 groq==1.2.0
+openai>=1.30.0
+httpx>=0.27.0
 
 # Banco de dados
 sqlalchemy==2.0.30

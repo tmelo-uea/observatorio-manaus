@@ -93,4 +93,14 @@ def run_migrations():
             conn.execute(text("ALTER TABLE articles ADD COLUMN is_local TINYINT(1) NULL"))
             print("Migration: coluna is_local adicionada.")
 
+        # Adiciona coluna image_data em daily_summaries se não existir
+        has_image_data = conn.execute(text(
+            "SELECT COUNT(*) FROM information_schema.COLUMNS "
+            "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'daily_summaries' "
+            "AND COLUMN_NAME = 'image_data'"
+        )).scalar()
+        if not has_image_data:
+            conn.execute(text("ALTER TABLE daily_summaries ADD COLUMN image_data LONGBLOB NULL"))
+            print("Migration: coluna image_data adicionada em daily_summaries.")
+
         conn.commit()

@@ -51,6 +51,20 @@ st.markdown("""
 def get_db():
     return get_engine()
 
+
+def _render_daily_image(engine):
+    """Exibe a imagem do dia anterior se disponível."""
+    from datetime import date as _date, timedelta as _td
+    yesterday = (datetime.utcnow() - _td(hours=4)).date() - _td(days=1)
+    with engine.connect() as conn:
+        row = conn.execute(text(
+            "SELECT image_data FROM daily_summaries WHERE date = :d AND topic_id IS NULL"
+        ), {"d": yesterday}).fetchone()
+    if row and row[0]:
+        st.image(row[0], use_container_width=True,
+                 caption=f"Manaus em Pauta — {yesterday.strftime('%d/%m/%Y')}")
+        st.divider()
+
 @st.cache_resource
 def init_db():
     from db.connection import Base
@@ -234,6 +248,7 @@ _d_start = date_range[0] if len(date_range) >= 1 else default_start
 _d_end = date_range[1] if len(date_range) == 2 else date_max
 try:
     df = load_articles(_d_start, _d_end)
+    _render_daily_image(get_db())
     render_summary_card(get_db())
 except Exception as e:
     st.error(f"Erro ao conectar ao banco de dados: {e}")

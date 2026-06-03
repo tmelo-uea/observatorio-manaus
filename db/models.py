@@ -1,6 +1,6 @@
 import secrets
 from datetime import datetime, date
-from sqlalchemy import String, Text, DateTime, Integer, Float, ForeignKey, UniqueConstraint, JSON, Date, Boolean
+from sqlalchemy import String, Text, DateTime, Integer, Float, ForeignKey, UniqueConstraint, JSON, Date, Boolean, LargeBinary
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from db.connection import Base
 
@@ -84,5 +84,6 @@ class DailySummary(Base):
     article_ids: Mapped[dict] = mapped_column(JSON, nullable=False)
     article_count: Mapped[int] = mapped_column(Integer, nullable=False)
     generated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    image_data: Mapped[bytes] = mapped_column(LargeBinary, nullable=True)
 
     topic: Mapped["Topic"] = relationship()
