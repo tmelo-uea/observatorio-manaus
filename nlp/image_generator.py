@@ -1,4 +1,5 @@
 import os
+import base64
 import httpx
 from datetime import date, datetime, timedelta
 from db.connection import get_session
@@ -88,15 +89,18 @@ def generate_daily_image() -> bool:
         from openai import OpenAI
         client = OpenAI(api_key=api_key)
         response = client.images.generate(
-            model="dall-e-3",
+            model="gpt-image-1",
             prompt=prompt,
-            size="1792x1024",
-            quality="standard",
+            size="1536x1024",
+            quality="medium",
             n=1,
         )
-        image_url = response.data[0].url
-
-        image_bytes = httpx.get(image_url, timeout=30).content
+        # gpt-image-1 retorna base64; dall-e-3 retornaria URL
+        item = response.data[0]
+        if getattr(item, "b64_json", None):
+            image_bytes = base64.b64decode(item.b64_json)
+        else:
+            image_bytes = httpx.get(item.url, timeout=30).content
         summary.image_data = image_bytes
         session.commit()
         print(f"  [ImageGen] Imagem gerada e salva ({len(image_bytes):,} bytes).")
