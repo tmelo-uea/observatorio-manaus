@@ -247,8 +247,12 @@ date_range = st.sidebar.date_input(
 _d_start = date_range[0] if len(date_range) >= 1 else default_start
 _d_end = date_range[1] if len(date_range) == 2 else date_max
 try:
-    df = load_articles(_d_start, _d_end)
     _render_daily_image(get_db())
+except Exception:
+    pass
+
+try:
+    df = load_articles(_d_start, _d_end)
     render_summary_card(get_db())
 except Exception as e:
     st.error(f"Erro ao conectar ao banco de dados: {e}")
