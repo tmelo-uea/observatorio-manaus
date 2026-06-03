@@ -298,10 +298,10 @@ SOURCES = [
     {"name": "TV Norte Amazonas (YouTube)", "url": "https://www.youtube.com/channel/UC4WNZYa1d0HVzdVWlfJEGjw", "rss_url": "https://www.youtube.com/feeds/videos.xml?channel_id=UC4WNZYa1d0HVzdVWlfJEGjw", "type": "youtube"},
     {"name": "Jovem Pan Manaus (YouTube)",  "url": "https://www.youtube.com/channel/UCnzSEPHQ2zoaYIFo4BIv0ow", "rss_url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCnzSEPHQ2zoaYIFo4BIv0ow", "type": "youtube"},
     {"name": "Portal do Holanda (YouTube)", "url": "https://www.youtube.com/channel/UCH_iB5NZNUDT3BITtcFPFQw", "rss_url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCH_iB5NZNUDT3BITtcFPFQw", "type": "youtube"},
-    {"name": "Rede Amazônica (YouTube)",    "url": "https://www.youtube.com/channel/UCIZiuY6rbu3myUQ39vYsqRw", "rss_url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCIZiuY6rbu3myUQ39vYsqRw", "type": "youtube"},
+    {"name": "Rede Amazônica (YouTube)",    "url": "https://www.youtube.com/channel/UCIZiuY6rbu3myUQ39vYsqRw", "rss_url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCIZiuY6rbu3myUQ39vYsqRw", "type": "youtube", "active": False},
     {"name": "TV CM7 (YouTube)",            "url": "https://www.youtube.com/channel/UC880szznksA04nYdg2G-3eQ", "rss_url": "https://www.youtube.com/feeds/videos.xml?channel_id=UC880szznksA04nYdg2G-3eQ", "type": "youtube"},
     {"name": "Record Manaus (YouTube)",     "url": "https://www.youtube.com/channel/UClpkHFE0rwJOsA_Rzk7OK8A", "rss_url": "https://www.youtube.com/feeds/videos.xml?channel_id=UClpkHFE0rwJOsA_Rzk7OK8A", "type": "youtube"},
-    {"name": "Band Amazonas (YouTube)",     "url": "https://www.youtube.com/channel/UCJVYVZTlMgiytKA9hjZ3ioA", "rss_url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCJVYVZTlMgiytKA9hjZ3ioA", "type": "youtube"},
+    {"name": "Band Amazonas (YouTube)",     "url": "https://www.youtube.com/channel/UCJVYVZTlMgiytKA9hjZ3ioA", "rss_url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCJVYVZTlMgiytKA9hjZ3ioA", "type": "youtube", "active": False},
     {"name": "Amazonas Atual (YouTube)",    "url": "https://www.youtube.com/channel/UCg8t9F8LXjaOURUBnMZgb5g", "rss_url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCg8t9F8LXjaOURUBnMZgb5g", "type": "youtube"},
     # Universidades e institutos de pesquisa
     {"name": "UFAM",    "url": "https://www.ufam.edu.br",    "rss_url": "https://www.ufam.edu.br/noticias.feed?type=rss",                        "type": "portal"},
