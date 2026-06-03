@@ -28,7 +28,7 @@ def job():
     print(f"Classificados: {n} artigos")
     n_local = run_local_classification()
     print(f"Localidade classificada: {n_local} artigos")
-    backfill(limit=10)  # processa até 10 transcrições pendentes por ciclo
+    backfill(limit=50)  # processa até 50 vídeos, respeitando limite de 20 min
     run_daily_summary()
     run_topic_summaries(min_articles=5)
     run_digest()
