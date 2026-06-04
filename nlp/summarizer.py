@@ -44,12 +44,15 @@ def _format_article(article) -> str:
     return f"- [{article.source.name}] {article.title}"
 
 
-def _build_prompt(articles, topic_name: str | None) -> str:
-    # YouTube com transcript primeiro (mais conteúdo), depois RSS — limites para não estourar contexto
+def _build_prompt(articles, topic_name: str | None, context: str = "dashboard") -> str:
+    """Constrói o prompt de resumo.
+
+    context="dashboard" → resumo do dia em curso, visível na página principal.
+    context="email"     → balanço do dia anterior, enviado por e-mail na manhã seguinte.
+    """
     youtube = [a for a in articles if getattr(a.source, "type", None) == "youtube" and a.transcript]
     rss = [a for a in articles if a not in youtube]
     selected = youtube[:10] + rss[:30]
-
     headlines = "\n".join(_format_article(a) for a in selected)
 
     if topic_name:
@@ -60,35 +63,52 @@ def _build_prompt(articles, topic_name: str | None) -> str:
             f"Se não houver conteúdo suficiente sobre {topic_name}, "
             f"escreva apenas sobre o que realmente pertence ao tema. "
         )
-        context = f"sobre o tema '{topic_name}' na cidade de Manaus"
+        about = f"sobre o tema '{topic_name}' na cidade de Manaus"
     else:
         topic_filter = ""
-        context = "sobre a cidade de Manaus"
+        about = "sobre a cidade de Manaus"
 
-    return (
-        f"Você é um jornalista que escreve resumos diários de notícias {context}. "
-        f"Com base nas manchetes e trechos de vídeos abaixo, escreva um parágrafo conciso (4 a 6 frases) "
-        f"resumindo os principais acontecimentos do dia anterior. "
-        f"{topic_filter}"
+    # Instruções temporais diferem conforme o destino do resumo
+    if context == "email":
+        temporal = (
+            f"Use o tempo verbal adequado ao contexto de cada notícia. "
+            f"Para eventos já concluídos, use passado ('realizou', 'prendeu'). "
+            f"Para serviços ou situações contínuas, use presente ('mantém', 'está em funcionamento'). "
+            f"Nunca use a palavra 'hoje' — use 'ontem', 'neste feriado' ou o contexto temporal adequado. "
+            f"Não use frases de abertura genéricas como 'Ontem foi um dia movimentado' — "
+            f"comece direto com o fato mais relevante. "
+        )
+    else:  # dashboard
+        temporal = (
+            f"Use o tempo verbal adequado ao contexto de cada notícia. "
+            f"Para eventos já concluídos hoje, use passado ('realizou', 'prendeu'). "
+            f"Para serviços ou situações em andamento, use presente ('mantém', 'está em funcionamento'). "
+            f"Nunca use a palavra 'ontem' — as notícias são de hoje. Use 'hoje', "
+            f"'nesta manhã', 'nesta tarde', 'neste feriado' ou o contexto temporal adequado. "
+            f"Não use frases de abertura genéricas como 'Hoje foi um dia movimentado' — "
+            f"comece direto com o fato mais relevante do dia. "
+        )
+
+    regras_comuns = (
         f"Inclua apenas fatos que dizem respeito à cidade de Manaus — ignore notícias "
         f"de outros municípios do Amazonas ou de outros estados. "
         f"Preserve os nomes completos de pessoas, órgãos e locais mencionados. "
-        f"Ao mencionar pessoas, use apenas o nome e o cargo exatamente como aparecem nas fontes — "
-        f"não atribua, infira ou complete cargos, títulos ou funções que não estejam explicitamente escritos. "
-        f"Ao mencionar instituições (hospitais, escolas, órgãos), sempre identifique o nome completo — "
-        f"nunca escreva apenas 'o hospital' ou 'a escola' sem nomear qual. "
+        f"Ao mencionar pessoas, use apenas o nome e o cargo exatamente como aparecem nas fontes. "
+        f"Ao mencionar instituições (hospitais, escolas, órgãos), sempre identifique o nome completo. "
         f"Inclua apenas fatos com contexto suficiente para o leitor entender — "
-        f"ignore manchetes que pareçam fragmentos sem contexto claro (gírias, referências internas, disputas políticas menores). "
-        f"IMPORTANTE: use o tempo verbal adequado ao contexto de cada notícia. "
-        f"Para eventos já concluídos ontem, use passado ('realizou', 'prendeu'). "
-        f"Para serviços ou situações que continuam no presente ou foram anunciados para o futuro, "
-        f"use presente ou futuro ('mantém', 'vai manter', 'está previsto'). "
-        f"Nunca use a palavra 'hoje' — prefira 'ontem', 'neste feriado', 'durante o período' ou o contexto adequado. "
+        f"ignore manchetes que pareçam fragmentos sem contexto claro. "
         f"PROIBIDO usar frases de encerramento genéricas como 'Esses foram alguns dos principais acontecimentos', "
-        f"'Esses são os destaques', 'Assim foi o dia em Manaus' ou similares — termine no último fato relevante. "
-        f"Não use frases de abertura genéricas como 'Ontem foi um dia movimentado em Manaus' — "
-        f"comece direto com o fato mais relevante do dia. "
-        f"Escreva em português, de forma clara e objetiva, sem usar bullet points.\n\n"
+        f"'Esses são os destaques' ou similares — termine no último fato relevante. "
+        f"Escreva em português, de forma clara e objetiva, sem usar bullet points."
+    )
+
+    return (
+        f"Você é um jornalista que escreve resumos diários de notícias {about}. "
+        f"Com base nas manchetes e trechos de vídeos abaixo, escreva um parágrafo conciso (4 a 6 frases) "
+        f"resumindo os principais acontecimentos. "
+        f"{topic_filter}"
+        f"{temporal}"
+        f"{regras_comuns}\n\n"
         f"Fontes:\n{headlines}"
     )
 
@@ -124,7 +144,7 @@ def generate_summary(topic_id: int | None = None, force: bool = False) -> DailyS
             topic = session.query(Topic).filter_by(id=topic_id).first()
             topic_name = topic.name if topic else None
 
-        prompt = _build_prompt(articles, topic_name)
+        prompt = _build_prompt(articles, topic_name, context="dashboard")
         text = _call_groq(prompt)
         if not text:
             return None
@@ -240,3 +260,41 @@ def run_daily_summary():
             print("  Artigos insuficientes para resumo.")
     finally:
         session.close()
+
+
+def generate_email_summaries(target_date: date) -> list[tuple[str, str, int]]:
+    """Gera resumos frescos com contexto 'email' (ontem) para o boletim diário.
+
+    Retorna lista de (summary_text, topic_name, article_count) ordenada por tema.
+    Não armazena no banco — usado diretamente pelo email sender.
+    """
+    session = get_session()
+    results = []
+    try:
+        start_utc, end_utc = _manaus_day_utc_range(target_date)
+        topics = session.query(Topic).filter(Topic.slug != "outros").order_by(Topic.display_order).all()
+
+        for topic in topics:
+            articles = (
+                session.query(Article).join(Source)
+                .filter(
+                    Article.published_at >= start_utc,
+                    Article.published_at < end_utc,
+                    Article.topic_id == topic.id,
+                    Source.active == True,
+                    Article.is_local == True,
+                )
+                .order_by(Article.published_at.desc())
+                .all()
+            )
+            if len(articles) < 5:
+                continue
+            prompt = _build_prompt(articles, topic.name, context="email")
+            text = _call_groq(prompt)
+            if text:
+                results.append((text, topic.name, len(articles)))
+                print(f"  [Email resumo] '{topic.name}': OK ({len(articles)} artigos)")
+            time.sleep(2)
+    finally:
+        session.close()
+    return results

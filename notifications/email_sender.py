@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, date
 from sqlalchemy.exc import IntegrityError
 from db.connection import get_session
 from db.models import EmailSubscription, DigestLog, DailySummary, Topic
+from nlp.summarizer import generate_email_summaries
 
 APP_URL = os.getenv("APP_URL", "https://www.observatorio.manaus.br")
 
@@ -286,28 +287,12 @@ def run_digest(min_summaries: int = 3, send_after_hour: int = 7, force: bool = F
             print("  [Digest] Já enviado hoje.")
             return 0
 
-        # Tenta ontem; se não houver resumos suficientes, usa hoje como fallback
-        target_date = yesterday
-        rows = (
-            session.query(DailySummary.summary, Topic.name, DailySummary.article_count)
-            .join(Topic, DailySummary.topic_id == Topic.id)
-            .filter(DailySummary.date == target_date)
-            .order_by(Topic.display_order)
-            .all()
-        )
-        if len(rows) < min_summaries:
-            print(f"  [Digest] Apenas {len(rows)} resumos de ontem — tentando hoje...")
-            target_date = today
-            rows = (
-                session.query(DailySummary.summary, Topic.name, DailySummary.article_count)
-                .join(Topic, DailySummary.topic_id == Topic.id)
-                .filter(DailySummary.date == target_date)
-                .order_by(Topic.display_order)
-                .all()
-            )
+        # Gera resumos frescos com contexto "email" (ontem) para o boletim
+        print(f"  [Digest] Gerando resumos de e-mail para {yesterday}...")
+        rows = generate_email_summaries(yesterday)
 
         if len(rows) < min_summaries:
-            print(f"  [Digest] Apenas {len(rows)} resumos disponíveis — sem envio.")
+            print(f"  [Digest] Apenas {len(rows)} resumos gerados — sem envio.")
             return 0
 
         subscribers = session.query(EmailSubscription).filter_by(active=True).all()
