@@ -91,12 +91,13 @@ def _build_prompt(articles, topic_name: str | None, context: str = "dashboard",
         )
     else:  # dashboard
         temporal = (
-            f"Este resumo é exibido em tempo real e reúne as notícias coletadas hoje ({date_str}). "
+            f"Este resumo é exibido em tempo real e reúne as notícias coletadas hoje ({date_str}), "
+            f"mas atenção: uma notícia coletada hoje pode relatar um evento que ocorreu ONTEM ou antes. "
             f"Descreva cada acontecimento com o tempo verbal que corresponde ao momento REAL do evento, "
             f"e não à data de publicação da notícia: passado para o que já ocorreu, "
             f"presente para o que está em andamento, e futuro para o que foi anunciado e ainda vai acontecer. "
-            f"Se uma notícia de hoje se referir a um fato ocorrido ontem, use 'ontem' e o passado — "
-            f"não force o advérbio 'hoje' em todos os fatos. "
+            f"NÃO assuma que o evento aconteceu hoje só porque a notícia é de hoje — "
+            f"use 'ontem' e o passado quando a notícia indicar que o fato já ocorreu, e não force 'hoje' nem 'nesta manhã'. "
             f"Não use frases de abertura genéricas como 'Hoje foi um dia movimentado' — "
             f"comece direto com o fato mais relevante. "
         )
@@ -109,6 +110,13 @@ def _build_prompt(articles, topic_name: str | None, context: str = "dashboard",
         f"Ao mencionar instituições (hospitais, escolas, órgãos), sempre identifique o nome completo. "
         f"Inclua apenas fatos com contexto suficiente para o leitor entender — "
         f"ignore manchetes que pareçam fragmentos sem contexto claro. "
+        f"DEDUPLICAÇÃO: várias manchetes podem cobrir o MESMO acontecimento (de fontes diferentes). "
+        f"Trate cada acontecimento UMA ÚNICA VEZ — nunca escreva duas frases sobre o mesmo evento, "
+        f"mesmo que apareça repetido em várias fontes. Reúna as informações e mencione o fato apenas uma vez. "
+        f"NÃO invente precisão temporal: só diga 'pela manhã', 'à tarde', 'à noite' ou um horário "
+        f"se isso estiver EXPLÍCITO nas fontes. Se as fontes não indicam a hora do evento, não a mencione. "
+        f"Da mesma forma, não afirme que algo aconteceu hoje se as fontes não confirmam a data — "
+        f"uma notícia publicada hoje pode relatar um evento de um dia anterior. Na dúvida, não atribua data nem hora. "
         f"PROIBIDO usar frases de encerramento genéricas como 'Esses foram alguns dos principais acontecimentos', "
         f"'Esses são os destaques' ou similares — termine no último fato relevante. "
         f"Escreva em português, de forma clara e objetiva, sem usar bullet points."
