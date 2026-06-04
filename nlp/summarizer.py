@@ -84,6 +84,10 @@ def _build_prompt(articles, topic_name: str | None, context: str = "dashboard",
             f"Não force tudo para o passado nem use 'ontem' em fatos que se referem ao futuro. "
             f"Não use frases de abertura genéricas como 'Ontem foi um dia movimentado' — "
             f"comece direto com o fato mais relevante. "
+            f"IMPORTANTE: NÃO inicie o parágrafo com a palavra 'Ontem'. Comece pelo sujeito da notícia "
+            f"(o órgão, a pessoa, o evento) — por exemplo 'A Prefeitura de Manaus inaugurou...' ou "
+            f"'Uma operação da Polícia Civil resultou em...'. O contexto temporal (ontem) deve aparecer "
+            f"naturalmente ao longo do texto quando necessário, não como primeira palavra. "
         )
     else:  # dashboard
         temporal = (
