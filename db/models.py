@@ -87,3 +87,22 @@ class DailySummary(Base):
     image_data: Mapped[bytes] = mapped_column(LargeBinary, nullable=True)
 
     topic: Mapped["Topic"] = relationship()
+
+
+class DailySummaryVersion(Base):
+    """Log append-only de todas as versões geradas de cada resumo do dia.
+
+    Diferente de DailySummary (uma versão 'atual' por date/topic_id), aqui cada
+    regeneração vira uma nova linha — preserva o histórico para estudos futuros.
+    """
+    __tablename__ = "daily_summary_versions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    topic_id: Mapped[int] = mapped_column(ForeignKey("topics.id"), nullable=True)
+    summary: Mapped[str] = mapped_column(Text, nullable=False)
+    article_ids: Mapped[dict] = mapped_column(JSON, nullable=False)
+    article_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    generated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    topic: Mapped["Topic"] = relationship()

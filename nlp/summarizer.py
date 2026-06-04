@@ -3,7 +3,7 @@ import time
 from datetime import date, datetime, timedelta
 from sqlalchemy.exc import IntegrityError
 from db.connection import get_session
-from db.models import Article, Source, Topic, DailySummary
+from db.models import Article, Source, Topic, DailySummary, DailySummaryVersion
 
 def _manaus_today() -> date:
     return (datetime.utcnow() - timedelta(hours=4)).date()
@@ -159,6 +159,7 @@ def generate_summary(topic_id: int | None = None, force: bool = False) -> DailyS
 
         source_names = list({a.source.name for a in articles})
         article_ids = [a.id for a in articles]
+        now = datetime.utcnow()
 
         summary = DailySummary(
             date=today,
@@ -166,7 +167,17 @@ def generate_summary(topic_id: int | None = None, force: bool = False) -> DailyS
             summary=text,
             article_ids=article_ids,
             article_count=len(articles),
-            generated_at=datetime.utcnow(),
+            generated_at=now,
+        )
+
+        # Registra a versão no log append-only (mantém histórico para estudos)
+        version = DailySummaryVersion(
+            date=today,
+            topic_id=topic_id,
+            summary=text,
+            article_ids=article_ids,
+            article_count=len(articles),
+            generated_at=now,
         )
 
         if existing:
@@ -174,6 +185,7 @@ def generate_summary(topic_id: int | None = None, force: bool = False) -> DailyS
             session.flush()
 
         session.add(summary)
+        session.add(version)
         session.commit()
         session.refresh(summary)
         return summary
