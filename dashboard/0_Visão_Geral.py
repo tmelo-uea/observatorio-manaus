@@ -52,21 +52,6 @@ def get_db():
     return get_engine()
 
 
-def _render_daily_image(engine):
-    """Exibe a imagem do dia anterior se disponível."""
-    from datetime import date as _date, timedelta as _td
-    yesterday = (datetime.utcnow() - _td(hours=4)).date() - _td(days=1)
-    with engine.connect() as conn:
-        row = conn.execute(text(
-            "SELECT image_data FROM daily_summaries WHERE date = :d AND topic_id IS NULL"
-        ), {"d": yesterday}).fetchone()
-    if row and row[0]:
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            st.image(row[0], use_column_width=True,
-                     caption=f"Ilustração do dia — {yesterday.strftime('%d/%m/%Y')}")
-        st.divider()
-
 @st.cache_resource
 def init_db():
     from db.connection import Base
