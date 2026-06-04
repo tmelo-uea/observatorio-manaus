@@ -11,7 +11,6 @@ from collector.youtube_collector import run_youtube_collection
 from nlp.classifier import run_classification, reclassify_outros
 from nlp.local_classifier import run_local_classification, backfill_local_keywords
 from nlp.summarizer import run_daily_summary, run_topic_summaries
-from nlp.image_generator import generate_daily_image
 from scripts.backfill_transcripts import backfill
 from notifications.email_sender import run_digest
 
@@ -33,7 +32,6 @@ def job():
     reclassify_outros(batch_size=200)  # reclassifica vídeos que ganharam transcript
     run_daily_summary()
     run_topic_summaries(min_articles=5)
-    generate_daily_image()
     run_digest()
 
 print("Observatório do Amazonas — Coletor iniciado")

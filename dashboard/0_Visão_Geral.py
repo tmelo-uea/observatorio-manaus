@@ -255,11 +255,6 @@ except Exception as e:
     st.error(f"Erro ao conectar ao banco de dados: {e}")
     st.stop()
 
-try:
-    _render_daily_image(get_db())
-except Exception:
-    pass
-
 if df.empty:
     st.warning("Nenhum artigo coletado para o período selecionado.")
     st.stop()
