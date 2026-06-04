@@ -343,13 +343,9 @@ def _groq_classify(text: str) -> bool:
         return False
     try:
         from groq import Groq
+        from nlp.prompts import render
         client = Groq(api_key=api_key)
-        prompt = (
-            "Você é um classificador de notícias. Responda apenas 'sim' ou 'não'.\n\n"
-            "A notícia abaixo é sobre a cidade de Manaus ou o estado do Amazonas "
-            "(inclui fatos que ocorrem lá, pessoas, instituições ou eventos locais)?\n\n"
-            f"Notícia: {text[:500]}"
-        )
+        prompt = render("is_local", text=text[:500])
         response = client.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=[{"role": "user", "content": prompt}],

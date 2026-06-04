@@ -4,6 +4,7 @@ from datetime import date, datetime, timedelta
 from sqlalchemy.exc import IntegrityError
 from db.connection import get_session
 from db.models import Article, Source, Topic, DailySummary, DailySummaryVersion
+from nlp.prompts import render, get_template
 
 def _manaus_today() -> date:
     return (datetime.utcnow() - timedelta(hours=4)).date()
@@ -60,84 +61,22 @@ def _build_prompt(articles, topic_name: str | None, context: str = "dashboard",
     date_str = ref_date.strftime("%d/%m/%Y") if ref_date else ""
 
     if topic_name:
-        topic_filter = (
-            f"FOCO EXCLUSIVO NO TEMA '{topic_name}': inclua APENAS conteúdo diretamente "
-            f"relacionado a {topic_name}. Conteúdo sobre outros temas pode ter sido classificado "
-            f"erroneamente — IGNORE esses itens mesmo que estejam na lista. "
-            f"Se não houver conteúdo suficiente sobre {topic_name}, "
-            f"escreva apenas sobre o que realmente pertence ao tema. "
-        )
+        topic_filter = render("summary.topic_filter", topic_name=topic_name)
         about = f"sobre o tema '{topic_name}' na cidade de Manaus"
     else:
         topic_filter = ""
         about = "sobre a cidade de Manaus"
 
-    # O tempo verbal acompanha o momento REAL de cada evento, não a data de publicação da notícia.
-    if context == "email":
-        temporal = (
-            f"Este é um boletim enviado na manhã seguinte, recapitulando as notícias publicadas ontem ({date_str}). "
-            f"Descreva cada acontecimento com o tempo verbal que corresponde ao momento REAL do evento, "
-            f"e não à data de publicação da notícia: passado para o que já ocorreu, "
-            f"presente para serviços ou situações contínuas, e FUTURO para o que foi apenas anunciado "
-            f"e ainda vai acontecer depois daquela data — por exemplo, um feriado, evento ou serviço "
-            f"programado para os dias seguintes (use 'vai manter', 'ocorrerá', 'está previsto'). "
-            f"Não force tudo para o passado nem use 'ontem' em fatos que se referem ao futuro. "
-            f"Não use frases de abertura genéricas como 'Ontem foi um dia movimentado' — "
-            f"comece direto com o fato mais relevante. "
-            f"IMPORTANTE: NÃO inicie o parágrafo com a palavra 'Ontem'. Comece pelo sujeito da notícia "
-            f"(o órgão, a pessoa, o evento) — por exemplo 'A Prefeitura de Manaus inaugurou...' ou "
-            f"'Uma operação da Polícia Civil resultou em...'. O contexto temporal (ontem) deve aparecer "
-            f"naturalmente ao longo do texto quando necessário, não como primeira palavra. "
-        )
-    else:  # dashboard
-        temporal = (
-            f"Este resumo é exibido em tempo real e reúne as notícias coletadas hoje ({date_str}), "
-            f"mas atenção: uma notícia coletada hoje pode relatar um evento que ocorreu ONTEM ou antes. "
-            f"Descreva cada acontecimento com o tempo verbal que corresponde ao momento REAL do evento, "
-            f"e não à data de publicação da notícia: passado para o que já ocorreu, "
-            f"presente para o que está em andamento, e futuro para o que foi anunciado e ainda vai acontecer. "
-            f"NÃO assuma que o evento aconteceu hoje só porque a notícia é de hoje — "
-            f"use 'ontem' e o passado quando a notícia indicar que o fato já ocorreu, e não force 'hoje' nem 'nesta manhã'. "
-            f"Não use frases de abertura genéricas como 'Hoje foi um dia movimentado' — "
-            f"comece direto com o fato mais relevante. "
-        )
+    temporal = render(f"summary.temporal.{context}", date_str=date_str)
+    regras_comuns = get_template("summary.common_rules")
 
-    regras_comuns = (
-        f"Inclua apenas fatos que dizem respeito à cidade de Manaus — ignore notícias "
-        f"de outros municípios do Amazonas ou de outros estados. "
-        f"IGNORE notícias de repercussão nacional sem ligação direta com Manaus, mesmo que publicadas "
-        f"por veículos locais — por exemplo, casos criminais, judiciais ou políticos de outros estados "
-        f"(como o Caso Henry Borel, do Rio de Janeiro). Um portal amazonense republicar uma notícia "
-        f"nacional NÃO a torna local. "
-        f"NÃO cite as fontes/veículos dentro do texto: nunca escreva 'segundo o portal X', "
-        f"'conforme noticiado por', 'de acordo com a fonte Y' ou similares. O resumo deve ser um texto "
-        f"jornalístico fluido, narrando os fatos diretamente, sem atribuir cada frase a um veículo. "
-        f"Preserve os nomes completos de pessoas, órgãos e locais mencionados. "
-        f"Ao mencionar pessoas, use apenas o nome e o cargo exatamente como aparecem nas fontes. "
-        f"Ao mencionar instituições, campanhas ou programas (hospitais, escolas, órgãos, campanhas), "
-        f"sempre identifique o nome completo — nunca escreva apenas 'uma campanha' ou 'o programa' sem nomear. "
-        f"Inclua apenas fatos com contexto suficiente para o leitor entender — "
-        f"ignore manchetes que pareçam fragmentos sem contexto claro. "
-        f"DEDUPLICAÇÃO: várias manchetes podem cobrir o MESMO acontecimento (de fontes diferentes). "
-        f"Trate cada acontecimento UMA ÚNICA VEZ — nunca escreva duas frases sobre o mesmo evento, "
-        f"mesmo que apareça repetido em várias fontes. Reúna as informações e mencione o fato apenas uma vez. "
-        f"NÃO invente precisão temporal: só diga 'pela manhã', 'à tarde', 'à noite' ou um horário "
-        f"se isso estiver EXPLÍCITO nas fontes. Se as fontes não indicam a hora do evento, não a mencione. "
-        f"Da mesma forma, não afirme que algo aconteceu hoje se as fontes não confirmam a data — "
-        f"uma notícia publicada hoje pode relatar um evento de um dia anterior. Na dúvida, não atribua data nem hora. "
-        f"PROIBIDO usar frases de encerramento genéricas como 'Esses foram alguns dos principais acontecimentos', "
-        f"'Esses são os destaques' ou similares — termine no último fato relevante. "
-        f"Escreva em português, de forma clara e objetiva, sem usar bullet points."
-    )
-
-    return (
-        f"Você é um jornalista que escreve resumos diários de notícias {about}. "
-        f"Com base nas manchetes e trechos de vídeos abaixo, escreva um parágrafo conciso (4 a 6 frases) "
-        f"resumindo os principais acontecimentos. "
-        f"{topic_filter}"
-        f"{temporal}"
-        f"{regras_comuns}\n\n"
-        f"Fontes:\n{headlines}"
+    return render(
+        "summary.intro",
+        about=about,
+        topic_filter=topic_filter,
+        temporal=temporal,
+        regras_comuns=regras_comuns,
+        headlines=headlines,
     )
 
 

@@ -11,12 +11,14 @@ from collector.youtube_collector import run_youtube_collection
 from nlp.classifier import run_classification, reclassify_outros
 from nlp.local_classifier import run_local_classification, backfill_local_keywords
 from nlp.summarizer import run_daily_summary, run_topic_summaries
+from nlp.prompts import seed_prompts
 from scripts.backfill_transcripts import backfill
 from notifications.email_sender import run_digest
 
 Base.metadata.create_all(get_engine())
 run_migrations()
 seed_all()
+seed_prompts()
 
 
 def job():
