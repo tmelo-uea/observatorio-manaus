@@ -43,6 +43,23 @@ def _captions(video_id: str) -> str | None:
         return None
 
 
+def _get_cookies_file() -> str | None:
+    """Decodifica cookies do YouTube da variável de ambiente para arquivo temporário."""
+    import base64, gzip, tempfile
+    b64 = os.getenv("YOUTUBE_COOKIES_B64")
+    if not b64:
+        return None
+    try:
+        data = gzip.decompress(base64.b64decode(b64))
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".txt", mode="wb")
+        tmp.write(data)
+        tmp.close()
+        return tmp.name
+    except Exception as e:
+        print(f"  [cookies] Erro ao decodificar: {e}")
+        return None
+
+
 def _groq_transcribe(video_url: str, video_id: str) -> str | None:
     """Baixa o áudio e transcreve via Groq Whisper."""
     api_key = os.getenv("GROQ_API_KEY")
@@ -50,20 +67,26 @@ def _groq_transcribe(video_url: str, video_id: str) -> str | None:
         return None
 
     audio_path = f"/tmp/{video_id}.mp3"
+    cookies_file = _get_cookies_file()
+    cmd = [
+        "yt-dlp", "-x",
+        "--audio-format", "mp3",
+        "--audio-quality", "9",
+        "-o", audio_path,
+        "--no-playlist",
+        "--quiet",
+        "--js-runtimes", "node",
+        "--remote-components", "ejs:github",
+    ]
+    if cookies_file:
+        cmd += ["--cookies", cookies_file]
+    cmd.append(video_url)
+
     try:
-        proc = subprocess.run(
-            [
-                "yt-dlp", "-x",
-                "--audio-format", "mp3",
-                "--audio-quality", "9",
-                "-o", audio_path,
-                "--no-playlist",
-                "--quiet",
-                video_url,
-            ],
-            capture_output=True,
-            timeout=180,
-        )
+        proc = subprocess.run(cmd, capture_output=True, timeout=180)
+        if cookies_file and os.path.exists(cookies_file):
+            os.remove(cookies_file)
+
         if proc.returncode != 0 or not os.path.exists(audio_path):
             stderr = proc.stderr.decode(errors="replace").strip()
             print(f"  [yt-dlp] {video_id} falhou (code {proc.returncode}): {stderr[:200]}")
