@@ -44,16 +44,20 @@ def _format_article(article) -> str:
     return f"- [{article.source.name}] {article.title}"
 
 
-def _build_prompt(articles, topic_name: str | None, context: str = "dashboard") -> str:
+def _build_prompt(articles, topic_name: str | None, context: str = "dashboard",
+                  ref_date: date | None = None) -> str:
     """Constrói o prompt de resumo.
 
     context="dashboard" → resumo do dia em curso, visível na página principal.
     context="email"     → balanço do dia anterior, enviado por e-mail na manhã seguinte.
+    ref_date            → data das notícias resumidas (usada para ancorar o tempo verbal).
     """
     youtube = [a for a in articles if getattr(a.source, "type", None) == "youtube" and a.transcript]
     rss = [a for a in articles if a not in youtube]
     selected = youtube[:10] + rss[:30]
     headlines = "\n".join(_format_article(a) for a in selected)
+
+    date_str = ref_date.strftime("%d/%m/%Y") if ref_date else ""
 
     if topic_name:
         topic_filter = (
@@ -68,25 +72,29 @@ def _build_prompt(articles, topic_name: str | None, context: str = "dashboard") 
         topic_filter = ""
         about = "sobre a cidade de Manaus"
 
-    # Instruções temporais diferem conforme o destino do resumo
+    # O tempo verbal acompanha o momento REAL de cada evento, não a data de publicação da notícia.
     if context == "email":
         temporal = (
-            f"Use o tempo verbal adequado ao contexto de cada notícia. "
-            f"Para eventos já concluídos, use passado ('realizou', 'prendeu'). "
-            f"Para serviços ou situações contínuas, use presente ('mantém', 'está em funcionamento'). "
-            f"Nunca use a palavra 'hoje' — use 'ontem', 'neste feriado' ou o contexto temporal adequado. "
+            f"Este é um boletim enviado na manhã seguinte, recapitulando as notícias publicadas ontem ({date_str}). "
+            f"Descreva cada acontecimento com o tempo verbal que corresponde ao momento REAL do evento, "
+            f"e não à data de publicação da notícia: passado para o que já ocorreu, "
+            f"presente para serviços ou situações contínuas, e FUTURO para o que foi apenas anunciado "
+            f"e ainda vai acontecer depois daquela data — por exemplo, um feriado, evento ou serviço "
+            f"programado para os dias seguintes (use 'vai manter', 'ocorrerá', 'está previsto'). "
+            f"Não force tudo para o passado nem use 'ontem' em fatos que se referem ao futuro. "
             f"Não use frases de abertura genéricas como 'Ontem foi um dia movimentado' — "
             f"comece direto com o fato mais relevante. "
         )
     else:  # dashboard
         temporal = (
-            f"Use o tempo verbal adequado ao contexto de cada notícia. "
-            f"Para eventos já concluídos hoje, use passado ('realizou', 'prendeu'). "
-            f"Para serviços ou situações em andamento, use presente ('mantém', 'está em funcionamento'). "
-            f"Nunca use a palavra 'ontem' — as notícias são de hoje. Use 'hoje', "
-            f"'nesta manhã', 'nesta tarde', 'neste feriado' ou o contexto temporal adequado. "
+            f"Este resumo é exibido em tempo real e reúne as notícias coletadas hoje ({date_str}). "
+            f"Descreva cada acontecimento com o tempo verbal que corresponde ao momento REAL do evento, "
+            f"e não à data de publicação da notícia: passado para o que já ocorreu, "
+            f"presente para o que está em andamento, e futuro para o que foi anunciado e ainda vai acontecer. "
+            f"Se uma notícia de hoje se referir a um fato ocorrido ontem, use 'ontem' e o passado — "
+            f"não force o advérbio 'hoje' em todos os fatos. "
             f"Não use frases de abertura genéricas como 'Hoje foi um dia movimentado' — "
-            f"comece direto com o fato mais relevante do dia. "
+            f"comece direto com o fato mais relevante. "
         )
 
     regras_comuns = (
@@ -144,7 +152,7 @@ def generate_summary(topic_id: int | None = None, force: bool = False) -> DailyS
             topic = session.query(Topic).filter_by(id=topic_id).first()
             topic_name = topic.name if topic else None
 
-        prompt = _build_prompt(articles, topic_name, context="dashboard")
+        prompt = _build_prompt(articles, topic_name, context="dashboard", ref_date=today)
         text = _call_groq(prompt)
         if not text:
             return None
@@ -289,7 +297,7 @@ def generate_email_summaries(target_date: date) -> list[tuple[str, str, int]]:
             )
             if len(articles) < 5:
                 continue
-            prompt = _build_prompt(articles, topic.name, context="email")
+            prompt = _build_prompt(articles, topic.name, context="email", ref_date=target_date)
             text = _call_groq(prompt)
             if text:
                 results.append((text, topic.name, len(articles)))
