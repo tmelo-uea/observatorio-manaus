@@ -85,6 +85,10 @@ def reclassify_is_local(recent_days=None, apply=False, batch_size=500, max_llm=5
         if recent_days:
             cutoff = datetime.utcnow() - timedelta(days=recent_days)
             q = q.filter(Article.published_at >= cutoff)
+        # Mais novo -> mais antigo: as correções recentes (que afetam os resumos
+        # e o dashboard atuais) acontecem primeiro; se o limite diário do Groq
+        # interromper, o conteúdo relevante já terá sido reavaliado.
+        q = q.order_by(Article.published_at.desc())
         ids = [i for (i,) in q.all()]
         total = len(ids)
         escopo = f"últimos {recent_days} dias" if recent_days else "todos"
