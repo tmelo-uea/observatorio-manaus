@@ -6,7 +6,7 @@ from db.models import Article
 
 LOCAL_TERMS = {
     "cidade_estado": [
-        "manaus", "amazonas", "am", "manauara", "manauaras", "manauense",
+        "manaus", "amazonas", "manauara", "manauaras", "manauense",
         "manauenses", "capital amazonense", "capital do amazonas",
         "estado do amazonas", "interior do amazonas",
         "região metropolitana de manaus", "rmm", "grande manaus",
