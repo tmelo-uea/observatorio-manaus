@@ -14,7 +14,7 @@ import time
 from datetime import datetime, timedelta, date
 from db.connection import get_session
 from db.models import Article, Source, Topic, DailySummary
-from nlp.summarizer import _build_prompt, _call_groq
+from nlp.summarizer import _build_prompt, _call_llm
 
 
 def _manaus_day_utc_range(d: date):
@@ -51,7 +51,7 @@ def regenerate_for_date(target_date: date):
 
             print(f"\n  📝 {topic.name}: {len(articles)} artigos")
             prompt = _build_prompt(articles, topic.name)
-            text = _call_groq(prompt)
+            text = _call_llm(prompt)
 
             if not text:
                 print(f"     ❌ Falha ao gerar resumo")
@@ -81,7 +81,7 @@ def regenerate_for_date(target_date: date):
 
             session.commit()
             print(f"     ✓ Resumo salvo ({len(text)} chars)")
-            time.sleep(2)  # Evita rate limit do Groq
+            time.sleep(2)  # Evita rate limit do provedor
 
         # Resumo geral (sem topic_id)
         print(f"\n  📝 Resumo geral do dia")
@@ -95,7 +95,7 @@ def regenerate_for_date(target_date: date):
 
         if len(articles) >= 3:
             prompt = _build_prompt(articles, None)
-            text = _call_groq(prompt)
+            text = _call_llm(prompt)
 
             if text:
                 existing = session.query(DailySummary).filter_by(

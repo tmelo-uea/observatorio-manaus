@@ -16,23 +16,23 @@ def _manaus_day_utc_range(d: date):
     return start, end
 
 
-def _call_groq(prompt: str) -> str | None:
-    api_key = os.getenv("GROQ_API_KEY")
+def _call_llm(prompt: str) -> str | None:
+    api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
-        print("  [Groq summarizer] GROQ_API_KEY não configurada — resumo não gerado.")
+        print("  [OpenAI summarizer] OPENAI_API_KEY não configurada — resumo não gerado.")
         return None
     try:
-        from groq import Groq
-        client = Groq(api_key=api_key)
+        from openai import OpenAI
+        client = OpenAI(api_key=api_key)
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=400,
             temperature=0.4,
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
-        print(f"  [Groq summarizer] Erro na API: {e}")
+        print(f"  [OpenAI summarizer] Erro na API: {e}")
         return None
 
 
@@ -112,7 +112,7 @@ def generate_summary(topic_id: int | None = None, force: bool = False) -> DailyS
             topic_name = topic.name if topic else None
 
         prompt = _build_prompt(articles, topic_name, context="dashboard", ref_date=today)
-        text = _call_groq(prompt)
+        text = _call_llm(prompt)
         if not text:
             return None
 
@@ -206,7 +206,7 @@ def run_topic_summaries(min_articles: int = 10):
                 print(f"  [Resumos por tema] '{topic.name}': resumo salvo com {result.article_count} artigos.")
             else:
                 print(f"  [Resumos por tema] '{topic.name}': falha ao gerar resumo.")
-            time.sleep(2)  # evita rate limit do Groq entre chamadas consecutivas
+            time.sleep(2)  # evita rate limit do provedor entre chamadas consecutivas
     finally:
         session.close()
 
@@ -269,7 +269,7 @@ def generate_email_summaries(target_date: date) -> list[tuple[str, str, int]]:
             if len(articles) < 5:
                 continue
             prompt = _build_prompt(articles, topic.name, context="email", ref_date=target_date)
-            text = _call_groq(prompt)
+            text = _call_llm(prompt)
             if text:
                 results.append((text, topic.name, len(articles)))
                 print(f"  [Email resumo] '{topic.name}': OK ({len(articles)} artigos)")
