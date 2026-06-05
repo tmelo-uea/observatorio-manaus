@@ -16,6 +16,9 @@ def _manaus_day_utc_range(d: date):
     return start, end
 
 
+SUMMARY_MODEL = "gpt-4o-mini"
+
+
 def _call_llm(prompt: str) -> str | None:
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
@@ -25,12 +28,17 @@ def _call_llm(prompt: str) -> str | None:
         from openai import OpenAI
         client = OpenAI(api_key=api_key)
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=SUMMARY_MODEL,
             messages=[{"role": "user", "content": prompt}],
             max_tokens=400,
             temperature=0.4,
         )
-        return response.choices[0].message.content.strip()
+        text = response.choices[0].message.content.strip()
+        usage = response.usage
+        tokens = (f"{usage.prompt_tokens}+{usage.completion_tokens} tokens"
+                  if usage else "tokens n/d")
+        print(f"  [OpenAI summarizer] OK — {SUMMARY_MODEL}, {len(text)} chars, {tokens}")
+        return text
     except Exception as e:
         print(f"  [OpenAI summarizer] Erro na API: {e}")
         return None
