@@ -25,13 +25,14 @@ DEFAULT_PROMPTS: dict[str, str] = {
         "escreva apenas sobre o que realmente pertence ao tema. "
     ),
     "summary.temporal.dashboard": (
-        "Este resumo é exibido em tempo real e reúne as notícias coletadas hoje ({date_str}), "
-        "mas atenção: uma notícia coletada hoje pode relatar um evento que ocorreu ONTEM ou antes. "
-        "Descreva cada acontecimento com o tempo verbal que corresponde ao momento REAL do evento, "
-        "e não à data de publicação da notícia: passado para o que já ocorreu, "
-        "presente para o que está em andamento, e futuro para o que foi anunciado e ainda vai acontecer. "
-        "NÃO assuma que o evento aconteceu hoje só porque a notícia é de hoje — "
-        "use 'ontem' e o passado quando a notícia indicar que o fato já ocorreu, e não force 'hoje' nem 'nesta manhã'. "
+        "Este resumo é exibido em tempo real e reúne as notícias coletadas hoje ({date_str}). "
+        "Descreva cada acontecimento com o tempo verbal que corresponde ao momento REAL do evento: "
+        "— Use PASSADO apenas se a notícia descreve o evento como já ocorrido ANTES de hoje "
+        "(palavras como 'ocorreu ontem', 'foi realizado', 'aconteceu na semana passada'). "
+        "— Use PRESENTE ou FUTURO se a notícia indica que o evento é de hoje ou de data posterior "
+        "('hoje', 'neste sábado', 'neste fim de semana', 'amanhã', 'nesta semana'): "
+        "nesses casos NUNCA use passado, mesmo que o anúncio do evento use 'ganhou' ou 'terá'. "
+        "— Uma notícia de hoje pode relatar evento de ontem: use passado e 'ontem' quando isso estiver claro. "
         "Não use frases de abertura genéricas como 'Hoje foi um dia movimentado' — "
         "comece direto com o fato mais relevante. "
     ),
@@ -144,19 +145,22 @@ def set_prompt(name: str, template: str, description: str | None = None) -> int:
 
 
 def seed_prompts() -> int:
-    """Insere no banco os prompts default que ainda não existem. Retorna quantos inseriu."""
+    """Insere ou atualiza no banco os prompts default. Retorna quantos foram alterados."""
     from db.connection import get_session
     from db.models import Prompt
     session = get_session()
-    inserted = 0
+    changes = 0
     try:
-        existing = {p.name for p in session.query(Prompt.name).all()}
+        existing = {p.name: p.template for p in session.query(Prompt).all()}
     finally:
         session.close()
     for name, template in DEFAULT_PROMPTS.items():
         if name not in existing:
             set_prompt(name, template, description="Seed inicial (default do código)")
-            inserted += 1
-    if inserted:
-        print(f"  [prompts] Seed: {inserted} prompts inseridos no banco.")
-    return inserted
+            changes += 1
+        elif existing[name] != template:
+            set_prompt(name, template, description="Atualizado pelo seed do código")
+            changes += 1
+    if changes:
+        print(f"  [prompts] Seed: {changes} prompts inseridos/atualizados no banco.")
+    return changes
