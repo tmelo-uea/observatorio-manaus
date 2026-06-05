@@ -21,6 +21,7 @@ Uso (dentro do Railway):
 """
 import sys
 import os
+import time
 import argparse
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -31,12 +32,15 @@ from db.models import Article
 from nlp.local_classifier import _keyword_match
 
 
+class DailyLimitReached(Exception):
+    """Limite diário (TPD/RPD) do Groq — não adianta retry hoje."""
+
+
 def _article_text(a) -> str:
     return f"{a.title or ''} {a.summary or ''} {a.transcript or ''}"
 
 
-def _llm_is_local(text: str) -> bool:
-    """Reavalia via LLM (mesmo modelo/prompt do pipeline). Levanta em erro."""
+def _llm_call(text: str) -> bool:
     from groq import Groq
     from nlp.prompts import render
     client = Groq(api_key=os.environ["GROQ_API_KEY"])
@@ -50,7 +54,31 @@ def _llm_is_local(text: str) -> bool:
     return resp.choices[0].message.content.strip().lower().startswith("sim")
 
 
-def reclassify_is_local(recent_days=None, apply=False, batch_size=500, max_llm=500):
+def _llm_is_local(text: str, max_retries: int = 4) -> bool:
+    """Reavalia via LLM com retry/backoff em rate limit por minuto.
+
+    - 429 por minuto (RPM/TPM): espera e tenta de novo (até max_retries).
+    - Limite diário (TPD/RPD, mensagem 'per day'): levanta DailyLimitReached.
+    - Outros erros: propaga.
+    """
+    for attempt in range(max_retries):
+        try:
+            return _llm_call(text)
+        except Exception as e:
+            msg = str(e).lower()
+            if "per day" in msg or "tpd" in msg or "rpd" in msg:
+                raise DailyLimitReached(str(e))
+            if "rate_limit" in msg or "429" in msg or "too many requests" in msg:
+                wait = 15 * (attempt + 1)
+                print(f"    rate limit; aguardando {wait}s e tentando de novo "
+                      f"({attempt + 1}/{max_retries})...")
+                time.sleep(wait)
+                continue
+            raise
+    raise DailyLimitReached("rate limit por minuto persistente após retries")
+
+
+def reclassify_is_local(recent_days=None, apply=False, batch_size=500, max_llm=500, sleep=1.0):
     session = get_session()
     try:
         q = session.query(Article.id).filter(Article.is_local.is_(True))
@@ -89,7 +117,7 @@ def reclassify_is_local(recent_days=None, apply=False, batch_size=500, max_llm=5
                 try:
                     local = _llm_is_local(_article_text(a))
                 except Exception as e:
-                    stopped = f"erro/limite do Groq ({e})"
+                    stopped = f"limite/erro do Groq ({e})"
                     break
                 llm_calls += 1
                 if local:
@@ -99,6 +127,8 @@ def reclassify_is_local(recent_days=None, apply=False, batch_size=500, max_llm=5
                     a.is_local = False
                     if len(examples_false) < 15:
                         examples_false.append((a.title or "(sem título)")[:90])
+                if sleep:
+                    time.sleep(sleep)
             if apply:
                 session.commit()
             done = min(start + batch_size, total)
@@ -141,10 +171,11 @@ def main():
     p.add_argument("--dry-run", action="store_true", help="apenas simula (padrão)")
     p.add_argument("--batch-size", type=int, default=500, help="tamanho do batch de commit")
     p.add_argument("--max-llm", type=int, default=500, help="máx. de chamadas LLM por execução")
+    p.add_argument("--sleep", type=float, default=1.0, help="pausa (s) entre chamadas LLM")
     args = p.parse_args()
     reclassify_is_local(
         recent_days=args.recent, apply=args.apply,
-        batch_size=args.batch_size, max_llm=args.max_llm,
+        batch_size=args.batch_size, max_llm=args.max_llm, sleep=args.sleep,
     )
 
 
