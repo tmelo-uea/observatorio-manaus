@@ -301,7 +301,7 @@ def run_digest(min_summaries: int = 3, send_after_hour: int = 7, force: bool = F
             _log_send(session, today, 0)
             return 0
 
-        subject = f"🔭 Observatório de Manaus — {target_date.strftime('%d/%m/%Y')}"
+        subject = f"🔭 Observatório de Manaus — {yesterday.strftime('%d/%m/%Y')}"
         sent = 0
         failed = 0
         last_error = ""
@@ -320,7 +320,7 @@ def run_digest(min_summaries: int = 3, send_after_hour: int = 7, force: bool = F
 
         for sub in subscribers:
             unsubscribe_url = f"{APP_URL}/?token={sub.unsubscribe_token}"
-            html = _build_html(list(rows), target_date, unsubscribe_url)
+            html = _build_html(list(rows), yesterday, unsubscribe_url)
 
             # Tenta Sendgrid primeiro, depois Brevo
             if use_sendgrid:
