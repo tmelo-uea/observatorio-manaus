@@ -363,12 +363,12 @@ except Exception as e:
 st.subheader("✨ Destaques do período")
 st.markdown(
     "Um retrato rápido dos últimos 30 dias em seis números. "
-    "**Dia mais movimentado** e **dia mais calmo** mostram os extremos de volume — "
+    "**Dia mais movimentado** e **dia mais calmo** mostram os extremos de volume, "
     "úteis para perceber se houve um fato que disparou a cobertura ou um período de baixa. "
     "**Portal mais ativo** indica qual veículo mais produziu notícias locais no período. "
     "**Hora de pico** revela o horário em que a imprensa mais publica, em média, a cada dia. "
     "**Tema dominante** aponta qual assunto mais pautou a cidade e o quanto ele representou "
-    "do total. **Média diária** dá a régua do ritmo normal de produção — o número de "
+    "do total. **Média diária** dá a régua do ritmo normal de produção, ou seja, o número de "
     "notícias locais que, em média, são publicadas por dia. "
     "Todos os valores consideram apenas notícias classificadas como locais (Manaus e Amazonas)."
 )
