@@ -54,6 +54,39 @@ Gera `backups/observatorio_AAAAMMDD_HHMMSS.sql.gz` e mantém os últimos
 
 ---
 
+## Enviar os backups para o Google Drive (rclone)
+
+Os dumps em `backups/` ficam só na máquina local. Para guardá-los na nuvem,
+use o `rclone` (já configurado com o remote `gdrive`, escopo `drive.file`,
+que só enxerga arquivos criados pelo próprio rclone).
+
+Enviar todos os backups locais para o Drive:
+
+```bash
+./scripts/upload_backups.sh
+```
+
+Isso usa `rclone copy` (nunca apaga nada no Drive) e manda os arquivos para
+a pasta `gdrive:Backups-Observatorio`. Para outro remote/pasta:
+
+```bash
+RCLONE_REMOTE="gdrive:OutraPasta" ./scripts/upload_backups.sh
+```
+
+O `backup_db.sh` (Método 2) também envia automaticamente para o Drive se
+`RCLONE_REMOTE` estiver definido:
+
+```bash
+RCLONE_REMOTE="gdrive:Backups-Observatorio" \
+    BACKUP_DATABASE_URL="mysql://..." ./scripts/backup_db.sh
+```
+
+> Reconfigurar o rclone em outra máquina: instale o rclone e rode
+> `rclone config create gdrive drive scope drive.file` (faz login no Google
+> pelo navegador). O token fica em `~/.config/rclone/rclone.conf` — é secreto.
+
+---
+
 ## Restaurar em outra hospedagem (recuperação de desastre)
 
 1. Clone o repositório:

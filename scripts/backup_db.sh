@@ -65,3 +65,10 @@ if [ "${#old[@]}" -gt 0 ]; then
     rm -f "${old[@]}"
     echo "Removidos ${#old[@]} backup(s) antigo(s) (mantendo $KEEP)." >&2
 fi
+
+# Upload opcional para o Google Drive (se RCLONE_REMOTE estiver definido e
+# rclone disponível). Use, por ex.: RCLONE_REMOTE=gdrive:Backups-Observatorio
+if [ -n "${RCLONE_REMOTE:-}" ] && command -v rclone >/dev/null 2>&1; then
+    echo "Enviando para $RCLONE_REMOTE ..." >&2
+    rclone copy "$out" "$RCLONE_REMOTE" && echo "Enviado ao Drive: $RCLONE_REMOTE" >&2
+fi
