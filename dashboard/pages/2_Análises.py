@@ -153,6 +153,23 @@ def build_evolution_fig(df: pd.DataFrame, colors: dict[str, str]) -> go.Figure:
     return fig
 
 
+TOPIC_SHORT = {
+    "Infraestrutura e Mobilidade": "Infraestrutura",
+    "Tecnologia e Inovação":       "Tecnologia",
+    "Economia e Negócios":         "Economia",
+    "Segurança Pública":           "Segurança",
+    "Política e Governo":          "Política",
+    "Social e Cidadania":          "Social",
+    "Cultura e Lazer":             "Cultura",
+    "Meio Ambiente":               "Meio Ambiente",
+    "Justiça e Direito":           "Justiça",
+    "Educação":                    "Educação",
+    "Saúde":                       "Saúde",
+    "Esporte":                     "Esporte",
+    "Outros":                      "Outros",
+}
+
+
 def build_profile_fig(df: pd.DataFrame) -> go.Figure | None:
     # Top 15 fontes por volume total no período
     top_sources = (
@@ -166,26 +183,34 @@ def build_profile_fig(df: pd.DataFrame) -> go.Figure | None:
     df["pct"] = df.apply(
         lambda r: round(r["cnt"] / source_totals[r["source"]] * 100), axis=1
     )
+    df["topic_short"] = df["topic"].map(lambda t: TOPIC_SHORT.get(t, t))
 
-    pivot = df.pivot_table(index="source", columns="topic", values="pct", fill_value=0)
-    pivot = pivot.reindex(top_sources)  # ordem por volume decrescente
+    pivot = df.pivot_table(index="source", columns="topic_short", values="pct", fill_value=0)
+    pivot = pivot.reindex(top_sources)
 
+    row_height = 44
     fig = go.Figure(go.Heatmap(
         z=pivot.values,
         x=pivot.columns.tolist(),
         y=pivot.index.tolist(),
         text=[[f"{v}%" if v > 0 else "" for v in row] for row in pivot.values],
         texttemplate="%{text}",
+        textfont=dict(size=11),
         colorscale="Blues",
         showscale=True,
-        colorbar=dict(title="% da cobertura"),
-        hovertemplate="<b>%{y}</b><br>%{x}: %{z}% das notícias<extra></extra>",
+        colorbar=dict(title="% cobertura"),
+        hovertemplate="<b>%{y}</b><br>%{x}: %{z}%<extra></extra>",
     ))
     fig.update_layout(
-        height=max(380, len(top_sources) * 36),
-        margin=dict(l=180, r=40, t=10, b=110),
+        height=max(420, len(top_sources) * row_height + 160),
+        margin=dict(l=200, r=60, t=10, b=140),
         plot_bgcolor="#fafafa",
-        xaxis=dict(tickangle=-35),
+        xaxis=dict(
+            tickangle=-90,
+            tickfont=dict(size=12),
+            side="bottom",
+        ),
+        yaxis=dict(tickfont=dict(size=12)),
     )
     return fig
 
