@@ -96,6 +96,58 @@ def load_source_profile(start_utc: datetime) -> pd.DataFrame:
         return pd.DataFrame(result.fetchall(), columns=result.keys())
 
 
+@st.cache_data(ttl=1800)
+def load_records(start_utc: datetime) -> dict:
+    """Recordes/superlativos do período (apenas notícias locais)."""
+    out: dict = {}
+    with get_db().connect() as conn:
+        row = conn.execute(text("""
+            SELECT COUNT(*) AS total,
+                   COUNT(DISTINCT DATE(published_at - INTERVAL 4 HOUR)) AS dias
+            FROM articles
+            WHERE published_at >= :start AND is_local = 1
+        """), {"start": start_utc}).fetchone()
+        out["total"] = int(row.total or 0)
+        out["dias"] = int(row.dias or 0)
+        if out["total"] == 0:
+            return out
+
+        dias = conn.execute(text("""
+            SELECT DATE(published_at - INTERVAL 4 HOUR) AS dia, COUNT(*) AS cnt
+            FROM articles
+            WHERE published_at >= :start AND is_local = 1
+            GROUP BY dia ORDER BY cnt
+        """), {"start": start_utc}).fetchall()
+        out["dia_calmo"] = (dias[0].dia, int(dias[0].cnt))
+        out["dia_movimentado"] = (dias[-1].dia, int(dias[-1].cnt))
+
+        p = conn.execute(text("""
+            SELECT s.name AS nome, COUNT(*) AS cnt
+            FROM articles a JOIN sources s ON a.source_id = s.id
+            WHERE a.published_at >= :start AND a.is_local = 1
+            GROUP BY s.name ORDER BY cnt DESC LIMIT 1
+        """), {"start": start_utc}).fetchone()
+        out["portal"] = (p.nome, int(p.cnt))
+
+        h = conn.execute(text("""
+            SELECT HOUR(published_at - INTERVAL 4 HOUR) AS hr, COUNT(*) AS cnt
+            FROM articles
+            WHERE published_at >= :start AND is_local = 1
+            GROUP BY hr ORDER BY cnt DESC LIMIT 1
+        """), {"start": start_utc}).fetchone()
+        out["hora_pico"] = (int(h.hr), int(h.cnt))
+
+        t = conn.execute(text("""
+            SELECT COALESCE(tp.name, 'Outros') AS nome, COUNT(*) AS cnt
+            FROM articles a LEFT JOIN topics tp ON a.topic_id = tp.id
+            WHERE a.published_at >= :start AND a.is_local = 1
+            GROUP BY nome ORDER BY cnt DESC LIMIT 1
+        """), {"start": start_utc}).fetchone()
+        out["tema"] = (t.nome, int(t.cnt))
+
+    return out
+
+
 def build_heatmap_fig(df: pd.DataFrame) -> go.Figure:
     matrix = pd.DataFrame(0, index=list(DOW_MAP.keys()), columns=list(range(24)))
     for _, row in df.iterrows():
@@ -215,6 +267,60 @@ def build_profile_fig(df: pd.DataFrame) -> go.Figure | None:
     return fig
 
 
+_MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho",
+          "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"]
+
+
+def _fmt_date(d) -> str:
+    return f"{d.day} de {_MESES[d.month - 1]}"
+
+
+def _num(n) -> str:
+    return f"{n:,}".replace(",", ".")
+
+
+def render_records(r: dict) -> None:
+    if not r or r.get("total", 0) == 0:
+        st.info("Dados insuficientes para os destaques do período.")
+        return
+
+    media = round(r["total"] / r["dias"]) if r["dias"] else 0
+    tema_nome, tema_cnt = r["tema"]
+    tema_pct = round(tema_cnt / r["total"] * 100)
+    hora_h, hora_cnt = r["hora_pico"]
+    hora_media = round(hora_cnt / r["dias"]) if r["dias"] else hora_cnt
+
+    cards = [
+        ("📅", "Dia mais movimentado", _fmt_date(r["dia_movimentado"][0]),
+         f"{_num(r['dia_movimentado'][1])} notícias"),
+        ("🗞️", "Portal mais ativo", r["portal"][0],
+         f"{_num(r['portal'][1])} notícias"),
+        ("⏰", "Hora de pico", f"{hora_h:02d}h",
+         f"média de {hora_media} por dia"),
+        ("🏷️", "Tema dominante", tema_nome,
+         f"{tema_pct}% das notícias"),
+        ("📊", "Média diária", f"{_num(media)} notícias", "por dia"),
+        ("🤫", "Dia mais calmo", _fmt_date(r["dia_calmo"][0]),
+         f"{_num(r['dia_calmo'][1])} notícias"),
+    ]
+
+    html = ('<div style="display:grid;grid-template-columns:repeat(3,1fr);'
+            'gap:12px;margin-bottom:8px;">')
+    for icon, label, big, sub in cards:
+        html += (
+            '<div style="background:#f8f9fa;border:1px solid #e5e7eb;'
+            'border-radius:10px;padding:16px 18px;">'
+            f'<div style="font-size:0.75rem;color:#6c757d;text-transform:uppercase;'
+            f'letter-spacing:0.04em;margin-bottom:8px;">{icon}&nbsp; {label}</div>'
+            f'<div style="font-size:1.2rem;font-weight:700;color:#1a3a5c;'
+            f'line-height:1.25;">{big}</div>'
+            f'<div style="font-size:0.85rem;color:#6c757d;margin-top:3px;">{sub}</div>'
+            '</div>'
+        )
+    html += '</div>'
+    st.markdown(html, unsafe_allow_html=True)
+
+
 # ── Layout ──────────────────────────────────────────────────────────────────
 
 st.markdown("""
@@ -241,12 +347,23 @@ start = _start_utc()
 
 try:
     topic_colors = load_topic_colors()
+    records = load_records(start)
     df_heatmap = load_heatmap(start)
     df_evolution = load_topic_evolution(start)
     df_profile = load_source_profile(start)
 except Exception as e:
     st.error(f"Erro ao carregar dados: {e}")
     st.stop()
+
+# ── Destaques do período ──────────────────────────────────────────────────────
+st.subheader("✨ Destaques do período")
+st.caption(
+    "Os números que se destacaram nos últimos 30 dias — recordes de volume, "
+    "o portal mais produtivo e o tema que mais pautou a cidade."
+)
+render_records(records)
+
+st.divider()
 
 # ── 1. Heatmap de atividade ──────────────────────────────────────────────────
 st.subheader("⏰ Ritmo de publicação")
