@@ -13,6 +13,7 @@ from nlp.local_classifier import run_local_classification, backfill_local_keywor
 from nlp.summarizer import run_daily_summary, run_topic_summaries
 from nlp.prompts import seed_prompts
 from scripts.backfill_transcripts import backfill
+from collector.content_fetcher import backfill_content
 from notifications.email_sender import run_digest
 
 Base.metadata.create_all(get_engine())
@@ -31,6 +32,7 @@ def job():
     n_local = run_local_classification()
     print(f"Localidade classificada: {n_local} artigos")
     backfill(limit=50)  # processa até 50 vídeos, respeitando limite de 20 min
+    backfill_content(limit=30)  # busca texto completo dos 30 artigos mais recentes sem content
     reclassify_outros(batch_size=200)  # reclassifica vídeos que ganharam transcript
     run_daily_summary()
     run_topic_summaries(min_articles=5)

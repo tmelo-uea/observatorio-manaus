@@ -83,6 +83,17 @@ def run_migrations():
             "UPDATE sources SET active = 0 WHERE url = 'https://www.youtube.com/@portalampost'"
         ))
 
+        # Adiciona coluna content se não existir
+        has_content = conn.execute(text(
+            "SELECT COUNT(*) FROM information_schema.COLUMNS "
+            "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'articles' "
+            "AND COLUMN_NAME = 'content'"
+        )).scalar()
+        if not has_content:
+            conn.execute(text("ALTER TABLE articles ADD COLUMN content LONGTEXT NULL"))
+            conn.commit()
+            print("Migration: coluna content adicionada.")
+
         # Adiciona coluna is_local se não existir
         has_is_local = conn.execute(text(
             "SELECT COUNT(*) FROM information_schema.COLUMNS "
