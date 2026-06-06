@@ -279,6 +279,10 @@ def _num(n) -> str:
     return f"{n:,}".replace(",", ".")
 
 
+def _noticias(n) -> str:
+    return f"{_num(n)} notícia" + ("" if n == 1 else "s")
+
+
 def render_records(r: dict) -> None:
     if not r or r.get("total", 0) == 0:
         st.info("Dados insuficientes para os destaques do período.")
@@ -292,16 +296,16 @@ def render_records(r: dict) -> None:
 
     cards = [
         ("📅", "Dia mais movimentado", _fmt_date(r["dia_movimentado"][0]),
-         f"{_num(r['dia_movimentado'][1])} notícias"),
+         _noticias(r["dia_movimentado"][1])),
         ("🗞️", "Portal mais ativo", r["portal"][0],
-         f"{_num(r['portal'][1])} notícias"),
+         _noticias(r["portal"][1])),
         ("⏰", "Hora de pico", f"{hora_h:02d}h",
          f"média de {hora_media} por dia"),
         ("🏷️", "Tema dominante", tema_nome,
          f"{tema_pct}% das notícias"),
-        ("📊", "Média diária", f"{_num(media)} notícias", "por dia"),
+        ("📊", "Média diária", _noticias(media), "por dia"),
         ("🤫", "Dia mais calmo", _fmt_date(r["dia_calmo"][0]),
-         f"{_num(r['dia_calmo'][1])} notícias"),
+         _noticias(r["dia_calmo"][1])),
     ]
 
     html = ('<div style="display:grid;grid-template-columns:repeat(3,1fr);'
@@ -357,9 +361,16 @@ except Exception as e:
 
 # ── Destaques do período ──────────────────────────────────────────────────────
 st.subheader("✨ Destaques do período")
-st.caption(
-    "Os números que se destacaram nos últimos 30 dias — recordes de volume, "
-    "o portal mais produtivo e o tema que mais pautou a cidade."
+st.markdown(
+    "Um retrato rápido dos últimos 30 dias em seis números. "
+    "**Dia mais movimentado** e **dia mais calmo** mostram os extremos de volume — "
+    "úteis para perceber se houve um fato que disparou a cobertura ou um período de baixa. "
+    "**Portal mais ativo** indica qual veículo mais produziu notícias locais no período. "
+    "**Hora de pico** revela o horário em que a imprensa mais publica, em média, a cada dia. "
+    "**Tema dominante** aponta qual assunto mais pautou a cidade e o quanto ele representou "
+    "do total. **Média diária** dá a régua do ritmo normal de produção — o número de "
+    "notícias locais que, em média, são publicadas por dia. "
+    "Todos os valores consideram apenas notícias classificadas como locais (Manaus e Amazonas)."
 )
 render_records(records)
 
