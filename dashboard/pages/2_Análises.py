@@ -224,11 +224,15 @@ st.markdown("""
     padding: 22px 32px;
     margin-bottom: 20px;
 ">
-    <div style="font-size: 1.6rem; font-weight: 800; color: #ffffff; margin-bottom: 6px;">
+    <div style="font-size: 1.6rem; font-weight: 800; color: #ffffff; margin-bottom: 8px;">
         📊 Análises
     </div>
-    <div style="font-size: 0.9rem; color: #bfdbfe;">
-        Padrões editoriais e de cobertura — últimos 30 dias · apenas notícias locais (Manaus / AM)
+    <div style="font-size: 0.95rem; color: #bfdbfe; line-height: 1.7;">
+        Esta página reúne análises automáticas sobre o comportamento da mídia local nos
+        <strong style="color:#ffffff;">últimos 30 dias</strong>, considerando apenas notícias
+        classificadas como locais (Manaus e Amazonas). Os gráficos são atualizados a cada
+        30 minutos junto com a coleta de notícias e revelam padrões editoriais que não são
+        visíveis na leitura diária das manchetes.
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -245,8 +249,16 @@ except Exception as e:
     st.stop()
 
 # ── 1. Heatmap de atividade ──────────────────────────────────────────────────
-st.subheader("Ritmo de publicação")
-st.caption("Quantidade de notícias publicadas por hora do dia e dia da semana.")
+st.subheader("⏰ Ritmo de publicação")
+st.markdown(
+    "O gráfico abaixo mostra **quando** a mídia local publica notícias ao longo da semana. "
+    "Cada célula indica o total de notícias publicadas naquele cruzamento de hora e dia. "
+    "Cores mais escuras (vermelho intenso) indicam os horários de maior atividade; "
+    "cores claras (amarelo) indicam períodos de baixo volume. "
+    "Use este gráfico para entender o ciclo de produção jornalística local: "
+    "quais dias concentram mais publicações, se há silêncio nos fins de semana "
+    "e em que horas os portais costumam lançar suas principais reportagens."
+)
 
 if df_heatmap.empty:
     st.info("Dados insuficientes para este gráfico.")
@@ -256,8 +268,16 @@ else:
 st.divider()
 
 # ── 2. Evolução dos temas ────────────────────────────────────────────────────
-st.subheader("Evolução dos temas")
-st.caption("Volume semanal de notícias por tema ao longo do período.")
+st.subheader("📈 Evolução dos temas")
+st.markdown(
+    "O gráfico de área empilhada abaixo mostra como o **volume de notícias por tema** "
+    "variou semana a semana ao longo dos últimos 30 dias. "
+    "A altura total da área em cada semana representa o volume geral de notícias coletadas; "
+    "a fatia de cada cor indica a contribuição de cada tema naquela semana. "
+    "Picos em um tema específico podem indicar eventos relevantes — como uma crise de saúde "
+    "pública, operações policiais ou grandes eventos culturais. "
+    "Passe o cursor sobre o gráfico para ver os valores exatos por tema e semana."
+)
 
 if df_evolution.empty:
     st.info("Dados insuficientes para este gráfico.")
@@ -267,10 +287,18 @@ else:
 st.divider()
 
 # ── 3. Perfil editorial ──────────────────────────────────────────────────────
-st.subheader("Perfil editorial das fontes")
-st.caption(
-    "Distribuição percentual da cobertura por tema em cada portal. "
-    "Exibe as 15 fontes com maior volume de notícias locais no período."
+st.subheader("🗞️ Perfil editorial das fontes")
+st.markdown(
+    "O mapa de calor abaixo revela a **linha editorial de cada portal**: "
+    "qual parcela da sua cobertura é dedicada a cada tema. "
+    "Cada linha representa um portal (os 15 com maior volume de notícias locais no período) "
+    "e cada coluna representa um tema. O valor em cada célula é o percentual "
+    "daquele tema na cobertura total daquele portal — a soma das células de cada linha é 100%. "
+    "Células mais escuras indicam especialização: um portal com 30% ou mais em Segurança, "
+    "por exemplo, tem perfil policial predominante. "
+    "Portais com distribuição uniforme entre temas têm cobertura generalista. "
+    "Esta análise permite identificar quais vozes cobrem cada área temática da cidade "
+    "e detectar lacunas — temas que nenhum portal cobre com profundidade."
 )
 
 if df_profile.empty:
