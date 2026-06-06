@@ -27,7 +27,7 @@ st.markdown("""
     <div style="font-size: 2rem; font-weight: 800; color: #ffffff; margin-bottom: 12px; line-height: 1.2;">
         ℹ️ Sobre o Observatório de Manaus
     </div>
-    <div style="font-size: 1.02rem; color: #e0ecf7; line-height: 1.8; text-align: justify; max-width: 920px;">
+    <div style="font-size: 1.02rem; color: #e0ecf7; line-height: 1.8; text-align: justify;">
         O <strong style="color:#ffffff;">Observatório de Manaus</strong> é uma plataforma de monitoramento
         contínuo de notícias e publicações sobre a cidade de Manaus e o estado do Amazonas. Coleta, organiza
         e disponibiliza de forma pública e gratuita o que é publicado nos principais portais e blogs da região.
