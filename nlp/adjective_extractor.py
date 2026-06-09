@@ -8,6 +8,8 @@ from db.connection import get_engine
 
 logger = logging.getLogger(__name__)
 
+MIN_FREQ = 3  # ocorrências mínimas para entrar no TF-IDF
+
 
 def _load_spacy():
     import spacy
@@ -18,6 +20,29 @@ def _load_spacy():
         from spacy.cli import download
         download("pt_core_news_sm")
         return spacy.load("pt_core_news_sm", disable=["parser", "ner", "senter"])
+
+
+def _is_valid_adjective(token) -> bool:
+    """Filtra tokens ADJ com critérios morfológicos para reduzir ruído."""
+    if token.pos_ != "ADJ":
+        return False
+    if not token.is_alpha or token.is_stop:
+        return False
+    if len(token.lemma_) < 4:
+        return False
+
+    morph = token.morph
+
+    # Rejeita formas verbais misclassificadas como ADJ pelo modelo
+    if morph.get("VerbForm") or morph.get("Mood") or morph.get("Tense"):
+        return False
+
+    # Exige ao menos uma feature morfológica nominal/adjetival
+    # (palavras estrangeiras, siglas e ruído raramente recebem essas features)
+    if not (morph.get("Gender") or morph.get("Number") or morph.get("Degree")):
+        return False
+
+    return True
 
 
 def run_adjective_extraction():
@@ -68,14 +93,11 @@ def run_adjective_extraction():
         counts: Counter = Counter()
         for doc in nlp.pipe(texts, batch_size=256):
             for token in doc:
-                if (
-                    token.pos_ == "ADJ"
-                    and not token.is_stop
-                    and token.is_alpha
-                    and len(token.lemma_) > 2
-                ):
+                if _is_valid_adjective(token):
                     counts[token.lemma_.lower()] += 1
-        topic_counts[tid] = counts
+
+        # Remove palavras abaixo da frequência mínima
+        topic_counts[tid] = Counter({w: f for w, f in counts.items() if f >= MIN_FREQ})
 
     # IDF: em quantos temas cada adjetivo aparece?
     df: Counter = Counter()
