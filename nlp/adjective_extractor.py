@@ -8,41 +8,53 @@ from db.connection import get_engine
 
 logger = logging.getLogger(__name__)
 
-MIN_FREQ  = 3    # ocorrências mínimas para entrar no TF-IDF
-BATCH     = 128  # documentos por lote no stanza
+MIN_FREQ = 3  # ocorrências mínimas para entrar no TF-IDF
+BATCH    = 256
+
+# Palavras que o modelo tagueia incorretamente como ADJ
+BLOCKLIST = {
+    # Substantivos
+    "skunk", "maconha", "diesel", "motoristas", "compactadores",
+    # Pronomes
+    "conosco", "mesmos",
+    # Verbos misclassificados
+    "intensifica", "monta", "vota",
+    # Ruído / palavras compostas
+    "shortsviral",
+}
 
 
-def _load_stanza():
-    import stanza
+def _load_spacy():
+    import spacy
     try:
-        return stanza.Pipeline("pt", processors="tokenize,mwt,pos",
-                               use_gpu=False, verbose=False)
-    except Exception:
-        logger.info("Baixando modelo stanza para português...")
-        stanza.download("pt", processors="tokenize,mwt,pos", verbose=False)
-        return stanza.Pipeline("pt", processors="tokenize,mwt,pos",
-                               use_gpu=False, verbose=False)
+        return spacy.load("pt_core_news_sm", disable=["parser", "ner", "senter"])
+    except OSError:
+        logger.info("Baixando modelo spaCy pt_core_news_sm...")
+        from spacy.cli import download
+        download("pt_core_news_sm")
+        return spacy.load("pt_core_news_sm", disable=["parser", "ner", "senter"])
 
 
-def _is_valid_adjective(word) -> bool:
-    if word.upos != "ADJ":
+def _is_valid_adjective(token) -> bool:
+    if token.pos_ != "ADJ":
         return False
-    if not word.text.isalpha() or len(word.text) < 4:
+    word = token.text.lower()
+    if not token.is_alpha or len(word) < 4:
         return False
-    feats = word.feats or ""
+    if word in BLOCKLIST:
+        return False
+    morph = token.morph
     # Rejeita formas verbais misclassificadas como ADJ
-    if "VerbForm" in feats or "Mood" in feats or "Tense" in feats:
+    if morph.get("VerbForm") or morph.get("Mood") or morph.get("Tense"):
         return False
     # Exige ao menos uma feature morfológica nominal/adjetival
-    if not ("Gender" in feats or "Number" in feats or "Degree" in feats):
+    if not (morph.get("Gender") or morph.get("Number") or morph.get("Degree")):
         return False
     return True
 
 
 def run_adjective_extraction():
     """Extrai adjetivos distintivos por tema (TF-IDF) e salva no banco. Roda 1x/dia."""
-    import stanza as _stanza
-
     engine = get_engine()
     today = (datetime.utcnow() - timedelta(hours=4)).date()
 
@@ -54,7 +66,7 @@ def run_adjective_extraction():
     if already:
         return
 
-    logger.info("Extraindo adjetivos por tema com stanza...")
+    logger.info("Extraindo adjetivos por tema...")
     start_utc = datetime.utcnow() - timedelta(days=30)
 
     with engine.connect() as conn:
@@ -81,21 +93,16 @@ def run_adjective_extraction():
     if not topic_texts:
         return
 
-    nlp = _load_stanza()
+    nlp = _load_spacy()
     N = len(topic_texts)
 
     topic_counts: dict[int, Counter] = {}
     for tid, texts in topic_texts.items():
         counts: Counter = Counter()
-        for i in range(0, len(texts), BATCH):
-            batch = texts[i : i + BATCH]
-            docs = [_stanza.Document([], text=t) for t in batch]
-            nlp(docs)
-            for doc in docs:
-                for sent in doc.sentences:
-                    for word in sent.words:
-                        if _is_valid_adjective(word):
-                            counts[word.text.lower()] += 1
+        for doc in nlp.pipe(texts, batch_size=BATCH):
+            for token in doc:
+                if _is_valid_adjective(token):
+                    counts[token.text.lower()] += 1
         topic_counts[tid] = Counter({w: f for w, f in counts.items() if f >= MIN_FREQ})
 
     # IDF: em quantos temas cada adjetivo aparece?
