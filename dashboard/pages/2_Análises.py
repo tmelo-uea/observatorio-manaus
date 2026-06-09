@@ -663,7 +663,7 @@ st.markdown(
 )
 
 if df_adj.empty:
-    st.info("Dados ainda não disponíveis — o extrator roda uma vez ao dia. Tente novamente amanhã.")
+    st.info("Dados ainda não disponíveis — o extrator roda uma vez ao dia no ciclo do worker (a cada 30 min). Tente novamente em alguns minutos.")
 else:
     topics_available = df_adj["topic"].unique().tolist()
     selected = st.selectbox("Selecione o tema", topics_available, key="adj_topic")
