@@ -417,6 +417,84 @@ def build_profile_fig(df: pd.DataFrame) -> go.Figure | None:
     return fig
 
 
+def build_adj_heatmap_fig(df: pd.DataFrame) -> go.Figure | None:
+    if df.empty:
+        return None
+
+    # Ordem dos temas conforme display_order (preservada pela query)
+    topics_ordered = list(dict.fromkeys(df["topic"].tolist()))
+    abbrev = [TOPIC_SHORT.get(t, t) for t in topics_ordered]
+
+    # Top 10 por tema, normalizado por coluna (0–1 dentro de cada tema)
+    word_matrix: list[list[str]]   = []
+    z_matrix:    list[list[float]] = []
+    hover_matrix: list[list[str]]  = []
+
+    for rank in range(10):
+        word_row:  list[str]   = []
+        z_row:     list[float] = []
+        hover_row: list[str]   = []
+        for topic in topics_ordered:
+            t_df = (
+                df[df["topic"] == topic]
+                .sort_values("tfidf_score", ascending=False)
+                .reset_index(drop=True)
+            )
+            if rank < len(t_df):
+                row    = t_df.iloc[rank]
+                scores = t_df["tfidf_score"].tolist()
+                s_min, s_max = min(scores), max(scores)
+                z_norm = (row["tfidf_score"] - s_min) / (s_max - s_min) if s_max > s_min else 1.0
+                word_row.append(row["word"])
+                z_row.append(round(z_norm, 4))
+                hover_row.append(
+                    f"<b>{topic}</b> — {rank + 1}º mais distintivo<br>"
+                    f"Adjetivo: <b>{row['word']}</b><br>"
+                    f"Ocorrências: <b>{int(row['frequency'])}</b><br>"
+                    f"Score TF-IDF: <b>{row['tfidf_score']:.4f}</b>"
+                )
+            else:
+                word_row.append("")
+                z_row.append(float("nan"))
+                hover_row.append("")
+        word_matrix.append(word_row)
+        z_matrix.append(z_row)
+        hover_matrix.append(hover_row)
+
+    fig = go.Figure(go.Heatmap(
+        z=z_matrix,
+        x=abbrev,
+        y=[f"{i + 1}º" for i in range(10)],
+        text=word_matrix,
+        customdata=hover_matrix,
+        texttemplate="%{text}",
+        textfont=dict(size=11, color="#1e293b"),
+        colorscale=[[0, "#dbeafe"], [1, "#1e4976"]],
+        showscale=False,
+        hovertemplate="%{customdata}<extra></extra>",
+        xgap=2,
+        ygap=2,
+    ))
+
+    fig.update_layout(
+        height=430,
+        margin=dict(l=40, r=20, t=10, b=110),
+        plot_bgcolor="#ffffff",
+        paper_bgcolor="#ffffff",
+        xaxis=dict(
+            tickangle=-45,
+            tickfont=dict(size=11, color="#1e293b"),
+            side="bottom",
+        ),
+        yaxis=dict(
+            autorange="reversed",
+            tickfont=dict(size=11, color="#64748b"),
+            showgrid=False,
+        ),
+    )
+    return fig
+
+
 def build_adj_fig(words: pd.DataFrame, color: str) -> go.Figure:
     words = words.sort_values("tfidf_score")  # crescente → mais distintivo no topo
     r, g, b = _hex_to_rgb(color)
@@ -654,30 +732,34 @@ st.divider()
 # ── 4. Adjetivos por tema ────────────────────────────────────────────────────
 st.subheader("🔤 Adjetivos mais distintivos por tema")
 st.markdown(
-    "Os adjetivos que melhor **caracterizam a linguagem** usada pela mídia em cada tema, "
-    "calculados pelo método TF-IDF: palavras que aparecem muito num tema mas pouco nos demais "
-    "recebem pontuação alta. O tamanho das barras indica a frequência bruta (quantas vezes "
-    "o adjetivo apareceu); a ordem do topo para baixo reflete a distintividade — o adjetivo "
-    "no topo é o que mais diferencia aquele tema dos outros. "
+    "Os 10 adjetivos que melhor **caracterizam a linguagem** usada pela mídia em cada tema, "
+    "calculados pelo método TF-IDF. Palavras que aparecem muito num tema mas pouco nos demais "
+    "recebem pontuação alta. As linhas mostram o ranking de 1º a 10º dentro de cada tema; "
+    "células mais escuras indicam adjetivos mais distintivos. "
     "Análise atualizada uma vez por dia com base nos últimos 30 dias."
 )
 
 if df_adj.empty:
     st.info("Dados ainda não disponíveis — o extrator roda uma vez ao dia no ciclo do worker (a cada 30 min). Tente novamente em alguns minutos.")
 else:
-    topics_available = df_adj["topic"].unique().tolist()
-    selected = st.selectbox("Selecione o tema", topics_available, key="adj_topic")
-    df_sel = df_adj[df_adj["topic"] == selected].copy()
-    color  = df_sel["color"].iloc[0] if not df_sel.empty else "#1e6091"
+    fig_heatmap = build_adj_heatmap_fig(df_adj)
+    if fig_heatmap:
+        st.plotly_chart(fig_heatmap, use_container_width=True)
+    if adj_date:
+        st.caption(f"Atualizado em {adj_date} · Passe o cursor sobre as células para ver frequência e score TF-IDF")
 
-    col_chart, col_info = st.columns([3, 1])
-    with col_chart:
-        st.plotly_chart(build_adj_fig(df_sel, color), use_container_width=True)
-    with col_info:
-        st.markdown(f"**Tema:** {selected}")
-        st.markdown(f"**Adjetivos únicos encontrados:** {len(df_sel)}")
-        st.markdown(f"**Atualizado em:** {adj_date}")
-        st.markdown("---")
-        st.markdown("**Top 10**")
-        for _, row in df_sel.sort_values("tfidf_score", ascending=False).iterrows():
-            st.markdown(f"· {row['word']} ({row['frequency']}×)")
+    with st.expander("Explorar tema em detalhe"):
+        topics_available = df_adj["topic"].unique().tolist()
+        selected = st.selectbox("Selecione o tema", topics_available, key="adj_topic")
+        df_sel = df_adj[df_adj["topic"] == selected].copy()
+        color  = df_sel["color"].iloc[0] if not df_sel.empty else "#1e6091"
+
+        col_chart, col_info = st.columns([3, 1])
+        with col_chart:
+            st.plotly_chart(build_adj_fig(df_sel, color), use_container_width=True)
+        with col_info:
+            st.markdown(f"**Tema:** {selected}")
+            st.markdown(f"**Atualizado em:** {adj_date}")
+            st.markdown("---")
+            for _, row in df_sel.sort_values("tfidf_score", ascending=False).iterrows():
+                st.markdown(f"· {row['word']} ({row['frequency']}×)")
