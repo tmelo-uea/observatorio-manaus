@@ -113,6 +113,19 @@ class PromptVersion(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
+class TopicAdjective(Base):
+    __tablename__ = "topic_adjectives"
+
+    id:            Mapped[int]   = mapped_column(Integer, primary_key=True, autoincrement=True)
+    topic_id:      Mapped[int]   = mapped_column(Integer, ForeignKey("topics.id"), nullable=False, index=True)
+    word:          Mapped[str]   = mapped_column(String(100), nullable=False)
+    tfidf_score:   Mapped[float] = mapped_column(Float, nullable=False)
+    frequency:     Mapped[int]   = mapped_column(Integer, nullable=False)
+    computed_date: Mapped[date]  = mapped_column(Date, nullable=False, index=True)
+
+    topic: Mapped["Topic"] = relationship()
+
+
 class DailySummaryVersion(Base):
     """Log append-only de todas as versões geradas de cada resumo do dia.
 

@@ -96,6 +96,26 @@ def load_topic_evolution(start_utc: datetime) -> pd.DataFrame:
         return pd.DataFrame(result.fetchall(), columns=result.keys())
 
 
+@st.cache_data(ttl=3600)
+def load_topic_adjectives() -> tuple[pd.DataFrame, str | None]:
+    """Retorna adjetivos do dia mais recente e a data de computação."""
+    with get_db().connect() as conn:
+        latest = conn.execute(
+            text("SELECT MAX(computed_date) AS d FROM topic_adjectives")
+        ).fetchone()
+        if not latest or not latest.d:
+            return pd.DataFrame(), None
+        computed_date = str(latest.d)
+        result = conn.execute(text("""
+            SELECT t.name AS topic, t.color, ta.word, ta.tfidf_score, ta.frequency
+            FROM topic_adjectives ta
+            JOIN topics t ON ta.topic_id = t.id
+            WHERE ta.computed_date = :d
+            ORDER BY t.display_order, ta.tfidf_score DESC
+        """), {"d": latest.d})
+        return pd.DataFrame(result.fetchall(), columns=result.keys()), computed_date
+
+
 @st.cache_data(ttl=1800)
 def load_source_profile(start_utc: datetime) -> pd.DataFrame:
     with get_db().connect() as conn:
@@ -397,6 +417,45 @@ def build_profile_fig(df: pd.DataFrame) -> go.Figure | None:
     return fig
 
 
+def build_adj_fig(words: pd.DataFrame, color: str) -> go.Figure:
+    words = words.sort_values("tfidf_score")  # crescente → mais distintivo no topo
+    r, g, b = _hex_to_rgb(color)
+
+    fig = go.Figure(go.Bar(
+        x=words["frequency"],
+        y=words["word"],
+        orientation="h",
+        marker=dict(
+            color=f"rgba({r},{g},{b},0.75)",
+            line=dict(color=color, width=0.8),
+        ),
+        customdata=words[["tfidf_score"]].values,
+        hovertemplate=(
+            "<b>%{y}</b><br>"
+            "Ocorrências: <b>%{x}</b><br>"
+            "Score TF-IDF: <b>%{customdata[0]:.4f}</b><extra></extra>"
+        ),
+        text=words["frequency"].astype(str) + "×",
+        textposition="outside",
+        textfont=dict(size=11, color="#1e293b"),
+    ))
+
+    fig.update_layout(
+        height=380,
+        plot_bgcolor="#f8fafc",
+        paper_bgcolor="#ffffff",
+        margin=dict(l=10, r=60, t=10, b=40),
+        xaxis=dict(
+            title=dict(text="Ocorrências nos últimos 30 dias", font=dict(size=10, color="#64748b")),
+            gridcolor="#e2e8f0",
+            tickfont=dict(color="#64748b", size=9),
+        ),
+        yaxis=dict(tickfont=dict(size=12, color="#1e293b"), showgrid=False),
+        showlegend=False,
+    )
+    return fig
+
+
 _MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho",
           "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"]
 
@@ -480,12 +539,13 @@ st.markdown("""
 start = _start_utc()
 
 try:
-    topic_colors = load_topic_colors()
-    records      = load_records(start)
-    df_trend     = load_topic_trend(start)
-    df_heatmap   = load_heatmap(start)
-    df_evolution = load_topic_evolution(start)
-    df_profile   = load_source_profile(start)
+    topic_colors        = load_topic_colors()
+    records             = load_records(start)
+    df_trend            = load_topic_trend(start)
+    df_heatmap          = load_heatmap(start)
+    df_evolution        = load_topic_evolution(start)
+    df_profile          = load_source_profile(start)
+    df_adj, adj_date    = load_topic_adjectives()
 except Exception as e:
     st.error(f"Erro ao carregar dados: {e}")
     st.stop()
@@ -588,3 +648,36 @@ else:
     fig_profile = build_profile_fig(df_profile)
     if fig_profile:
         st.plotly_chart(fig_profile, use_container_width=True)
+
+st.divider()
+
+# ── 4. Adjetivos por tema ────────────────────────────────────────────────────
+st.subheader("🔤 Adjetivos mais distintivos por tema")
+st.markdown(
+    "Os adjetivos que melhor **caracterizam a linguagem** usada pela mídia em cada tema, "
+    "calculados pelo método TF-IDF: palavras que aparecem muito num tema mas pouco nos demais "
+    "recebem pontuação alta. O tamanho das barras indica a frequência bruta (quantas vezes "
+    "o adjetivo apareceu); a ordem do topo para baixo reflete a distintividade — o adjetivo "
+    "no topo é o que mais diferencia aquele tema dos outros. "
+    "Análise atualizada uma vez por dia com base nos últimos 30 dias."
+)
+
+if df_adj.empty:
+    st.info("Dados ainda não disponíveis — o extrator roda uma vez ao dia. Tente novamente amanhã.")
+else:
+    topics_available = df_adj["topic"].unique().tolist()
+    selected = st.selectbox("Selecione o tema", topics_available, key="adj_topic")
+    df_sel = df_adj[df_adj["topic"] == selected].copy()
+    color  = df_sel["color"].iloc[0] if not df_sel.empty else "#1e6091"
+
+    col_chart, col_info = st.columns([3, 1])
+    with col_chart:
+        st.plotly_chart(build_adj_fig(df_sel, color), use_container_width=True)
+    with col_info:
+        st.markdown(f"**Tema:** {selected}")
+        st.markdown(f"**Adjetivos únicos encontrados:** {len(df_sel)}")
+        st.markdown(f"**Atualizado em:** {adj_date}")
+        st.markdown("---")
+        st.markdown("**Top 10**")
+        for _, row in df_sel.sort_values("tfidf_score", ascending=False).iterrows():
+            st.markdown(f"· {row['word']} ({row['frequency']}×)")

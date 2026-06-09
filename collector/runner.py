@@ -15,6 +15,7 @@ from nlp.prompts import seed_prompts
 from scripts.backfill_transcripts import backfill
 from collector.content_fetcher import backfill_content
 from notifications.email_sender import run_digest
+from nlp.adjective_extractor import run_adjective_extraction
 
 Base.metadata.create_all(get_engine())
 run_migrations()
@@ -37,6 +38,7 @@ def job():
     run_daily_summary()
     run_topic_summaries(min_articles=5)
     run_digest()
+    run_adjective_extraction()
 
 print("Observatório do Amazonas — Coletor iniciado")
 print("Reclassificando artigos em 'Outros'...")
