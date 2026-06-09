@@ -96,7 +96,7 @@ def load_topic_evolution(start_utc: datetime) -> pd.DataFrame:
         return pd.DataFrame(result.fetchall(), columns=result.keys())
 
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=1800)
 def load_topic_adjectives() -> tuple[pd.DataFrame, str | None]:
     """Retorna adjetivos do dia mais recente e a data de computação."""
     with get_db().connect() as conn:
