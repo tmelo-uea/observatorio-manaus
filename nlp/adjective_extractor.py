@@ -28,7 +28,7 @@ def _is_valid_adjective(token) -> bool:
         return False
     if not token.is_alpha or token.is_stop:
         return False
-    if len(token.lemma_) < 4:
+    if len(token.text) < 4:
         return False
 
     morph = token.morph
@@ -94,7 +94,7 @@ def run_adjective_extraction():
         for doc in nlp.pipe(texts, batch_size=256):
             for token in doc:
                 if _is_valid_adjective(token):
-                    counts[token.lemma_.lower()] += 1
+                    counts[token.text.lower()] += 1
 
         # Remove palavras abaixo da frequência mínima
         topic_counts[tid] = Counter({w: f for w, f in counts.items() if f >= MIN_FREQ})

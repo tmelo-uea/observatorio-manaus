@@ -468,7 +468,7 @@ def build_adj_heatmap_fig(df: pd.DataFrame) -> go.Figure | None:
         text=word_matrix,
         customdata=hover_matrix,
         texttemplate="%{text}",
-        textfont=dict(size=11, color="#1e293b"),
+        textfont=dict(size=11, color="white"),
         colorscale=[[0, "#dbeafe"], [1, "#1e4976"]],
         showscale=False,
         hovertemplate="%{customdata}<extra></extra>",
