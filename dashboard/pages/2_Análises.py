@@ -16,6 +16,7 @@ st.set_page_config(
 )
 
 PERIOD_DAYS = 30
+MIN_TREND_RECENTE = 5
 
 DOW_MAP = {1: "Dom", 2: "Seg", 3: "Ter", 4: "Qua", 5: "Qui", 6: "Sex", 7: "Sáb"}
 DOW_ORDER = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]
@@ -43,6 +44,23 @@ def load_topic_colors() -> dict[str, str]:
     with get_db().connect() as conn:
         rows = conn.execute(text("SELECT name, color FROM topics")).fetchall()
     return {name: color for name, color in rows}
+
+
+@st.cache_data(ttl=1800)
+def load_topic_trend(start_utc: datetime) -> pd.DataFrame:
+    mid_utc = start_utc + timedelta(days=15)
+    with get_db().connect() as conn:
+        result = conn.execute(text("""
+            SELECT
+                COALESCE(t.name, 'Outros') AS topic,
+                SUM(CASE WHEN a.published_at < :mid  THEN 1 ELSE 0 END) AS cnt_ant,
+                SUM(CASE WHEN a.published_at >= :mid THEN 1 ELSE 0 END) AS cnt_rec
+            FROM articles a
+            LEFT JOIN topics t ON a.topic_id = t.id
+            WHERE a.published_at >= :start AND a.is_local = 1
+            GROUP BY topic
+        """), {"start": start_utc, "mid": mid_utc})
+        return pd.DataFrame(result.fetchall(), columns=result.keys())
 
 
 @st.cache_data(ttl=1800)
@@ -169,6 +187,118 @@ def build_heatmap_fig(df: pd.DataFrame) -> go.Figure:
         margin=dict(l=60, r=40, t=10, b=60),
         xaxis_title="Hora do dia (horário de Manaus)",
         plot_bgcolor="#fafafa",
+    )
+    return fig
+
+
+def build_trend_fig(df: pd.DataFrame) -> go.Figure | None:
+    rows = []
+    for _, row in df.iterrows():
+        ant = int(row["cnt_ant"])
+        rec = int(row["cnt_rec"])
+        if rec < MIN_TREND_RECENTE or ant == 0:
+            continue
+        delta = (rec - ant) / ant * 100
+        rows.append({"topic": row["topic"], "ant": ant, "rec": rec, "delta": delta})
+
+    if not rows:
+        return None
+
+    rows.sort(key=lambda x: x["delta"])  # ascendente → maior crescimento no topo
+
+    topics = [r["topic"] for r in rows]
+    deltas = [r["delta"] for r in rows]
+    ants   = [r["ant"]   for r in rows]
+    recs   = [r["rec"]   for r in rows]
+
+    xmax   = max(abs(d) for d in deltas)
+    xrange = xmax * 1.5
+
+    def _bar_color(delta: float) -> str:
+        t = min(abs(delta) / xmax, 1.0)
+        intensity = 0.3 + 0.7 * t
+        if delta >= 0:
+            r, g, b = _hex_to_rgb("#bfdbfe")
+            r2, g2, b2 = _hex_to_rgb("#1e6091")
+        else:
+            r, g, b = _hex_to_rgb("#fecaca")
+            r2, g2, b2 = _hex_to_rgb("#c0392b")
+        return "#{:02x}{:02x}{:02x}".format(
+            int(r + (r2 - r) * intensity),
+            int(g + (g2 - g) * intensity),
+            int(b + (b2 - b) * intensity),
+        )
+
+    bar_colors  = [_bar_color(d) for d in deltas]
+    edge_colors = ["#1e6091" if d >= 0 else "#c0392b" for d in deltas]
+
+    fig = go.Figure(go.Bar(
+        x=deltas,
+        y=topics,
+        orientation="h",
+        marker=dict(color=bar_colors, line=dict(color=edge_colors, width=0.8)),
+        customdata=list(zip(ants, recs)),
+        hovertemplate=(
+            "<b>%{y}</b><br>"
+            "Últimos 15 dias: <b>%{customdata[1]}</b> notícias<br>"
+            "15 dias anteriores: <b>%{customdata[0]}</b> notícias<br>"
+            "Variação: <b>%{x:.1f}%</b><extra></extra>"
+        ),
+    ))
+
+    PAD = xmax * 0.04
+    annotations = []
+    for i, (delta, ant, rec) in enumerate(zip(deltas, ants, recs)):
+        sign  = "+" if delta >= 0 else ""
+        label = f"{sign}{delta:.0f}%  {ant}→{rec}"
+        if delta >= 0:
+            annotations.append(dict(
+                x=delta + PAD, y=topics[i], text=label, showarrow=False,
+                xanchor="left", yanchor="middle",
+                font=dict(size=11, color="#1e293b"),
+            ))
+        else:
+            annotations.append(dict(
+                x=delta - PAD, y=topics[i], text=label, showarrow=False,
+                xanchor="right", yanchor="middle",
+                font=dict(size=11, color="#1e293b"),
+            ))
+
+    annotations += [
+        dict(x=0.02, y=-0.1, xref="paper", yref="paper",
+             text="← queda", showarrow=False, xanchor="left",
+             font=dict(size=10, color="#c0392b")),
+        dict(x=0.98, y=-0.1, xref="paper", yref="paper",
+             text="crescimento →", showarrow=False, xanchor="right",
+             font=dict(size=10, color="#1e6091")),
+    ]
+
+    fig.update_layout(
+        height=max(360, len(topics) * 44 + 120),
+        plot_bgcolor="#f8fafc",
+        paper_bgcolor="#ffffff",
+        margin=dict(l=10, r=10, t=10, b=60),
+        xaxis=dict(
+            range=[-xrange, xrange],
+            zeroline=True, zerolinecolor="#94a3b8", zerolinewidth=1.5,
+            gridcolor="#e2e8f0", ticksuffix="%",
+            tickfont=dict(color="#64748b", size=9),
+            title=dict(
+                text="Variação em relação aos 15 dias anteriores (%)",
+                font=dict(size=10, color="#64748b"),
+            ),
+        ),
+        yaxis=dict(tickfont=dict(size=11, color="#1e293b"), showgrid=False),
+        shapes=[
+            dict(type="rect", xref="x", yref="paper",
+                 x0=-xrange, y0=0, x1=0, y1=1,
+                 fillcolor="#fef2f2", opacity=0.5, line_width=0, layer="below"),
+            dict(type="rect", xref="x", yref="paper",
+                 x0=0, y0=0, x1=xrange, y1=1,
+                 fillcolor="#eff6ff", opacity=0.5, line_width=0, layer="below"),
+        ],
+        annotations=annotations,
+        showlegend=False,
     )
     return fig
 
@@ -351,10 +481,11 @@ start = _start_utc()
 
 try:
     topic_colors = load_topic_colors()
-    records = load_records(start)
-    df_heatmap = load_heatmap(start)
+    records      = load_records(start)
+    df_trend     = load_topic_trend(start)
+    df_heatmap   = load_heatmap(start)
     df_evolution = load_topic_evolution(start)
-    df_profile = load_source_profile(start)
+    df_profile   = load_source_profile(start)
 except Exception as e:
     st.error(f"Erro ao carregar dados: {e}")
     st.stop()
@@ -376,7 +507,29 @@ render_records(records)
 
 st.divider()
 
-# ── 1. Heatmap de atividade ──────────────────────────────────────────────────
+# ── 1. Tendência dos temas ───────────────────────────────────────────────────
+st.subheader("📈 Tendência dos temas")
+st.markdown(
+    "Compara o volume de notícias por tema nos **últimos 15 dias** com os **15 dias anteriores**. "
+    "Barras à direita (azul) indicam crescimento de cobertura; à esquerda (vermelho) indicam queda. "
+    "A intensidade da cor é proporcional à magnitude da variação — azul escuro significa forte alta, "
+    "vermelho intenso significa forte queda. "
+    "Temas com menos de 5 notícias no período recente são omitidos para evitar ruído estatístico. "
+    "Passe o cursor sobre as barras para ver os valores exatos."
+)
+
+if df_trend.empty:
+    st.info("Dados insuficientes para este gráfico.")
+else:
+    fig_trend = build_trend_fig(df_trend)
+    if fig_trend:
+        st.plotly_chart(fig_trend, use_container_width=True)
+    else:
+        st.info("Dados insuficientes para este gráfico.")
+
+st.divider()
+
+# ── 3. Heatmap de atividade ──────────────────────────────────────────────────
 st.subheader("⏰ Ritmo de publicação")
 st.markdown(
     "O gráfico abaixo mostra **quando** a mídia local publica notícias ao longo da semana. "
