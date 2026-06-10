@@ -522,7 +522,7 @@ for col in ["title", "summary", "transcript"]:
 all_text = " ".join(t for t in texts if t.strip())
 wc_bytes = _build_wordcloud(all_text)
 if wc_bytes:
-    st.image(wc_bytes, use_container_width=True)
+    st.image(wc_bytes, use_column_width=True)
 
 # --- Feed de últimas notícias ---
 st.divider()
