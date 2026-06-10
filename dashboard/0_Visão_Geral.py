@@ -514,15 +514,19 @@ def _build_wordcloud(all_text: str) -> bytes | None:
 
 
 # --- Nuvem de palavras ---
-st.subheader("Nuvem de palavras")
-texts = []
-for col in ["title", "summary", "transcript"]:
-    if col in filtered.columns:
-        texts.append(_clean_text(filtered[col]))
-all_text = " ".join(t for t in texts if t.strip())
-wc_bytes = _build_wordcloud(all_text)
-if wc_bytes:
-    st.image(wc_bytes, use_column_width=True)
+# DIAGNÓSTICO (temporário): geração desativada para confirmar se o bloqueio do
+# IOLoop / loop de reconexão do WebSocket vem do custo de CPU da matplotlib/WordCloud
+# na vCPU restrita do Railway. Toggle via env WORDCLOUD_ENABLED=1.
+if os.getenv("WORDCLOUD_ENABLED", "0") == "1":
+    st.subheader("Nuvem de palavras")
+    texts = []
+    for col in ["title", "summary", "transcript"]:
+        if col in filtered.columns:
+            texts.append(_clean_text(filtered[col]))
+    all_text = " ".join(t for t in texts if t.strip())
+    wc_bytes = _build_wordcloud(all_text)
+    if wc_bytes:
+        st.image(wc_bytes, use_column_width=True)
 
 # --- Feed de últimas notícias ---
 st.divider()
