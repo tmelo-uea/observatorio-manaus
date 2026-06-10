@@ -432,16 +432,86 @@ with col_right:
         st.caption(f"Top 20 de {len(source_counts)} fontes")
     st.plotly_chart(fig_sources, use_container_width=True)
 
+_WC_STOPWORDS = {
+    "de", "da", "do", "dos", "das", "em", "no", "na", "nos", "nas",
+    "e", "o", "a", "os", "as", "um", "uma", "uns", "umas",
+    "com", "por", "para", "que", "se", "ao", "aos", "à", "às",
+    "pelo", "pela", "pelos", "pelas", "neste", "nesta", "nestes", "nestas",
+    "deste", "desta", "destes", "destas", "nesse", "nessa", "nesses", "nessas",
+    "desse", "dessa", "desses", "dessas", "num", "numa",
+    "são", "foi", "será", "ser", "tem", "ter", "seus", "sua", "seu", "suas",
+    "isso", "este", "esta", "esse", "essa", "esses", "essas",
+    "ele", "ela", "eles", "elas", "nós", "eu", "você", "vocês",
+    "mais", "já", "ainda", "também", "sobre", "entre", "após", "até", "como",
+    "quando", "onde", "porque", "mas", "ou", "nem", "não", "sim",
+    "muito", "bem", "aqui", "lá", "agora", "então", "assim", "tudo",
+    "todos", "todas", "outro", "outra", "outros", "outras", "mesmo",
+    "disse", "diz", "afirmou", "segundo", "conforme", "durante",
+    "está", "vai", "teve", "foram", "seja", "pode", "podem", "deve", "devem",
+    "quer", "faz", "fez", "ocorreu", "realiza", "realizada", "realizado", "realizou",
+    "apenas", "desde", "através", "partir", "dentro", "fora", "sem",
+    "caso", "vez", "vezes", "além", "contra", "ante", "perante",
+    "dia", "dias", "ano", "anos", "mês", "meses", "semana", "semanas",
+    "manhã", "tarde", "noite", "hoje", "ontem", "amanhã",
+    "meio", "nova", "novo", "novos", "novas", "grande", "grandes",
+    "pais", "país", "área", "áreas", "grupo", "grupos", "equipe",
+    "momento", "parte", "local", "região", "total",
+    "acordo", "apoio", "agenda", "projeto", "ação", "iniciativa",
+    "serviço", "serviços", "encontro", "debate", "proposta",
+    "edição", "escala", "volta", "interior", "capital",
+    "http", "https", "br", "href", "src", "img", "bit", "www",
+    "instagram", "facebook", "tiktok", "youtube", "twitter", "whatsapp",
+    "redes", "sociais", "canal", "site", "post", "vivo",
+    "notificações", "conteúdo", "conteúdos", "exclusivos", "informações",
+    "apareceu", "acompanhe", "inscreva", "leia", "veja", "segue", "acesse",
+    "notícia", "notícias", "noticias", "noticia", "últimas", "ultimas",
+    "portais", "atual", "visita",
+    "segunda", "terça", "terca", "quarta", "quinta", "sexta",
+    "sábado", "sabado", "domingo", "feira",
+    "the", "and", "for", "this", "that", "with",
+    "horário", "horario", "brasília", "brasilia",
+    "primeiro", "terceiro",
+    "critica", "crítica", "radar", "holanda",
+    "Manaus", "manaus", "Manau", "manau",
+    "Amazonas", "amazonas", "Amazona", "amazona",
+    "Amazônia", "amazônia", "amazonia", "Amazônico", "amazônico", "Amazônica", "amazônica",
+    "amazonense", "Amazonense", "Amazon", "amazon",
+}
+
+
 def _clean_text(series):
     import re
     def clean(t):
-        t = re.sub(r"<[^>]+>", " ", t)           # remove tags HTML
-        t = re.sub(r"https?://\S+", " ", t)       # remove URLs completas
-        t = re.sub(r"\bhttps?\b", " ", t)         # remove http/https soltos
-        t = re.sub(r"\b\w*\d\w*\b", " ", t)       # remove tokens com números
-        t = re.sub(r"\b\w{1,2}\b", " ", t)        # remove palavras de 1-2 letras
+        t = re.sub(r"<[^>]+>", " ", t)
+        t = re.sub(r"https?://\S+", " ", t)
+        t = re.sub(r"\bhttps?\b", " ", t)
+        t = re.sub(r"\b\w*\d\w*\b", " ", t)
+        t = re.sub(r"\b\w{1,2}\b", " ", t)
         return t
     return series.dropna().apply(clean).str.cat(sep=" ")
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def _build_wordcloud(all_text: str) -> bytes | None:
+    if not all_text.strip():
+        return None
+    import io
+    wc = WordCloud(
+        width=1200, height=400, background_color="white",
+        collocations=True, max_words=120, stopwords=_WC_STOPWORDS,
+        regexp=r"\b[^\W\d_]{3,}\b",
+        margin=6, max_font_size=120,
+    ).generate(all_text)
+    fig, ax = plt.subplots(figsize=(16, 5))
+    ax.imshow(wc, interpolation="bilinear")
+    ax.axis("off")
+    fig.tight_layout(pad=0.5)
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", bbox_inches="tight", dpi=96)
+    plt.close(fig)
+    buf.seek(0)
+    return buf.getvalue()
+
 
 # --- Nuvem de palavras ---
 st.subheader("Nuvem de palavras")
@@ -450,76 +520,9 @@ for col in ["title", "summary", "transcript"]:
     if col in filtered.columns:
         texts.append(_clean_text(filtered[col]))
 all_text = " ".join(t for t in texts if t.strip())
-if all_text.strip():
-    stopwords = {
-        # artigos e preposições
-        "de", "da", "do", "dos", "das", "em", "no", "na", "nos", "nas",
-        "e", "o", "a", "os", "as", "um", "uma", "uns", "umas",
-        "com", "por", "para", "que", "se", "ao", "aos", "à", "às",
-        "pelo", "pela", "pelos", "pelas", "neste", "nesta", "nestes", "nestas",
-        "deste", "desta", "destes", "destas", "nesse", "nessa", "nesses", "nessas",
-        "desse", "dessa", "desses", "dessas", "num", "numa",
-        # pronomes
-        "são", "foi", "será", "ser", "tem", "ter", "seus", "sua", "seu", "suas",
-        "isso", "este", "esta", "esse", "essa", "esses", "essas",
-        "ele", "ela", "eles", "elas", "nós", "eu", "você", "vocês",
-        "mais", "já", "ainda", "também", "sobre", "entre", "após", "até", "como",
-        "quando", "onde", "porque", "mas", "ou", "nem", "não", "sim",
-        "muito", "bem", "aqui", "lá", "agora", "então", "assim", "tudo",
-        "todos", "todas", "outro", "outra", "outros", "outras", "mesmo",
-        # verbos jornalísticos genéricos
-        "disse", "diz", "afirmou", "segundo", "conforme", "durante",
-        "foi", "são", "está", "vai", "teve", "teve", "foram", "seja",
-        "pode", "podem", "deve", "devem", "quer", "faz", "fez", "ter",
-        "ocorreu", "realiza", "realizada", "realizado", "realizou",
-        # conjunções e advérbios genéricos
-        "apenas", "desde", "através", "partir", "dentro", "fora", "sem",
-        "caso", "vez", "vezes", "além", "contra", "ante", "perante",
-        # substantivos genéricos sem valor informativo
-        "dia", "dias", "ano", "anos", "mês", "meses", "semana", "semanas",
-        "manhã", "tarde", "noite", "hoje", "ontem", "amanhã",
-        "meio", "nova", "novo", "novos", "novas", "grande", "grandes",
-        "pais", "país", "área", "áreas", "grupo", "grupos", "equipe",
-        "momento", "parte", "local", "região", "vez", "total",
-        "acordo", "apoio", "agenda", "projeto", "ação", "iniciativa",
-        "serviço", "serviços", "encontro", "debate", "proposta",
-        "edição", "escala", "volta", "interior", "capital",
-        # boilerplate de portais e redes sociais
-        "http", "https", "br", "href", "src", "img", "bit", "www",
-        "instagram", "facebook", "tiktok", "youtube", "twitter", "whatsapp",
-        "redes", "sociais", "canal", "site", "post", "vivo",
-        "notificações", "conteúdo", "conteúdos", "exclusivos", "informações",
-        "apareceu", "acompanhe", "inscreva", "leia", "veja", "segue", "acesse",
-        "notícia", "notícias", "noticias", "noticia", "últimas", "ultimas",
-        "portais", "atual", "visita",
-        # dias da semana
-        "segunda", "terça", "terca", "quarta", "quinta", "sexta",
-        "sábado", "sabado", "domingo", "feira",
-        # palavras em inglês que escapam
-        "the", "and", "for", "this", "that", "with",
-        # referências de localização/transmissão genéricas
-        "horário", "horario", "brasília", "brasilia",
-        "primeiro", "segunda", "terceiro",
-        # nomes de fontes que aparecem no próprio conteúdo
-        "critica", "crítica", "radar", "holanda",
-        # termos onipresentes no observatório — não distinguem nada
-        "Manaus", "manaus", "Manau", "manau",
-        "Amazonas", "amazonas", "Amazona", "amazona",
-        "Amazônia", "amazônia", "amazonia", "Amazônico", "amazônico", "Amazônica", "amazônica",
-        "amazonense", "Amazonense", "Amazon", "amazon",
-    }
-    wc = WordCloud(
-        width=1600, height=500, background_color="white",
-        collocations=True, max_words=120, stopwords=stopwords,
-        regexp=r"\b[^\W\d_]{3,}\b",
-        margin=6, max_font_size=120,
-    ).generate(all_text)
-    fig_wc, ax = plt.subplots(figsize=(16, 5))
-    ax.imshow(wc, interpolation="bilinear")
-    ax.axis("off")
-    fig_wc.tight_layout(pad=0.5)
-    st.pyplot(fig_wc)
-    plt.close(fig_wc)
+wc_bytes = _build_wordcloud(all_text)
+if wc_bytes:
+    st.image(wc_bytes, use_container_width=True)
 
 # --- Feed de últimas notícias ---
 st.divider()
