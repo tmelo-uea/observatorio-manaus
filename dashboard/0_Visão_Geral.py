@@ -51,16 +51,6 @@ st.markdown("""
 def get_db():
     return get_engine()
 
-
-@st.cache_resource
-def init_db():
-    from db.connection import Base
-    from db.seeds import seed_all
-    Base.metadata.create_all(get_engine())
-    seed_all()
-
-init_db()
-
 @st.cache_data(ttl=3600)
 def load_date_bounds():
     with get_db().connect() as conn:
