@@ -13,14 +13,15 @@ BATCH    = 256
 
 # Palavras que o modelo tagueia incorretamente como ADJ
 BLOCKLIST = {
-    # Substantivos
+    # Substantivos misclassificados como ADJ
     "skunk", "maconha", "diesel", "motoristas", "compactadores",
+    "maestro", "acidente", "disputa", "torturas", "vítimas", "recorde",
     # Pronomes
     "conosco", "mesmos",
     # Verbos misclassificados
     "intensifica", "monta", "vota",
     # Ruído / palavras compostas
-    "shortsviral",
+    "shortsviral", "vivo",
 }
 
 
