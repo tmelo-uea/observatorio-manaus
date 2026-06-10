@@ -7,3 +7,15 @@ font = "sans serif"
 
 [server]
 headless = true
+# Atrás do proxy/edge do Railway com domínio customizado:
+# desliga checagens de origem que rejeitam o WebSocket e a
+# compressão de frames que o intermediário corrompe (causa do
+# loop "SessionInfo not initialized" / reconexão constante).
+enableCORS = false
+enableXsrfProtection = false
+enableWebsocketCompression = false
+# Evita reruns espúrios disparados pelo file watcher no FS efêmero do Railway.
+fileWatcherType = "none"
+
+[browser]
+gatherUsageStats = false
