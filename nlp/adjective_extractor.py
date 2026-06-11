@@ -19,7 +19,15 @@ BLOCKLIST = {
     # Pronomes
     "conosco", "mesmos",
     # Verbos misclassificados
-    "intensifica", "monta", "vota",
+    "intensifica", "monta", "vota", "tombar",
+    # Ordinais / numerais
+    "quinto",
+    # Temporais
+    "semanal", "semanais",
+    # Genéricos não-distintivos / particípios
+    "exclusivos", "definitivos", "previstos", "abertas", "lento", "falsos",
+    # Auto-referência de mídia
+    "jornalístico",
     # Ruído / palavras compostas
     "shortsviral", "vivo",
 }
