@@ -468,8 +468,8 @@ def build_adj_heatmap_fig(df: pd.DataFrame) -> go.Figure | None:
         text=word_matrix,
         customdata=hover_matrix,
         texttemplate="%{text}",
-        textfont=dict(size=11, color="white"),
-        colorscale=[[0, "#60a5fa"], [1, "#1e3a5f"]],
+        textfont=dict(size=12, color="white", family="Arial Black, Arial, sans-serif"),
+        colorscale=[[0, "#1d4ed8"], [1, "#0f172a"]],
         showscale=False,
         hovertemplate="%{customdata}<extra></extra>",
         xgap=2,
@@ -496,7 +496,7 @@ def build_adj_heatmap_fig(df: pd.DataFrame) -> go.Figure | None:
 
 
 def build_adj_fig(words: pd.DataFrame, color: str) -> go.Figure:
-    words = words.sort_values("tfidf_score")  # crescente → mais distintivo no topo
+    words = words.sort_values("frequency")  # crescente → mais frequente no topo
     r, g, b = _hex_to_rgb(color)
 
     fig = go.Figure(go.Bar(
