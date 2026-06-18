@@ -259,7 +259,7 @@ SOURCES = [
     {"name": "Amazonas Atual",       "url": "https://amazonasatual.com.br",      "rss_url": "https://amazonasatual.com.br/feed/",                            "type": "portal", "active": False},  # Cloudflare bloqueia IP de datacenter (403); inalcançável do Railway — confirmado 2026-06-18
     {"name": "A Gazeta do Amazonas", "url": "https://agazetadoamazonas.com",     "rss_url": "https://agazetadoamazonas.com/feed",                            "type": "portal", "active": False},
     {"name": "Amazonas 1",           "url": "https://amazonas1.com.br",          "rss_url": "https://amazonas1.com.br/feed",                                 "type": "portal"},
-    {"name": "AM POST",              "url": "https://ampost.com.br",             "rss_url": "https://ampost.com.br/feed",                                    "type": "portal"},
+    {"name": "AM POST",              "url": "https://ampost.com.br",             "rss_url": "https://news.google.com/rss/search?q=site:ampost.com.br+when:7d&hl=pt-BR&gl=BR&ceid=BR:pt-419", "type": "portal"},  # Cloudflare bloqueia IP do Railway (403); coletado via Google News RSS — 2026-06-18
     {"name": "Norte em Foco",        "url": "https://norteemfoco.com.br",        "rss_url": "https://norteemfoco.com.br/feed",                               "type": "portal"},
     {"name": "Correio da Amazônia",  "url": "https://correiodaamazonia.com",     "rss_url": "https://correiodaamazonia.com/feed",                            "type": "portal"},
     {"name": "Rede Amazônica",       "url": "https://redeamazonica.com.br",      "rss_url": "https://redeamazonica.com.br/feed",                             "type": "portal", "active": False},
