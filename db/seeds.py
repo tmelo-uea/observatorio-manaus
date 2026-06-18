@@ -292,7 +292,7 @@ SOURCES = [
     {"name": "Portal Norte",          "url": "https://portalnorte.com.br",             "rss_url": "https://portalnorte.com.br/feed",                                   "type": "portal",  "active": False},
     {"name": "Portal Manaus Notícias","url": "https://www.portalmanausnoticias.com.br","rss_url": "https://www.portalmanausnoticias.com.br/feed",                       "type": "portal", "active": False},
     {"name": "Portal O Poder",        "url": "https://portalopoder.com.br",            "rss_url": "https://portalopoder.com.br/feed",                                   "type": "portal"},
-    {"name": "Agência Amazonas",      "url": "https://www.agenciaamazonas.am.gov.br",  "rss_url": "https://www.agenciaamazonas.am.gov.br/feed",                         "type": "portal"},
+    {"name": "Agência Amazonas",      "url": "https://www.agenciaamazonas.am.gov.br",  "rss_url": "https://news.google.com/rss/search?q=site:agenciaamazonas.am.gov.br+when:7d&hl=pt-BR&gl=BR&ceid=BR:pt-419", "type": "portal"},  # firewall gov bloqueia IP do Railway (timeout); via Google News RSS — 2026-06-18
     # Canais do YouTube (rss_url com channel_id hardcoded para evitar resolução em runtime)
     {"name": "TV A Crítica (YouTube)",      "url": "https://www.youtube.com/channel/UCnLSKfHkgZ6ujEYCO9jq7Sw", "rss_url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCnLSKfHkgZ6ujEYCO9jq7Sw", "type": "youtube"},
     {"name": "TV Norte Amazonas (YouTube)", "url": "https://www.youtube.com/channel/UC4WNZYa1d0HVzdVWlfJEGjw", "rss_url": "https://www.youtube.com/feeds/videos.xml?channel_id=UC4WNZYa1d0HVzdVWlfJEGjw", "type": "youtube"},
@@ -330,7 +330,7 @@ SOURCES = [
     {"name": "Portal Amazônia",      "url": "https://portalamazonia.com",        "rss_url": "https://portalamazonia.com/feed/",                              "type": "portal"},
     # Órgãos governamentais do Amazonas
     {"name": "Governo do Amazonas",  "url": "https://www.amazonas.am.gov.br",    "rss_url": "https://www.amazonas.am.gov.br/feed/",                          "type": "portal", "active": False},
-    {"name": "ALEAM",                "url": "https://www.aleam.gov.br",          "rss_url": "https://www.aleam.gov.br/feed/",                                "type": "portal"},
+    {"name": "ALEAM",                "url": "https://www.aleam.gov.br",          "rss_url": "https://news.google.com/rss/search?q=site:aleam.gov.br+when:7d&hl=pt-BR&gl=BR&ceid=BR:pt-419", "type": "portal"},  # firewall gov bloqueia IP do Railway (timeout); via Google News RSS — 2026-06-18
     {"name": "IPAAM",                "url": "https://www.ipaam.am.gov.br",       "rss_url": "https://www.ipaam.am.gov.br/feed/",                             "type": "portal"},
     {"name": "SSP-AM",               "url": "https://www.ssp.am.gov.br",         "rss_url": "https://www.ssp.am.gov.br/feed/",                               "type": "portal"},
     {"name": "DETRAN-AM",            "url": "https://www.detran.am.gov.br",      "rss_url": "https://www.detran.am.gov.br/feed/",                            "type": "portal"},
@@ -338,7 +338,7 @@ SOURCES = [
     {"name": "Prefeitura de Manaus", "url": "https://www.manaus.am.gov.br",      "rss_url": "https://www.manaus.am.gov.br/feed/",                            "type": "portal"},
     {"name": "PGE-AM",              "url": "https://www.pge.am.gov.br",         "rss_url": "https://www.pge.am.gov.br/feed/",                               "type": "portal"},
     {"name": "Amazonastur",         "url": "https://www.amazonastur.am.gov.br", "rss_url": "https://www.amazonastur.am.gov.br/feed/",                        "type": "portal"},
-    {"name": "ARSEPAM",             "url": "https://www.arsepam.am.gov.br",     "rss_url": "https://www.arsepam.am.gov.br/feed/",                            "type": "portal"},
+    {"name": "ARSEPAM",             "url": "https://www.arsepam.am.gov.br",     "rss_url": "https://news.google.com/rss/search?q=site:arsepam.am.gov.br+when:7d&hl=pt-BR&gl=BR&ceid=BR:pt-419", "type": "portal"},  # firewall gov bloqueia IP do Railway (timeout); via Google News RSS, baixo volume — 2026-06-18
     {"name": "TRE-AM",              "url": "https://www.tre-am.jus.br",         "rss_url": "https://www.tre-am.jus.br/rss",                                 "type": "portal"},
 ]
 
