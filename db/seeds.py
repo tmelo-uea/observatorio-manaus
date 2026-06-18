@@ -252,7 +252,7 @@ TOPICS = [
 
 SOURCES = [
     # Portais locais de Manaus
-    {"name": "A Crítica",            "url": "https://www.acritica.com",          "rss_url": "https://www.acritica.com/feed",                                 "type": "portal", "active": False},
+    {"name": "A Crítica",            "url": "https://www.acritica.com",          "rss_url": "https://news.google.com/rss/search?q=site:acritica.com+when:7d&hl=pt-BR&gl=BR&ceid=BR:pt-419", "type": "portal"},  # site sem RSS nativo (Arc+Cloudflare); coletado via Google News RSS — 2026-06-18
     {"name": "Em Tempo",             "url": "https://emtempo.com.br",            "rss_url": "https://emtempo.com.br/feed",                                   "type": "portal"},
     {"name": "D24am",                "url": "https://www.d24am.com",             "rss_url": "https://www.d24am.com/feed",                                    "type": "portal",  "active": False},
     {"name": "Portal do Holanda",    "url": "https://portaldoholanda.com.br",    "rss_url": "https://portaldoholanda.com.br/feed",                           "type": "portal"},
