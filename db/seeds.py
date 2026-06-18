@@ -338,7 +338,7 @@ SOURCES = [
     {"name": "Prefeitura de Manaus", "url": "https://www.manaus.am.gov.br",      "rss_url": "https://www.manaus.am.gov.br/feed/",                            "type": "portal"},
     {"name": "PGE-AM",              "url": "https://www.pge.am.gov.br",         "rss_url": "https://www.pge.am.gov.br/feed/",                               "type": "portal"},
     {"name": "Amazonastur",         "url": "https://www.amazonastur.am.gov.br", "rss_url": "https://www.amazonastur.am.gov.br/feed/",                        "type": "portal"},
-    {"name": "ARSEPAM",             "url": "https://www.arsepam.am.gov.br",     "rss_url": "https://news.google.com/rss/search?q=site:arsepam.am.gov.br+when:7d&hl=pt-BR&gl=BR&ceid=BR:pt-419", "type": "portal"},  # firewall gov bloqueia IP do Railway (timeout); via Google News RSS, baixo volume — 2026-06-18
+    {"name": "ARSEPAM",             "url": "https://www.arsepam.am.gov.br",     "rss_url": "https://news.google.com/rss/search?q=site:arsepam.am.gov.br+when:30d&hl=pt-BR&gl=BR&ceid=BR:pt-419", "type": "portal"},  # firewall gov bloqueia IP do Railway (timeout); via Google News RSS; janela 30d pq agência publica raríssimo — 2026-06-18
     {"name": "TRE-AM",              "url": "https://www.tre-am.jus.br",         "rss_url": "https://www.tre-am.jus.br/rss",                                 "type": "portal"},
 ]
 
