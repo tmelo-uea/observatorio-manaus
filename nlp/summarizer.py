@@ -17,6 +17,7 @@ def _manaus_day_utc_range(d: date):
 
 
 SUMMARY_MODEL = "gpt-4o-mini"
+CURATOR_MODEL = "gpt-5.5"
 
 
 def _call_llm(prompt: str) -> str | None:
@@ -53,6 +54,50 @@ def _format_article(article) -> str:
     return f"- [{article.source.name}] {article.title}"
 
 
+def _format_headlines(articles) -> str:
+    youtube = [a for a in articles if getattr(a.source, "type", None) == "youtube" and a.transcript]
+    rss = [a for a in articles if a not in youtube]
+    selected = youtube[:10] + rss[:30]
+    return "\n".join(_format_article(a) for a in selected)
+
+
+def _curate_summary(summary: str, headlines: str) -> str:
+    """Revisa o resumo gerado pelo gpt-4o-mini usando um modelo mais atual."""
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        return summary
+    try:
+        from openai import OpenAI
+        client = OpenAI(api_key=api_key)
+        prompt = (
+            "Você é um editor de notícias rigoroso. "
+            "Abaixo estão as manchetes usadas como fonte e um resumo gerado automaticamente. "
+            "Revise o resumo e corrija qualquer nome de pessoa, cargo ou fato que NÃO esteja "
+            "explicitamente mencionado nas manchetes fornecidas. "
+            "Se uma manchete cita apenas uma instituição sem nomear nenhum representante, "
+            "o resumo NÃO deve incluir nomes de pessoas nesse contexto. "
+            "Não adicione informações ausentes nas fontes. "
+            "Retorne APENAS o resumo corrigido em português, sem explicações ou comentários.\n\n"
+            f"MANCHETES:\n{headlines}\n\n"
+            f"RESUMO:\n{summary}"
+        )
+        response = client.chat.completions.create(
+            model=CURATOR_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=400,
+            temperature=0.2,
+        )
+        curated = response.choices[0].message.content.strip()
+        usage = response.usage
+        tokens = (f"{usage.prompt_tokens}+{usage.completion_tokens} tokens"
+                  if usage else "tokens n/d")
+        print(f"  [OpenAI curator] OK — {CURATOR_MODEL}, {len(curated)} chars, {tokens}")
+        return curated
+    except Exception as e:
+        print(f"  [OpenAI curator] Erro na API: {e} — usando resumo original")
+        return summary
+
+
 def _build_prompt(articles, topic_name: str | None, context: str = "dashboard",
                   ref_date: date | None = None) -> str:
     """Constrói o prompt de resumo.
@@ -61,10 +106,7 @@ def _build_prompt(articles, topic_name: str | None, context: str = "dashboard",
     context="email"     → balanço do dia anterior, enviado por e-mail na manhã seguinte.
     ref_date            → data das notícias resumidas (usada para ancorar o tempo verbal).
     """
-    youtube = [a for a in articles if getattr(a.source, "type", None) == "youtube" and a.transcript]
-    rss = [a for a in articles if a not in youtube]
-    selected = youtube[:10] + rss[:30]
-    headlines = "\n".join(_format_article(a) for a in selected)
+    headlines = _format_headlines(articles)
 
     date_str = ref_date.strftime("%d/%m/%Y") if ref_date else ""
 
@@ -119,10 +161,12 @@ def generate_summary(topic_id: int | None = None, force: bool = False) -> DailyS
             topic = session.query(Topic).filter_by(id=topic_id).first()
             topic_name = topic.name if topic else None
 
+        headlines = _format_headlines(articles)
         prompt = _build_prompt(articles, topic_name, context="dashboard", ref_date=today)
         text = _call_llm(prompt)
         if not text:
             return None
+        text = _curate_summary(text, headlines)
 
         source_names = list({a.source.name for a in articles})
         article_ids = [a.id for a in articles]
@@ -276,9 +320,11 @@ def generate_email_summaries(target_date: date) -> list[tuple[str, str, int]]:
             )
             if len(articles) < 5:
                 continue
+            headlines = _format_headlines(articles)
             prompt = _build_prompt(articles, topic.name, context="email", ref_date=target_date)
             text = _call_llm(prompt)
             if text:
+                text = _curate_summary(text, headlines)
                 results.append((text, topic.name, len(articles)))
                 print(f"  [Email resumo] '{topic.name}': OK ({len(articles)} artigos)")
             time.sleep(2)
