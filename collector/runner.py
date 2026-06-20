@@ -3,7 +3,20 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import time
+import logging
 import schedule
+
+# Configura o logging do pipeline para que as mensagens INFO dos módulos
+# (classificador, resumos, adjetivos, métricas de escrita...) apareçam nos
+# logs do Railway. Sem isto, INFO é descartado e só os print() são visíveis.
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+# Silencia bibliotecas HTTP muito verbosas (cada requisição Groq/OpenAI logaria).
+for _noisy in ("httpx", "httpcore", "urllib3"):
+    logging.getLogger(_noisy).setLevel(logging.WARNING)
+
 from db.connection import get_engine, Base, run_migrations
 from db.seeds import seed_all
 from collector.rss_collector import run_collection
