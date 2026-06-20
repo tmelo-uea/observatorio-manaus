@@ -134,48 +134,45 @@ def _compute_pool(texts: list[str], nlp) -> dict | None:
     }
 
 
-def run_writing_metrics():
-    """Computa métricas de escrita por fonte e grava snapshot diário. Roda 1x/dia."""
-    engine = get_engine()
-    today = (datetime.utcnow() - timedelta(hours=4)).date()
+# Coluna de agrupamento por lente. O texto medido (título+resumo) é o mesmo;
+# muda apenas a chave que define o pool.
+_GROUP_COLUMN = {"source": "source_id", "topic": "topic_id"}
 
+
+def _run_group(engine, today, start_utc, group_type: str, nlp) -> int:
+    """Computa e grava as métricas de um tipo de agrupamento. Idempotente por dia.
+
+    Retorna o nº de grupos gravados (0 se já calculado hoje ou sem dados).
+    """
     with engine.connect() as conn:
         already = conn.execute(
             text("SELECT 1 FROM writing_metrics "
-                 "WHERE computed_date = :d AND group_type = 'source' LIMIT 1"),
-            {"d": today},
+                 "WHERE computed_date = :d AND group_type = :g LIMIT 1"),
+            {"d": today, "g": group_type},
         ).fetchone()
     if already:
-        return
+        return 0
 
-    logger.info("Computando métricas de escrita por fonte...")
-    start_utc = datetime.utcnow() - timedelta(days=PERIOD_DAYS)
-
+    col = _GROUP_COLUMN[group_type]
     with engine.connect() as conn:
-        rows = conn.execute(text("""
+        rows = conn.execute(text(f"""
             SELECT
-                a.source_id AS gid,
+                a.{col} AS gid,
                 CONCAT(COALESCE(a.title, ''), ' ', COALESCE(a.summary, '')) AS texto
             FROM articles a
             WHERE a.published_at >= :start
               AND a.is_local = 1
-              AND a.source_id IS NOT NULL
+              AND a.{col} IS NOT NULL
         """), {"start": start_utc}).fetchall()
-
-    if not rows:
-        logger.warning("Sem artigos para métricas de escrita.")
-        return
 
     pools: dict[int, list[str]] = defaultdict(list)
     for row in rows:
         texto = (row.texto or "").strip()
         if texto:
             pools[row.gid].append(texto)
-
     if not pools:
-        return
+        return 0
 
-    nlp = _load_spacy()
     records = []
     for gid, texts in pools.items():
         metrics = _compute_pool(texts, nlp)
@@ -185,7 +182,7 @@ def run_writing_metrics():
         for metric, value in metrics.items():
             records.append({
                 "computed_date": today,
-                "group_type":    "source",
+                "group_type":    group_type,
                 "group_id":      gid,
                 "metric":        metric,
                 "value":         float(value),
@@ -193,13 +190,44 @@ def run_writing_metrics():
                 "n_tokens":      n_tokens,
             })
 
-    if records:
-        with engine.begin() as conn:
-            conn.execute(text("""
-                INSERT INTO writing_metrics
-                    (computed_date, group_type, group_id, metric, value, n_articles, n_tokens)
-                VALUES
-                    (:computed_date, :group_type, :group_id, :metric, :value, :n_articles, :n_tokens)
-            """), records)
-        n_sources = len({r["group_id"] for r in records})
-        logger.info(f"Métricas de escrita salvas: {n_sources} fontes para {today}.")
+    if not records:
+        return 0
+
+    with engine.begin() as conn:
+        conn.execute(text("""
+            INSERT INTO writing_metrics
+                (computed_date, group_type, group_id, metric, value, n_articles, n_tokens)
+            VALUES
+                (:computed_date, :group_type, :group_id, :metric, :value, :n_articles, :n_tokens)
+        """), records)
+    return len({r["group_id"] for r in records})
+
+
+def run_writing_metrics():
+    """Computa métricas de escrita por fonte e por tema, gravando snapshot diário.
+
+    Roda 1x/dia. Carrega o spaCy apenas se houver alguma lente pendente.
+    """
+    engine = get_engine()
+    today = (datetime.utcnow() - timedelta(hours=4)).date()
+
+    with engine.connect() as conn:
+        done = {
+            r.group_type for r in conn.execute(
+                text("SELECT DISTINCT group_type FROM writing_metrics "
+                     "WHERE computed_date = :d"),
+                {"d": today},
+            ).fetchall()
+        }
+    pending = [g for g in _GROUP_COLUMN if g not in done]
+    if not pending:
+        return
+
+    logger.info(f"Computando métricas de escrita: {', '.join(pending)}...")
+    start_utc = datetime.utcnow() - timedelta(days=PERIOD_DAYS)
+    nlp = _load_spacy()
+
+    for group_type in pending:
+        n = _run_group(engine, today, start_utc, group_type, nlp)
+        if n:
+            logger.info(f"Métricas de escrita salvas: {n} {group_type}(s) para {today}.")
