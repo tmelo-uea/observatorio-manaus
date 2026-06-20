@@ -126,6 +126,29 @@ class TopicAdjective(Base):
     topic: Mapped["Topic"] = relationship()
 
 
+class WritingMetric(Base):
+    """Métricas de escrita agregadas por fonte ou tema, computadas 1x/dia.
+
+    Cada linha é o valor de uma métrica para um grupo (fonte ou tema), medido
+    sobre o pool de título+resumo das notícias locais dos 30 dias anteriores a
+    computed_date. Guardar um snapshot diário acumula a série temporal que
+    alimentará a lente de evolução no tempo.
+
+    group_type: "source" | "topic"
+    metric:     "lexical_density" | "mtld" | "lexical_sophistication" | "nominalization_rate"
+    """
+    __tablename__ = "writing_metrics"
+
+    id:            Mapped[int]   = mapped_column(Integer, primary_key=True, autoincrement=True)
+    computed_date: Mapped[date]  = mapped_column(Date, nullable=False, index=True)
+    group_type:    Mapped[str]   = mapped_column(String(20), nullable=False)
+    group_id:      Mapped[int]   = mapped_column(Integer, nullable=False, index=True)
+    metric:        Mapped[str]   = mapped_column(String(40), nullable=False)
+    value:         Mapped[float] = mapped_column(Float, nullable=False)
+    n_articles:    Mapped[int]   = mapped_column(Integer, nullable=False)
+    n_tokens:      Mapped[int]   = mapped_column(Integer, nullable=False)
+
+
 class DailySummaryVersion(Base):
     """Log append-only de todas as versões geradas de cada resumo do dia.
 
