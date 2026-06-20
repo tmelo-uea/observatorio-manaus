@@ -135,6 +135,26 @@ def load_source_profile(start_utc: datetime) -> pd.DataFrame:
 
 
 @st.cache_data(ttl=1800)
+def load_writing_metrics(group_type: str) -> tuple[pd.DataFrame, str | None]:
+    """Métricas de escrita (por 'source' ou 'topic') do snapshot mais recente."""
+    table = "sources" if group_type == "source" else "topics"
+    with get_db().connect() as conn:
+        latest = conn.execute(text(
+            "SELECT MAX(computed_date) AS d FROM writing_metrics WHERE group_type = :g"
+        ), {"g": group_type}).fetchone()
+        if not latest or not latest.d:
+            return pd.DataFrame(), None
+        computed_date = str(latest.d)
+        result = conn.execute(text(f"""
+            SELECT g.name AS grupo, wm.metric, wm.value, wm.n_articles
+            FROM writing_metrics wm
+            JOIN {table} g ON wm.group_id = g.id
+            WHERE wm.group_type = :g AND wm.computed_date = :d
+        """), {"g": group_type, "d": latest.d})
+        return pd.DataFrame(result.fetchall(), columns=result.keys()), computed_date
+
+
+@st.cache_data(ttl=1800)
 def load_records(start_utc: datetime) -> dict:
     """Recordes/superlativos do período (apenas notícias locais)."""
     out: dict = {}
@@ -417,6 +437,82 @@ def build_profile_fig(df: pd.DataFrame) -> go.Figure | None:
     return fig
 
 
+# (chave no BD, rótulo na coluna, descrição p/ hover, formatação do valor real)
+WRITING_METRICS = [
+    ("lexical_density", "Densidade",
+     "Palavras de conteúdo sobre o total — quanto maior, mais densa a informação.",
+     lambda v: f"{v:.2f}"),
+    ("mtld", "Diversidade",
+     "Diversidade de vocabulário (MTLD) — quanto maior, menos repetição.",
+     lambda v: f"{v:.0f}"),
+    ("lexical_sophistication", "Sofisticação",
+     "% de palavras raras/pouco frequentes — proxy de sofisticação lexical.",
+     lambda v: f"{v * 100:.0f}%"),
+    ("nominalization_rate", "Nominalização",
+     "Substantivos nominalizados por 100 palavras — proxy de formalidade.",
+     lambda v: f"{v:.1f}"),
+]
+
+
+def build_writing_fig(df: pd.DataFrame, top_n: int | None = None) -> go.Figure | None:
+    # Ordena os grupos por volume de notícias (maior no topo); top_n limita a fontes.
+    arts = df.groupby("grupo")["n_articles"].max()
+    groups = arts.nlargest(top_n).index.tolist() if top_n else arts.sort_values(ascending=False).index.tolist()
+    df = df[df["grupo"].isin(groups)]
+
+    pivot = df.pivot_table(index="grupo", columns="metric", values="value")
+    pivot = pivot.reindex(groups)
+
+    labels = [m[1] for m in WRITING_METRICS]
+
+    # Cor normalizada por coluna (min–max), pois as escalas das métricas diferem muito.
+    col_range = {
+        key: (pivot[key].min(), pivot[key].max())
+        for key, *_ in WRITING_METRICS if key in pivot.columns
+    }
+
+    z_matrix, text_matrix, hover_matrix = [], [], []
+    for grp in pivot.index:
+        z_row, text_row, hover_row = [], [], []
+        for key, label, desc, fmt in WRITING_METRICS:
+            v = pivot.loc[grp, key] if key in pivot.columns else float("nan")
+            cmin, cmax = col_range.get(key, (0, 0))
+            z_norm = (v - cmin) / (cmax - cmin) if cmax > cmin else 0.5
+            z_row.append(round(z_norm, 4))
+            text_row.append(fmt(v) if pd.notna(v) else "")
+            hover_row.append(
+                f"<b>{grp}</b><br>{label}: <b>{fmt(v)}</b><br>{desc}<br>"
+                f"{int(arts[grp])} notícias no período"
+            )
+        z_matrix.append(z_row)
+        text_matrix.append(text_row)
+        hover_matrix.append(hover_row)
+
+    fig = go.Figure(go.Heatmap(
+        z=z_matrix,
+        x=labels,
+        y=list(pivot.index),
+        text=text_matrix,
+        customdata=hover_matrix,
+        texttemplate="%{text}",
+        textfont=dict(size=12, color="#1e293b"),
+        colorscale=[[0, "#eff6ff"], [1, "#3b82f6"]],
+        showscale=False,
+        hovertemplate="%{customdata}<extra></extra>",
+        xgap=2,
+        ygap=2,
+    ))
+    fig.update_layout(
+        height=max(420, len(groups) * 44 + 120),
+        margin=dict(l=200, r=40, t=10, b=40),
+        plot_bgcolor="#ffffff",
+        paper_bgcolor="#ffffff",
+        xaxis=dict(side="top", tickfont=dict(size=12, color="#1e293b")),
+        yaxis=dict(tickfont=dict(size=12, color="#1e293b")),
+    )
+    return fig
+
+
 def build_adj_heatmap_fig(df: pd.DataFrame) -> go.Figure | None:
     if df.empty:
         return None
@@ -623,6 +719,8 @@ try:
     df_heatmap          = load_heatmap(start)
     df_evolution        = load_topic_evolution(start)
     df_profile          = load_source_profile(start)
+    df_wr_src, wr_src_date = load_writing_metrics("source")
+    df_wr_top, wr_top_date = load_writing_metrics("topic")
     df_adj, adj_date    = load_topic_adjectives()
 except Exception as e:
     st.error(f"Erro ao carregar dados: {e}")
@@ -729,7 +827,55 @@ else:
 
 st.divider()
 
-# ── 4. Adjetivos por tema ────────────────────────────────────────────────────
+# ── 4. Métricas de escrita ───────────────────────────────────────────────────
+st.subheader("✍️ Métricas de escrita")
+st.markdown(
+    "Quatro métricas linguísticas que caracterizam o **estilo do texto** — não *o que* se cobre, "
+    "mas *como* se escreve. "
+    "**Densidade** mede a proporção de palavras de conteúdo (substantivos, verbos, adjetivos) sobre o total — "
+    "textos mais densos carregam mais informação por palavra. "
+    "**Diversidade** (índice MTLD) indica a riqueza do vocabulário: valores altos significam menos repetição. "
+    "**Sofisticação** é a fração de palavras raras ou pouco frequentes na língua. "
+    "**Nominalização** conta substantivos derivados de verbos (decisão, investimento, crescimento) por 100 palavras — "
+    "um indicador de formalidade do texto. "
+    "A cor é relativa **dentro de cada coluna** (a linha mais escura se destaca naquela métrica); "
+    "o número em cada célula é o valor real. "
+    "As medidas consideram apenas **título + resumo** das notícias locais — ou seja, o estilo da chamada, "
+    "não do corpo completo da matéria — e só entram grupos com volume mínimo de texto no período."
+)
+
+_WR_EMPTY = ("Dados ainda não disponíveis — as métricas são computadas uma vez ao dia "
+             "no ciclo do worker (a cada 30 min). Tente novamente em alguns minutos.")
+
+tab_fonte, tab_tema = st.tabs(["Por fonte", "Por tema"])
+
+with tab_fonte:
+    st.caption("Compara o estilo de escrita dos 15 portais com mais notícias locais no período. "
+               "Complementa o perfil editorial acima: quem escreve de forma mais densa, diversa, sofisticada ou formal.")
+    if df_wr_src.empty:
+        st.info(_WR_EMPTY)
+    else:
+        fig = build_writing_fig(df_wr_src, top_n=15)
+        if fig:
+            st.plotly_chart(fig, use_container_width=True)
+        if wr_src_date:
+            st.caption(f"Atualizado em {wr_src_date} · Passe o cursor sobre as células para ver o significado de cada métrica")
+
+with tab_tema:
+    st.caption("Compara o estilo de escrita entre os temas. Revela diferenças de registro — "
+               "por exemplo, se Justiça e Economia usam linguagem mais formal que Esporte ou Cultura.")
+    if df_wr_top.empty:
+        st.info(_WR_EMPTY)
+    else:
+        fig = build_writing_fig(df_wr_top)
+        if fig:
+            st.plotly_chart(fig, use_container_width=True)
+        if wr_top_date:
+            st.caption(f"Atualizado em {wr_top_date} · Passe o cursor sobre as células para ver o significado de cada métrica")
+
+st.divider()
+
+# ── 5. Adjetivos por tema ────────────────────────────────────────────────────
 st.subheader("🔤 Adjetivos mais distintivos por tema")
 st.markdown(
     "Os 10 adjetivos que melhor **caracterizam a linguagem** usada pela mídia em cada tema, "
