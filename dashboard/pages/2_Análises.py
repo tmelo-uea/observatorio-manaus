@@ -722,6 +722,7 @@ try:
     df_wr_src, wr_src_date = load_writing_metrics("source")
     df_wr_top, wr_top_date = load_writing_metrics("topic")
     wr_src_insight         = load_writing_insight("source")
+    wr_top_insight         = load_writing_insight("topic")
     df_adj, adj_date    = load_topic_adjectives()
 except Exception as e:
     st.error(f"Erro ao carregar dados: {e}")
@@ -847,6 +848,18 @@ st.markdown(
 _WR_EMPTY = ("Dados ainda não disponíveis — as métricas são computadas uma vez ao dia "
              "no ciclo do worker (a cada 30 min). Tente novamente em alguns minutos.")
 
+def render_insight_card(insight: str) -> None:
+    st.markdown(
+        f"""<div style="background:#f8f9fa;border:1px solid #e5e7eb;border-left:4px solid #2563eb;
+        border-radius:8px;padding:14px 18px;margin-top:6px;">
+        <div style="font-size:0.72rem;color:#6c757d;text-transform:uppercase;letter-spacing:0.04em;
+        margin-bottom:6px;">🤖 Análise gerada por IA</div>
+        <div style="font-size:0.95rem;color:#1e293b;line-height:1.6;">{insight}</div>
+        </div>""",
+        unsafe_allow_html=True,
+    )
+
+
 tab_fonte, tab_tema = st.tabs(["Por fonte", "Por tema"])
 
 with tab_fonte:
@@ -859,15 +872,7 @@ with tab_fonte:
         if fig:
             st.plotly_chart(fig, use_container_width=True)
         if wr_src_insight:
-            st.markdown(
-                f"""<div style="background:#f8f9fa;border:1px solid #e5e7eb;border-left:4px solid #2563eb;
-                border-radius:8px;padding:14px 18px;margin-top:6px;">
-                <div style="font-size:0.72rem;color:#6c757d;text-transform:uppercase;letter-spacing:0.04em;
-                margin-bottom:6px;">🤖 Análise gerada por IA</div>
-                <div style="font-size:0.95rem;color:#1e293b;line-height:1.6;">{wr_src_insight}</div>
-                </div>""",
-                unsafe_allow_html=True,
-            )
+            render_insight_card(wr_src_insight)
         if wr_src_date:
             st.caption(f"Atualizado em {wr_src_date} · Passe o cursor sobre as barras para ver os valores")
 
@@ -880,6 +885,8 @@ with tab_tema:
         fig = build_writing_fig(df_wr_top)
         if fig:
             st.plotly_chart(fig, use_container_width=True)
+        if wr_top_insight:
+            render_insight_card(wr_top_insight)
         if wr_top_date:
             st.caption(f"Atualizado em {wr_top_date} · Passe o cursor sobre as barras para ver os valores")
 
