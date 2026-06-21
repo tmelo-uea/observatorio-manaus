@@ -322,13 +322,13 @@ def run_writing_insight(group_type: str = "source"):
             temperature=0.3,
         )
         analysis = response.choices[0].message.content.strip()
+        with engine.begin() as conn:
+            conn.execute(text("""
+                INSERT INTO writing_insights (computed_date, group_type, text, model, created_at)
+                VALUES (:d, :g, :t, :m, :ts)
+            """), {"d": today, "g": group_type, "t": analysis, "m": INSIGHT_MODEL,
+                   "ts": datetime.utcnow()})
     except Exception as e:
-        logger.warning(f"Falha ao gerar análise de escrita: {e}")
+        logger.warning(f"Falha ao gerar/gravar análise de escrita: {e}")
         return
-
-    with engine.begin() as conn:
-        conn.execute(text("""
-            INSERT INTO writing_insights (computed_date, group_type, text, model)
-            VALUES (:d, :g, :t, :m)
-        """), {"d": today, "g": group_type, "t": analysis, "m": INSIGHT_MODEL})
     logger.info(f"Análise de escrita ({group_type}) gerada para {today}.")
