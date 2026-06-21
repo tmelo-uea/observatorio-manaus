@@ -55,6 +55,7 @@ def job():
     run_adjective_extraction()
     run_writing_metrics()
     run_writing_insight("source")
+    run_writing_insight("topic")
 
 print("Observatório do Amazonas — Coletor iniciado")
 print("Reclassificando artigos em 'Outros'...")

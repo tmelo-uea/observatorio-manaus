@@ -221,34 +221,45 @@ _METRIC_LABELS = {
     "word_length":            "Comprimento médio das palavras (letras)",
 }
 
-_INSIGHT_SYSTEM = (
-    "Você é um analista de dados de mídia. Recebe métricas linguísticas agregadas "
-    "da imprensa de Manaus/Amazonas e escreve uma análise curta e DESCRITIVA em português.\n\n"
-    "REGRAS OBRIGATÓRIAS:\n"
-    "1. É descrição de ESTILO, nunca de QUALIDADE. Jamais diga que um veículo escreve "
-    "melhor, pior, é mais confiável ou mais profissional. Não há juízo de valor.\n"
-    "2. Use APENAS os números fornecidos. Não invente fontes, causas, contexto histórico "
-    "ou dados ausentes.\n"
-    "3. SINTETIZE o quadro geral em vez de listar as fontes uma a uma: identifique o grupo "
-    "de veículos mais formal/elaborado e o mais enxuto, e o contraste entre eles. Cite no "
-    "máximo 2 ou 3 veículos como exemplos ilustrativos — NÃO faça uma chamada de todos nem "
-    "recite o ranking completo de números.\n"
-    "4. Foque nos padrões GRANDES E ESTÁVEIS (contrastes nítidos, extremos claros). NÃO "
-    "comente diferenças minúsculas nem o ordenamento fino do meio da tabela (são instáveis "
-    "e mudam a cada semana).\n"
-    "5. Inclua, em uma frase, a ressalva de que isto reflete os últimos 30 dias e mede apenas "
-    "o título e o resumo (a chamada) das notícias, não o corpo da matéria.\n"
-    "6. Seja conciso: 2 a 4 frases, um único parágrafo corrido. Sem listas, sem títulos."
-)
+# Configuração por lente: tabela de nomes, substantivo e rótulo do bloco no prompt.
+_INSIGHT_CFG = {
+    "source": {"table": "sources", "sing": "veículo", "plur": "veículos", "header": "POR FONTE"},
+    "topic":  {"table": "topics",  "sing": "tema",    "plur": "temas",    "header": "POR TEMA"},
+}
+
+
+def _insight_system(group_type: str) -> str:
+    cfg = _INSIGHT_CFG[group_type]
+    sing, plur = cfg["sing"], cfg["plur"]
+    return (
+        "Você é um analista de dados de mídia. Recebe métricas linguísticas agregadas "
+        "da imprensa de Manaus/Amazonas e escreve uma análise curta e DESCRITIVA em português.\n\n"
+        "REGRAS OBRIGATÓRIAS:\n"
+        f"1. É descrição de ESTILO, nunca de QUALIDADE. Jamais classifique um {sing} como "
+        "escrevendo melhor, pior, de forma mais confiável ou mais profissional. Não há juízo de valor.\n"
+        "2. Use APENAS os números fornecidos. Não invente dados, causas, contexto histórico "
+        "ou informações ausentes.\n"
+        f"3. SINTETIZE o quadro geral em vez de listar os {plur} um a um: identifique os {plur} "
+        f"de escrita mais formal/elaborada e os mais enxutos, e o contraste entre eles. Cite no "
+        f"máximo 2 ou 3 {plur} como exemplos ilustrativos — NÃO faça uma chamada de todos nem "
+        "recite o ranking completo de números.\n"
+        "4. Foque nos padrões GRANDES E ESTÁVEIS (contrastes nítidos, extremos claros). NÃO "
+        "comente diferenças minúsculas nem o ordenamento fino do meio da tabela (são instáveis "
+        "e mudam a cada semana).\n"
+        "5. Inclua, em uma frase, a ressalva de que isto reflete os últimos 30 dias e mede apenas "
+        "o título e o resumo (a chamada) das notícias, não o corpo da matéria.\n"
+        "6. Seja conciso: 2 a 4 frases, um único parágrafo corrido. Sem listas, sem títulos."
+    )
 
 
 def _build_metric_table(engine, today, group_type: str = "source"):
-    """Monta a tabela texto (fonte × métrica) e as médias do corpus para o prompt."""
+    """Monta a tabela texto (grupo × métrica) e as médias do corpus para o prompt."""
+    cfg = _INSIGHT_CFG[group_type]
     with engine.connect() as conn:
-        rows = conn.execute(text("""
-            SELECT s.name AS nome, wm.metric, wm.value, wm.n_articles
+        rows = conn.execute(text(f"""
+            SELECT g.name AS nome, wm.metric, wm.value, wm.n_articles
             FROM writing_metrics wm
-            JOIN sources s ON wm.group_id = s.id
+            JOIN {cfg['table']} g ON wm.group_id = g.id
             WHERE wm.group_type = :g AND wm.computed_date = :d
         """), {"g": group_type, "d": today}).fetchall()
     if not rows:
@@ -277,7 +288,7 @@ def _build_metric_table(engine, today, group_type: str = "source"):
     lines = ["MÉDIA DA IMPRENSA LOCAL: " + " | ".join(
         f"{_METRIC_LABELS[m]}: {_fmt(m, avgs[m])}" for m in metrics)]
     lines.append("")
-    lines.append("POR FONTE (nº de notícias no período entre parênteses):")
+    lines.append(f"{cfg['header']} (nº de notícias no período entre parênteses):")
     # ordena por volume para dar contexto de confiabilidade
     for nome in sorted(by_source, key=lambda n: -arts.get(n, 0)):
         vals = " | ".join(f"{_METRIC_LABELS[m]}: {_fmt(m, by_source[nome].get(m, 0))}"
@@ -314,9 +325,10 @@ def run_writing_insight(group_type: str = "source"):
         response = client.chat.completions.create(
             model=INSIGHT_MODEL,
             messages=[
-                {"role": "system", "content": _INSIGHT_SYSTEM},
+                {"role": "system", "content": _insight_system(group_type)},
                 {"role": "user", "content":
-                    "Analise o estilo de escrita das fontes a partir destas métricas:\n\n" + table},
+                    f"Analise o estilo de escrita por {_INSIGHT_CFG[group_type]['sing']} "
+                    f"a partir destas métricas:\n\n" + table},
             ],
             max_tokens=400,
             temperature=0.3,
