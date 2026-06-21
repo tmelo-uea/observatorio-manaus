@@ -135,7 +135,7 @@ class WritingMetric(Base):
     alimentará a lente de evolução no tempo.
 
     group_type: "source" | "topic"
-    metric:     "lexical_density" | "mtld" | "lexical_sophistication" | "nominalization_rate"
+    metric:     "lexical_sophistication" | "nominalization_rate" | "word_length"
     """
     __tablename__ = "writing_metrics"
 
@@ -147,6 +147,22 @@ class WritingMetric(Base):
     value:         Mapped[float] = mapped_column(Float, nullable=False)
     n_articles:    Mapped[int]   = mapped_column(Integer, nullable=False)
     n_tokens:      Mapped[int]   = mapped_column(Integer, nullable=False)
+
+
+class WritingInsight(Base):
+    """Análise interpretativa (gerada por IA) das métricas de escrita, 1x/dia.
+
+    Um texto curto, descritivo (não avaliativo), por lente (group_type) e data.
+    A página exibe o texto mais recente abaixo do gráfico.
+    """
+    __tablename__ = "writing_insights"
+
+    id:            Mapped[int]      = mapped_column(Integer, primary_key=True, autoincrement=True)
+    computed_date: Mapped[date]     = mapped_column(Date, nullable=False, index=True)
+    group_type:    Mapped[str]      = mapped_column(String(20), nullable=False)
+    text:          Mapped[str]      = mapped_column(Text, nullable=False)
+    model:         Mapped[str]      = mapped_column(String(40), nullable=False)
+    created_at:    Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
 class DailySummaryVersion(Base):
