@@ -5,6 +5,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from datetime import datetime, timedelta
 from sqlalchemy import text
 from db.connection import get_engine
@@ -152,6 +153,18 @@ def load_writing_metrics(group_type: str) -> tuple[pd.DataFrame, str | None]:
             WHERE wm.group_type = :g AND wm.computed_date = :d
         """), {"g": group_type, "d": latest.d})
         return pd.DataFrame(result.fetchall(), columns=result.keys()), computed_date
+
+
+@st.cache_data(ttl=1800)
+def load_writing_insight(group_type: str) -> str | None:
+    """Texto da análise interpretativa (IA) mais recente para a lente."""
+    with get_db().connect() as conn:
+        row = conn.execute(text("""
+            SELECT text FROM writing_insights
+            WHERE group_type = :g
+            ORDER BY computed_date DESC, id DESC LIMIT 1
+        """), {"g": group_type}).fetchone()
+    return row.text if row else None
 
 
 @st.cache_data(ttl=1800)
@@ -437,78 +450,65 @@ def build_profile_fig(df: pd.DataFrame) -> go.Figure | None:
     return fig
 
 
-# (chave no BD, rótulo na coluna, descrição p/ hover, formatação do valor real)
+# (chave no BD, rótulo, unidade/subtítulo, formatação do valor real)
 WRITING_METRICS = [
-    ("lexical_density", "Densidade",
-     "Palavras de conteúdo sobre o total — quanto maior, mais densa a informação.",
-     lambda v: f"{v:.2f}"),
-    ("mtld", "Diversidade",
-     "Diversidade de vocabulário (MTLD) — quanto maior, menos repetição.",
-     lambda v: f"{v:.0f}"),
-    ("lexical_sophistication", "Sofisticação",
-     "% de palavras raras/pouco frequentes — proxy de sofisticação lexical.",
-     lambda v: f"{v * 100:.0f}%"),
-    ("nominalization_rate", "Nominalização",
-     "Substantivos nominalizados por 100 palavras — proxy de formalidade.",
-     lambda v: f"{v:.1f}"),
+    ("lexical_sophistication", "Sofisticação", "% palavras raras", lambda v: f"{v * 100:.1f}%"),
+    ("nominalization_rate",    "Nominalização", "por 100 palavras", lambda v: f"{v:.1f}"),
+    ("word_length",            "Comprimento",   "letras/palavra",   lambda v: f"{v:.2f}"),
 ]
 
 
 def build_writing_fig(df: pd.DataFrame, top_n: int | None = None) -> go.Figure | None:
-    # Ordena os grupos por volume de notícias (maior no topo); top_n limita a fontes.
+    """Pequenos múltiplos de barras divergentes: distância de cada grupo à média do corpus."""
+    keys = [m[0] for m in WRITING_METRICS]
     arts = df.groupby("grupo")["n_articles"].max()
-    groups = arts.nlargest(top_n).index.tolist() if top_n else arts.sort_values(ascending=False).index.tolist()
-    df = df[df["grupo"].isin(groups)]
+    groups = arts.nlargest(top_n).index.tolist() if top_n else list(arts.index)
 
-    pivot = df.pivot_table(index="grupo", columns="metric", values="value")
-    pivot = pivot.reindex(groups)
+    pivot = (df[df["grupo"].isin(groups)]
+             .pivot_table(index="grupo", columns="metric", values="value")
+             .reindex(columns=keys))
+    if pivot.dropna(how="all").empty:
+        return None
 
-    labels = [m[1] for m in WRITING_METRICS]
+    # Ordena por "elaboração geral" (média das métricas normalizadas); maior no topo do gráfico.
+    norm = pivot.copy()
+    for k in keys:
+        lo, hi = norm[k].min(), norm[k].max()
+        norm[k] = (norm[k] - lo) / (hi - lo) if hi > lo else 0.5
+    order = norm.mean(axis=1).sort_values().index.tolist()  # asc → topo do plot = maior
+    pivot = pivot.reindex(order)
+    arts = arts.reindex(order)
 
-    # Cor normalizada por coluna (min–max), pois as escalas das métricas diferem muito.
-    col_range = {
-        key: (pivot[key].min(), pivot[key].max())
-        for key, *_ in WRITING_METRICS if key in pivot.columns
-    }
+    avgs = {k: pivot[k].mean() for k in keys}
+    subtitles = [f"{lbl}<br><sub>{sub} · média {fmt(avgs[key])}</sub>"
+                 for key, lbl, sub, fmt in WRITING_METRICS]
 
-    z_matrix, text_matrix, hover_matrix = [], [], []
-    for grp in pivot.index:
-        z_row, text_row, hover_row = [], [], []
-        for key, label, desc, fmt in WRITING_METRICS:
-            v = pivot.loc[grp, key] if key in pivot.columns else float("nan")
-            cmin, cmax = col_range.get(key, (0, 0))
-            z_norm = (v - cmin) / (cmax - cmin) if cmax > cmin else 0.5
-            z_row.append(round(z_norm, 4))
-            text_row.append(fmt(v) if pd.notna(v) else "")
-            hover_row.append(
-                f"<b>{grp}</b><br>{label}: <b>{fmt(v)}</b><br>{desc}<br>"
-                f"{int(arts[grp])} notícias no período"
-            )
-        z_matrix.append(z_row)
-        text_matrix.append(text_row)
-        hover_matrix.append(hover_row)
+    fig = make_subplots(rows=1, cols=len(WRITING_METRICS), shared_yaxes=True,
+                        subplot_titles=subtitles, horizontal_spacing=0.045)
+    for j, (key, label, sub, fmt) in enumerate(WRITING_METRICS, 1):
+        dev = pivot[key] - avgs[key]
+        colors = ["#2563eb" if d >= 0 else "#f59e0b" for d in dev]
+        fig.add_trace(go.Bar(
+            y=list(pivot.index), x=dev, orientation="h",
+            marker=dict(color=colors),
+            text=[fmt(v) for v in pivot[key]], textposition="outside",
+            textfont=dict(size=10, color="#334155"),
+            customdata=[[fmt(v), int(arts[g])] for g, v in zip(pivot.index, pivot[key])],
+            hovertemplate=f"<b>%{{y}}</b><br>{label}: %{{customdata[0]}}<br>%{{customdata[1]}} notícias<extra></extra>",
+            cliponaxis=False,
+        ), row=1, col=j)
+        fig.add_vline(x=0, line=dict(color="#94a3b8", width=1.5), row=1, col=j)
+        m = max(abs(dev.min()), abs(dev.max())) * 1.5 or 1
+        fig.update_xaxes(range=[-m, m], showticklabels=False, showgrid=False,
+                         zeroline=False, row=1, col=j)
 
-    fig = go.Figure(go.Heatmap(
-        z=z_matrix,
-        x=labels,
-        y=list(pivot.index),
-        text=text_matrix,
-        customdata=hover_matrix,
-        texttemplate="%{text}",
-        textfont=dict(size=12, color="#1e293b"),
-        colorscale=[[0, "#eff6ff"], [1, "#3b82f6"]],
-        showscale=False,
-        hovertemplate="%{customdata}<extra></extra>",
-        xgap=2,
-        ygap=2,
-    ))
+    fig.update_yaxes(tickfont=dict(size=11, color="#1e293b"))
+    fig.update_annotations(font_size=13)
     fig.update_layout(
-        height=max(420, len(groups) * 44 + 120),
-        margin=dict(l=200, r=40, t=10, b=40),
-        plot_bgcolor="#ffffff",
-        paper_bgcolor="#ffffff",
-        xaxis=dict(side="top", tickfont=dict(size=12, color="#1e293b")),
-        yaxis=dict(tickfont=dict(size=12, color="#1e293b")),
+        showlegend=False, bargap=0.35,
+        height=max(380, len(pivot) * 34 + 130),
+        margin=dict(l=160, r=20, t=80, b=20),
+        plot_bgcolor="white", paper_bgcolor="white",
     )
     return fig
 
@@ -721,6 +721,7 @@ try:
     df_profile          = load_source_profile(start)
     df_wr_src, wr_src_date = load_writing_metrics("source")
     df_wr_top, wr_top_date = load_writing_metrics("topic")
+    wr_src_insight         = load_writing_insight("source")
     df_adj, adj_date    = load_topic_adjectives()
 except Exception as e:
     st.error(f"Erro ao carregar dados: {e}")
@@ -830,18 +831,17 @@ st.divider()
 # ── 4. Métricas de escrita ───────────────────────────────────────────────────
 st.subheader("✍️ Métricas de escrita")
 st.markdown(
-    "Quatro métricas linguísticas que caracterizam o **estilo do texto** — não *o que* se cobre, "
+    "Três métricas linguísticas que caracterizam o **estilo do texto** — não *o que* se cobre, "
     "mas *como* se escreve. "
-    "**Densidade** mede a proporção de palavras de conteúdo (substantivos, verbos, adjetivos) sobre o total — "
-    "textos mais densos carregam mais informação por palavra. "
-    "**Diversidade** (índice MTLD) indica a riqueza do vocabulário: valores altos significam menos repetição. "
     "**Sofisticação** é a fração de palavras raras ou pouco frequentes na língua. "
-    "**Nominalização** conta substantivos derivados de verbos (decisão, investimento, crescimento) por 100 palavras — "
-    "um indicador de formalidade do texto. "
-    "A cor é relativa **dentro de cada coluna** (a linha mais escura se destaca naquela métrica); "
-    "o número em cada célula é o valor real. "
-    "As medidas consideram apenas **título + resumo** das notícias locais — ou seja, o estilo da chamada, "
-    "não do corpo completo da matéria — e só entram grupos com volume mínimo de texto no período."
+    "**Nominalização** conta substantivos derivados de verbos (decisão, investimento, crescimento) por 100 "
+    "palavras — indicador de formalidade. "
+    "**Comprimento** é o número médio de letras por palavra — palavras mais longas tendem a ser mais formais "
+    "ou técnicas. "
+    "Cada barra mostra a **distância da média** da imprensa local: **azul** acima da média, **laranja** abaixo. "
+    "As medidas consideram apenas **título + resumo** das notícias locais (o estilo da chamada, não do corpo da "
+    "matéria), na janela dos **últimos 30 dias**, que é atualizada diariamente. "
+    "São uma descrição de **estilo, não de qualidade** — não dizem que um veículo escreve melhor que outro."
 )
 
 _WR_EMPTY = ("Dados ainda não disponíveis — as métricas são computadas uma vez ao dia "
@@ -850,20 +850,30 @@ _WR_EMPTY = ("Dados ainda não disponíveis — as métricas são computadas uma
 tab_fonte, tab_tema = st.tabs(["Por fonte", "Por tema"])
 
 with tab_fonte:
-    st.caption("Compara o estilo de escrita dos 15 portais com mais notícias locais no período. "
-               "Complementa o perfil editorial acima: quem escreve de forma mais densa, diversa, sofisticada ou formal.")
+    st.caption("Estilo de escrita dos 15 portais com mais notícias locais no período, "
+               "ordenados pela elaboração geral do texto (mais elaborado no topo).")
     if df_wr_src.empty:
         st.info(_WR_EMPTY)
     else:
         fig = build_writing_fig(df_wr_src, top_n=15)
         if fig:
             st.plotly_chart(fig, use_container_width=True)
+        if wr_src_insight:
+            st.markdown(
+                f"""<div style="background:#f8f9fa;border:1px solid #e5e7eb;border-left:4px solid #2563eb;
+                border-radius:8px;padding:14px 18px;margin-top:6px;">
+                <div style="font-size:0.72rem;color:#6c757d;text-transform:uppercase;letter-spacing:0.04em;
+                margin-bottom:6px;">🤖 Análise gerada por IA</div>
+                <div style="font-size:0.95rem;color:#1e293b;line-height:1.6;">{wr_src_insight}</div>
+                </div>""",
+                unsafe_allow_html=True,
+            )
         if wr_src_date:
-            st.caption(f"Atualizado em {wr_src_date} · Passe o cursor sobre as células para ver o significado de cada métrica")
+            st.caption(f"Atualizado em {wr_src_date} · Passe o cursor sobre as barras para ver os valores")
 
 with tab_tema:
-    st.caption("Compara o estilo de escrita entre os temas. Revela diferenças de registro — "
-               "por exemplo, se Justiça e Economia usam linguagem mais formal que Esporte ou Cultura.")
+    st.caption("Estilo de escrita entre os temas — revela diferenças de registro, por exemplo se Justiça e "
+               "Economia usam linguagem mais formal que Esporte ou Cultura.")
     if df_wr_top.empty:
         st.info(_WR_EMPTY)
     else:
@@ -871,7 +881,7 @@ with tab_tema:
         if fig:
             st.plotly_chart(fig, use_container_width=True)
         if wr_top_date:
-            st.caption(f"Atualizado em {wr_top_date} · Passe o cursor sobre as células para ver o significado de cada métrica")
+            st.caption(f"Atualizado em {wr_top_date} · Passe o cursor sobre as barras para ver os valores")
 
 st.divider()
 

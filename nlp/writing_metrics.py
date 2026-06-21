@@ -15,6 +15,7 @@ Métricas (todas robustas ao tamanho do texto):
   - nominalization_rate    substantivos nominalizados por 100 palavras (heurística de sufixos)
 """
 import logging
+import os
 from collections import defaultdict
 from datetime import datetime, timedelta
 
@@ -34,11 +35,6 @@ MIN_TOKENS = 500
 # a comparação entre fontes, não o valor absoluto.
 RARE_ZIPF = 3.0
 
-# Parâmetro canônico do MTLD (McCarthy & Jarvis, 2010).
-MTLD_THRESHOLD = 0.720
-
-# POS de conteúdo (lexical) vs. funcionais.
-CONTENT_POS = {"NOUN", "PROPN", "VERB", "ADJ", "ADV"}
 # Para sofisticação, nomes próprios são "raros" mas não sofisticados — ficam de fora.
 SOPHIST_POS = {"NOUN", "VERB", "ADJ", "ADV"}
 
@@ -61,60 +57,34 @@ def _load_spacy():
         return spacy.load("pt_core_news_sm", disable=["parser", "ner", "senter"])
 
 
-def _mtld_pass(tokens: list[str], threshold: float) -> float:
-    """Um sentido do MTLD: nº de palavras dividido pelo nº de fatores de TTR."""
-    factors = 0.0
-    types: set[str] = set()
-    count = 0
-    for tok in tokens:
-        count += 1
-        types.add(tok)
-        if len(types) / count <= threshold:
-            factors += 1
-            types = set()
-            count = 0
-    if count > 0:
-        ttr = len(types) / count
-        factors += (1 - ttr) / (1 - threshold)
-    if factors == 0:
-        return float(len(tokens))
-    return len(tokens) / factors
-
-
-def _mtld(tokens: list[str], threshold: float = MTLD_THRESHOLD) -> float:
-    """MTLD bidirecional (média ida/volta). Requer ao menos ~50 tokens."""
-    forward  = _mtld_pass(tokens, threshold)
-    backward = _mtld_pass(list(reversed(tokens)), threshold)
-    return (forward + backward) / 2
-
-
 def _is_nominalization(lemma: str) -> bool:
     return lemma.endswith(NOMINAL_SUFFIXES) and len(lemma) > 5
 
 
 def _compute_pool(texts: list[str], nlp) -> dict | None:
-    """Calcula as 4 métricas sobre o pool de textos de um grupo.
+    """Calcula as 3 métricas de estilo sobre o pool de textos de um grupo.
+
+    - lexical_sophistication: proporção de palavras de conteúdo raras (wordfreq)
+    - nominalization_rate:    substantivos nominalizados por 100 palavras
+    - word_length:            comprimento médio das palavras (letras/palavra)
 
     Retorna None se o pool não atingir MIN_TOKENS.
     """
     from wordfreq import zipf_frequency
 
-    total_words   = 0   # palavras (tokens alfabéticos) — denominador da densidade
-    content_words = 0   # palavras de conteúdo (CONTENT_POS)
+    total_words   = 0   # palavras (tokens alfabéticos)
+    total_chars   = 0   # letras somadas (para o comprimento médio)
     nominalizations = 0
     sophist_total = 0   # palavras de conteúdo elegíveis à sofisticação
     sophist_rare  = 0
-    seq: list[str] = []  # sequência ordenada de palavras para o MTLD
 
     for doc in nlp.pipe(texts, batch_size=BATCH):
         for token in doc:
             if not token.is_alpha:
                 continue
             total_words += 1
-            seq.append(token.text.lower())
+            total_chars += len(token.text)
             pos = token.pos_
-            if pos in CONTENT_POS:
-                content_words += 1
             if pos == "NOUN" and _is_nominalization(token.lemma_.lower()):
                 nominalizations += 1
             if pos in SOPHIST_POS:
@@ -126,10 +96,9 @@ def _compute_pool(texts: list[str], nlp) -> dict | None:
         return None
 
     return {
-        "lexical_density":        content_words / total_words,
-        "mtld":                   _mtld(seq),
         "lexical_sophistication": (sophist_rare / sophist_total) if sophist_total else 0.0,
         "nominalization_rate":    nominalizations / total_words * 100,
+        "word_length":            total_chars / total_words,
         "n_tokens":               total_words,
     }
 
@@ -137,6 +106,10 @@ def _compute_pool(texts: list[str], nlp) -> dict | None:
 # Coluna de agrupamento por lente. O texto medido (título+resumo) é o mesmo;
 # muda apenas a chave que define o pool.
 _GROUP_COLUMN = {"source": "source_id", "topic": "topic_id"}
+
+# Métrica que só existe no conjunto atual; sua presença marca "já computado hoje".
+# Permite recomputar quando o conjunto de métricas muda (ex.: troca de MTLD por word_length).
+_CURRENT_MARKER = "word_length"
 
 
 def _run_group(engine, today, start_utc, group_type: str, nlp) -> int:
@@ -147,8 +120,8 @@ def _run_group(engine, today, start_utc, group_type: str, nlp) -> int:
     with engine.connect() as conn:
         already = conn.execute(
             text("SELECT 1 FROM writing_metrics "
-                 "WHERE computed_date = :d AND group_type = :g LIMIT 1"),
-            {"d": today, "g": group_type},
+                 "WHERE computed_date = :d AND group_type = :g AND metric = :m LIMIT 1"),
+            {"d": today, "g": group_type, "m": _CURRENT_MARKER},
         ).fetchone()
     if already:
         return 0
@@ -194,6 +167,10 @@ def _run_group(engine, today, start_utc, group_type: str, nlp) -> int:
         return 0
 
     with engine.begin() as conn:
+        # Remove qualquer linha antiga do dia (ex.: conjunto de métricas anterior) antes de gravar.
+        conn.execute(text("DELETE FROM writing_metrics "
+                          "WHERE computed_date = :d AND group_type = :g"),
+                     {"d": today, "g": group_type})
         conn.execute(text("""
             INSERT INTO writing_metrics
                 (computed_date, group_type, group_id, metric, value, n_articles, n_tokens)
@@ -215,8 +192,8 @@ def run_writing_metrics():
         done = {
             r.group_type for r in conn.execute(
                 text("SELECT DISTINCT group_type FROM writing_metrics "
-                     "WHERE computed_date = :d"),
-                {"d": today},
+                     "WHERE computed_date = :d AND metric = :m"),
+                {"d": today, "m": _CURRENT_MARKER},
             ).fetchall()
         }
     pending = [g for g in _GROUP_COLUMN if g not in done]
@@ -231,3 +208,127 @@ def run_writing_metrics():
         n = _run_group(engine, today, start_utc, group_type, nlp)
         if n:
             logger.info(f"Métricas de escrita salvas: {n} {group_type}(s) para {today}.")
+
+
+# ── Análise interpretativa por IA (lente de fontes) ──────────────────────────
+
+INSIGHT_MODEL = "gpt-4o-mini"
+
+# Rótulos legíveis das métricas para a tabela enviada ao modelo.
+_METRIC_LABELS = {
+    "lexical_sophistication": "Sofisticação (% de palavras raras)",
+    "nominalization_rate":    "Nominalização (substantivos derivados de verbos por 100 palavras)",
+    "word_length":            "Comprimento médio das palavras (letras)",
+}
+
+_INSIGHT_SYSTEM = (
+    "Você é um analista de dados de mídia. Recebe métricas linguísticas agregadas "
+    "da imprensa de Manaus/Amazonas e escreve uma análise curta e DESCRITIVA em português.\n\n"
+    "REGRAS OBRIGATÓRIAS:\n"
+    "1. É descrição de ESTILO, nunca de QUALIDADE. Jamais diga que um veículo escreve "
+    "melhor, pior, é mais confiável ou mais profissional. Não há juízo de valor.\n"
+    "2. Use APENAS os números fornecidos. Não invente fontes, causas, contexto histórico "
+    "ou dados ausentes.\n"
+    "3. SINTETIZE o quadro geral em vez de listar as fontes uma a uma: identifique o grupo "
+    "de veículos mais formal/elaborado e o mais enxuto, e o contraste entre eles. Cite no "
+    "máximo 2 ou 3 veículos como exemplos ilustrativos — NÃO faça uma chamada de todos nem "
+    "recite o ranking completo de números.\n"
+    "4. Foque nos padrões GRANDES E ESTÁVEIS (contrastes nítidos, extremos claros). NÃO "
+    "comente diferenças minúsculas nem o ordenamento fino do meio da tabela (são instáveis "
+    "e mudam a cada semana).\n"
+    "5. Inclua, em uma frase, a ressalva de que isto reflete os últimos 30 dias e mede apenas "
+    "o título e o resumo (a chamada) das notícias, não o corpo da matéria.\n"
+    "6. Seja conciso: 2 a 4 frases, um único parágrafo corrido. Sem listas, sem títulos."
+)
+
+
+def _build_metric_table(engine, today, group_type: str = "source"):
+    """Monta a tabela texto (fonte × métrica) e as médias do corpus para o prompt."""
+    with engine.connect() as conn:
+        rows = conn.execute(text("""
+            SELECT s.name AS nome, wm.metric, wm.value, wm.n_articles
+            FROM writing_metrics wm
+            JOIN sources s ON wm.group_id = s.id
+            WHERE wm.group_type = :g AND wm.computed_date = :d
+        """), {"g": group_type, "d": today}).fetchall()
+    if not rows:
+        return None, None
+
+    by_source: dict = defaultdict(dict)
+    arts: dict = {}
+    sums: dict = defaultdict(float)
+    counts: dict = defaultdict(int)
+    for r in rows:
+        by_source[r.nome][r.metric] = r.value
+        arts[r.nome] = r.n_articles
+        sums[r.metric] += r.value
+        counts[r.metric] += 1
+
+    metrics = list(_METRIC_LABELS)
+    avgs = {m: (sums[m] / counts[m] if counts[m] else 0.0) for m in metrics}
+
+    def _fmt(metric, v):
+        if metric == "lexical_sophistication":
+            return f"{v * 100:.1f}%"
+        if metric == "word_length":
+            return f"{v:.2f}"
+        return f"{v:.1f}"
+
+    lines = ["MÉDIA DA IMPRENSA LOCAL: " + " | ".join(
+        f"{_METRIC_LABELS[m]}: {_fmt(m, avgs[m])}" for m in metrics)]
+    lines.append("")
+    lines.append("POR FONTE (nº de notícias no período entre parênteses):")
+    # ordena por volume para dar contexto de confiabilidade
+    for nome in sorted(by_source, key=lambda n: -arts.get(n, 0)):
+        vals = " | ".join(f"{_METRIC_LABELS[m]}: {_fmt(m, by_source[nome].get(m, 0))}"
+                          for m in metrics)
+        lines.append(f"- {nome} ({arts.get(nome, 0)} notícias): {vals}")
+    return "\n".join(lines), avgs
+
+
+def run_writing_insight(group_type: str = "source"):
+    """Gera (via IA) a análise interpretativa das métricas e grava. Roda 1x/dia."""
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        logger.info("OPENAI_API_KEY ausente — análise de escrita não gerada.")
+        return
+
+    engine = get_engine()
+    today = (datetime.utcnow() - timedelta(hours=4)).date()
+    with engine.connect() as conn:
+        already = conn.execute(
+            text("SELECT 1 FROM writing_insights "
+                 "WHERE computed_date = :d AND group_type = :g LIMIT 1"),
+            {"d": today, "g": group_type},
+        ).fetchone()
+    if already:
+        return
+
+    table, _ = _build_metric_table(engine, today, group_type)
+    if not table:
+        return
+
+    try:
+        from openai import OpenAI
+        client = OpenAI(api_key=api_key)
+        response = client.chat.completions.create(
+            model=INSIGHT_MODEL,
+            messages=[
+                {"role": "system", "content": _INSIGHT_SYSTEM},
+                {"role": "user", "content":
+                    "Analise o estilo de escrita das fontes a partir destas métricas:\n\n" + table},
+            ],
+            max_tokens=400,
+            temperature=0.3,
+        )
+        analysis = response.choices[0].message.content.strip()
+    except Exception as e:
+        logger.warning(f"Falha ao gerar análise de escrita: {e}")
+        return
+
+    with engine.begin() as conn:
+        conn.execute(text("""
+            INSERT INTO writing_insights (computed_date, group_type, text, model)
+            VALUES (:d, :g, :t, :m)
+        """), {"d": today, "g": group_type, "t": analysis, "m": INSIGHT_MODEL})
+    logger.info(f"Análise de escrita ({group_type}) gerada para {today}.")

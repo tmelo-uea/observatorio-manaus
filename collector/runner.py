@@ -29,7 +29,7 @@ from scripts.backfill_transcripts import backfill
 from collector.content_fetcher import backfill_content
 from notifications.email_sender import run_digest
 from nlp.adjective_extractor import run_adjective_extraction
-from nlp.writing_metrics import run_writing_metrics
+from nlp.writing_metrics import run_writing_metrics, run_writing_insight
 
 Base.metadata.create_all(get_engine())
 run_migrations()
@@ -54,6 +54,7 @@ def job():
     run_digest()
     run_adjective_extraction()
     run_writing_metrics()
+    run_writing_insight("source")
 
 print("Observatório do Amazonas — Coletor iniciado")
 print("Reclassificando artigos em 'Outros'...")
