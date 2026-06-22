@@ -864,7 +864,9 @@ tab_fonte, tab_tema = st.tabs(["Por fonte", "Por tema"])
 
 with tab_fonte:
     st.caption("Estilo de escrita dos 15 portais com mais notícias locais no período, "
-               "ordenados pela elaboração geral do texto (mais elaborado no topo).")
+               "ordenados pela elaboração geral do texto (mais elaborado no topo). "
+               "A análise gerada por IA cobre as três métricas e compara cada veículo com a média da imprensa local. "
+               "Mede apenas título + resumo (a chamada), não o corpo da matéria.")
     if df_wr_src.empty:
         st.info(_WR_EMPTY)
     else:
@@ -878,7 +880,9 @@ with tab_fonte:
 
 with tab_tema:
     st.caption("Estilo de escrita entre os temas — revela diferenças de registro, por exemplo se Justiça e "
-               "Economia usam linguagem mais formal que Esporte ou Cultura.")
+               "Economia usam linguagem mais formal que Esporte ou Cultura. "
+               "A análise gerada por IA cobre as três métricas e compara cada tema com a média da imprensa local. "
+               "Mede apenas título + resumo (a chamada), não o corpo da matéria.")
     if df_wr_top.empty:
         st.info(_WR_EMPTY)
     else:
