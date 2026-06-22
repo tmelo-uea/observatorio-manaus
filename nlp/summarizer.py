@@ -86,7 +86,11 @@ def _curate_summary(summary: str, headlines: str) -> str:
             messages=[{"role": "user", "content": prompt}],
             max_completion_tokens=400,
         )
-        curated = response.choices[0].message.content.strip()
+        curated = response.choices[0].message.content
+        curated = curated.strip() if curated else ""
+        if not curated:
+            print(f"  [OpenAI curator] Resposta vazia — usando resumo original")
+            return summary
         usage = response.usage
         tokens = (f"{usage.prompt_tokens}+{usage.completion_tokens} tokens"
                   if usage else "tokens n/d")
@@ -166,6 +170,9 @@ def generate_summary(topic_id: int | None = None, force: bool = False) -> DailyS
         if not text:
             return None
         text = _curate_summary(text, headlines)
+        if not text:
+            print(f"  [summarizer] Curadoria retornou vazio — resumo não salvo.")
+            return None
 
         source_names = list({a.source.name for a in articles})
         article_ids = [a.id for a in articles]
@@ -218,7 +225,9 @@ def get_today_summary(topic_id: int | None = None) -> DailySummary | None:
 
 
 def _should_regenerate(existing: DailySummary, current_count: int) -> bool:
-    """Critério 4: volume dobrou E passaram pelo menos 2 horas."""
+    """Critério 4: volume dobrou E passaram pelo menos 2 horas. Ou resumo vazio."""
+    if not existing.summary:
+        return True
     if existing.article_count == 0:
         return current_count >= 3
     volume_doubled = current_count >= existing.article_count * 2
