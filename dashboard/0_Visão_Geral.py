@@ -468,7 +468,8 @@ _WC_STOPWORDS = {
     "portais", "atual", "visita",
     "segunda", "terça", "terca", "quarta", "quinta", "sexta",
     "sábado", "sabado", "domingo", "feira",
-    "the", "and", "for", "this", "that", "with",
+    "the", "and", "for", "this", "that", "with", "appeared", "first",
+    "nbsp", "amp", "quot", "apos",
     "horário", "horario", "brasília", "brasilia",
     "primeiro", "terceiro",
     "critica", "crítica", "radar", "holanda",
@@ -481,10 +482,17 @@ _WC_STOPWORDS = {
 
 def _clean_text(series):
     import re
+    import html as _html
+    import unicodedata
     def clean(t):
+        t = _html.unescape(t)                                      # &nbsp; → espaço, &amp; → &
+        t = unicodedata.normalize("NFC", t)                        # recompõe caracteres decompostos (ex: munic\xedpio)
+        t = re.sub(r"appeared first on\s+\S+", " ", t, flags=re.IGNORECASE)  # boilerplate RSS
+        t = re.sub(r"the post .+? appeared first", " ", t, flags=re.IGNORECASE)
         t = re.sub(r"<[^>]+>", " ", t)
         t = re.sub(r"https?://\S+", " ", t)
         t = re.sub(r"\bhttps?\b", " ", t)
+        t = re.sub(r"&\w+;", " ", t)                              # entidades HTML residuais
         t = re.sub(r"\b\w*\d\w*\b", " ", t)
         t = re.sub(r"\b\w{1,2}\b", " ", t)
         return t
