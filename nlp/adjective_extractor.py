@@ -16,6 +16,7 @@ BLOCKLIST = {
     # Substantivos misclassificados como ADJ
     "skunk", "maconha", "diesel", "motoristas", "compactadores",
     "maestro", "acidente", "disputa", "torturas", "vítimas", "recorde",
+    "reprodução", "equipamentos",
     # Pronomes
     "conosco", "mesmos",
     # Verbos misclassificados
@@ -30,6 +31,8 @@ BLOCKLIST = {
     "jornalístico",
     # Ruído / palavras compostas
     "shortsviral", "vivo",
+    # Topônimos e nomes próprios
+    "itaporanga", "pitbull",
 }
 
 
