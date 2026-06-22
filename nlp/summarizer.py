@@ -84,7 +84,7 @@ def _curate_summary(summary: str, headlines: str) -> str:
         response = client.chat.completions.create(
             model=CURATOR_MODEL,
             messages=[{"role": "user", "content": prompt}],
-            max_completion_tokens=400,
+            max_completion_tokens=800,
         )
         curated = response.choices[0].message.content
         curated = curated.strip() if curated else ""
