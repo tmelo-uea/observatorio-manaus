@@ -54,7 +54,7 @@ TOPIC_ALIASES = {
 
 HELP_COMMANDS = {"ajuda", "menu", "oi", "olá", "ola", "hello", "hi", "start", "inicio", "início"}
 STOP_COMMANDS = {"parar", "sair", "cancelar", "stop", "unsubscribe"}
-DIGEST_COMMANDS = {"resumo", "noticias", "notícias", "hoje", "news"}
+DIGEST_COMMANDS: set = set()  # desativado temporariamente — limite de chars do TwiML
 
 APP_URL = os.getenv("APP_URL", "https://www.observatorio.manaus.br")
 
