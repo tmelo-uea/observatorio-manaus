@@ -204,6 +204,7 @@ def _format_help() -> str:
         "📋 *TEMAS DE HOJE*\n"
         "Digite o número ou o nome:\n\n"
         f"{rows}\n\n"
+        "📰 *resumo* — boletim completo do dia\n\n"
         f"{_DIVIDER}\n"
         "ℹ️ *ajuda*   ❌ *parar*\n"
         f"🔗 {domain}"
