@@ -52,6 +52,28 @@ TOPIC_ALIASES = {
     "cidadania": "social-e-cidadania",
 }
 
+# Ordem canônica do menu (número → tema). Fonte única de verdade para o menu
+# numerado e para os atalhos por número. Cada item: (slug, rótulo curto, ícone).
+TOPIC_MENU = [
+    ("saude",                       "Saúde",          "🏥"),
+    ("seguranca-publica",           "Segurança",      "🚔"),
+    ("meio-ambiente",               "Meio Ambiente",  "🌿"),
+    ("politica-e-governo",          "Política",       "🏛️"),
+    ("economia-e-negocios",         "Economia",       "💼"),
+    ("educacao",                    "Educação",       "🎓"),
+    ("infraestrutura-e-mobilidade", "Infraestrutura", "🚌"),
+    ("cultura-e-lazer",             "Cultura",        "🎭"),
+    ("esporte",                     "Esporte",        "⚽"),
+    ("tecnologia-e-inovacao",       "Tecnologia",     "💡"),
+    ("justica-e-direito",           "Justiça",        "⚖️"),
+    ("social-e-cidadania",          "Social",         "🤝"),
+]
+
+# Atalho por número: "1" → slug de Saúde, etc.
+NUMBER_ALIASES = {str(i): slug for i, (slug, _, _) in enumerate(TOPIC_MENU, start=1)}
+
+_DIVIDER = "━━━━━━━━━━━━━━━━"
+
 HELP_COMMANDS = {"ajuda", "menu", "oi", "olá", "ola", "hello", "hi", "start", "inicio", "início"}
 STOP_COMMANDS = {"parar", "sair", "cancelar", "stop", "unsubscribe"}
 DIGEST_COMMANDS: set = set()  # desativado temporariamente — limite de chars do TwiML
@@ -129,32 +151,34 @@ def _format_full_digest(summaries: list[tuple[str, str, int]], target_date: date
 def _format_topic_summary(summary_text: str, topic_name: str, article_count: int, target_date: date) -> str:
     icon = TOPIC_ICONS.get(topic_name, "📰")
     date_str = target_date.strftime("%d/%m/%Y")
+    domain = APP_URL.replace("https://", "").replace("http://", "")
     return (
-        f"{icon} *{topic_name} — {date_str}*\n\n"
+        f"{icon} *{topic_name.upper()}*\n"
+        f"_{date_str} · {article_count} artigos locais_\n"
+        f"{_DIVIDER}\n\n"
         f"{summary_text}\n\n"
-        f"_({article_count} artigos locais)_\n\n"
-        f"🔗 {APP_URL}"
+        f"{_DIVIDER}\n"
+        "↩️ *menu* para ver outros temas\n"
+        f"🔗 {domain}"
     )
 
 
 def _format_help() -> str:
-    topic_list = "\n".join(
-        f"  • {_normalize(name).split()[0]} → resumo de {name}"
-        for name in TOPIC_ICONS
+    rows = "\n".join(
+        f"{i:>2} · {icon} {label}"
+        for i, (_, label, icon) in enumerate(TOPIC_MENU, start=1)
     )
+    domain = APP_URL.replace("https://", "").replace("http://", "")
     return (
-        "👋 *Olá! Sou o bot do Observatório de Manaus.*\n\n"
-        "Monitoro notícias de Manaus e Amazonas organizadas por tema.\n\n"
-        "*Comandos disponíveis:*\n"
-        "  • *resumo* → boletim completo do dia\n"
-        "  • *saude*, *seguranca*, *politica*... → tema específico\n"
-        "  • *parar* → cancelar recebimento de mensagens\n"
-        "  • *ajuda* → exibir esta mensagem\n\n"
-        "*Temas disponíveis:*\n"
-        "saude, seguranca, ambiente, politica, economia,\n"
-        "educacao, infraestrutura, cultura, esporte,\n"
-        "tecnologia, justica, social\n\n"
-        f"🔗 {APP_URL}"
+        "🔭 *OBSERVATÓRIO DE MANAUS*\n"
+        "_Notícias de Manaus e do Amazonas_\n"
+        f"{_DIVIDER}\n\n"
+        "📋 *TEMAS DE HOJE*\n"
+        "Digite o número ou o nome:\n\n"
+        f"{rows}\n\n"
+        f"{_DIVIDER}\n"
+        "ℹ️ *ajuda*   ❌ *parar*\n"
+        f"🔗 {domain}"
     )
 
 
@@ -211,21 +235,23 @@ def handle_message(from_phone: str, body: str) -> str:
         summaries = _get_topic_summaries(today)
         return _format_full_digest(summaries, today)
 
-    # Tema específico
-    slug = TOPIC_ALIASES.get(normalized)
+    # Tema específico — aceita número (1-12) ou nome do tema
+    slug = NUMBER_ALIASES.get(normalized) or TOPIC_ALIASES.get(normalized)
     if slug:
         result = _get_topic_summary_by_slug(slug, today)
         if result:
             return _format_topic_summary(*result, target_date=today)
+        # Nome do tema para a mensagem de "sem resumo"
+        label = next((lbl for s, lbl, _ in TOPIC_MENU if s == slug), "este tema")
         return (
-            f"📭 Ainda não há resumo disponível para este tema hoje.\n\n"
-            f"Tente mais tarde ou veja todos os temas em {APP_URL}"
+            f"📭 Ainda não há resumo de *{label}* hoje.\n\n"
+            "Digite *menu* para ver os temas já disponíveis."
         )
 
     # Comando não reconhecido
     return (
-        "🤔 Não entendi o comando.\n\n"
-        "Digite *ajuda* para ver os comandos disponíveis."
+        "🤔 Não entendi.\n\n"
+        "Digite *menu* para ver os temas, ou o número/nome de um tema (ex: *1* ou *saude*)."
     )
 
 
