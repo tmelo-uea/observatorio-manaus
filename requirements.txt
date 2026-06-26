@@ -25,6 +25,11 @@ pandas==2.2.2
 spacy>=3.7.0,<4.0.0
 wordfreq>=3.0.0
 
+# WhatsApp bot
+twilio>=9.0.0
+fastapi>=0.111.0
+uvicorn>=0.30.0
+
 # Utilitários
 python-dotenv==1.0.1
 trafilatura>=1.6.0
