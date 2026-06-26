@@ -68,7 +68,7 @@ class WhatsAppSubscription(Base):
     __tablename__ = "whatsapp_subscriptions"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    phone: Mapped[str] = mapped_column(String(20), nullable=False, unique=True)  # E.164, ex: +5592999999999
+    phone: Mapped[str] = mapped_column(String(35), nullable=False, unique=True)  # whatsapp:+5592999999999
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
