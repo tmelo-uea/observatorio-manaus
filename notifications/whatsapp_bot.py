@@ -104,13 +104,13 @@ def _get_topic_summary_by_slug(slug: str, target_date: date) -> tuple[str, str, 
 
 
 def _format_full_digest(summaries: list[tuple[str, str, int]], target_date: date) -> str:
-    """Versão compacta do digest — uma linha por tema para caber no limite do WhatsApp.
-    O usuário pode detalhar cada tema enviando seu nome (ex: saude, politica).
+    """Índice de temas do dia — lista compacta para caber no limite de 1600 chars do WhatsApp.
+    O usuário digita o nome do tema para ver o resumo completo.
     """
     if not summaries:
         return (
-            f"📭 Ainda não há resumos disponíveis para hoje ({target_date.strftime('%d/%m/%Y')}).\n\n"
-            f"Tente novamente mais tarde ou acesse {APP_URL}"
+            f"📭 Ainda não há resumos para hoje ({target_date.strftime('%d/%m/%Y')}).\n"
+            f"Tente mais tarde ou acesse {APP_URL}"
         )
 
     date_str = target_date.strftime("%d/%m/%Y")
@@ -118,13 +118,12 @@ def _format_full_digest(summaries: list[tuple[str, str, int]], target_date: date
 
     for summary_text, topic_name, article_count in summaries:
         icon = TOPIC_ICONS.get(topic_name, "📰")
-        # Primeira frase do resumo como prévia
-        first_sentence = summary_text.split(".")[0].strip() + "."
-        lines.append(f"{icon} *{topic_name}* ({article_count})\n{first_sentence}")
+        lines.append(f"{icon} {topic_name} ({article_count} artigos)")
 
-    lines.append(f"\n_Digite o nome do tema para o resumo completo._")
-    lines.append(f"🔗 {APP_URL}")
-    return "\n\n".join(lines)
+    lines.append(f"\n_Digite o tema para o resumo completo:_")
+    lines.append("saude • seguranca • ambiente • politica\neconomia • educacao • infraestrutura\ncultura • esporte • tecnologia • justica • social")
+    lines.append(f"\n🔗 {APP_URL}")
+    return "\n".join(lines)
 
 
 def _format_topic_summary(summary_text: str, topic_name: str, article_count: int, target_date: date) -> str:
