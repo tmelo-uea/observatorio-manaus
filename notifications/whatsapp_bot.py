@@ -76,6 +76,7 @@ _DIVIDER = "━━━━━━━━━━━━━━━━"
 
 HELP_COMMANDS = {"ajuda", "menu", "oi", "olá", "ola", "hello", "hi", "start", "inicio", "início"}
 STOP_COMMANDS = {"parar", "sair", "cancelar", "stop", "unsubscribe"}
+START_COMMANDS = {"assinar", "reativar", "voltar", "inscrever", "subscribe"}
 DIGEST_COMMANDS = {"resumo", "noticias", "notícias", "hoje", "news"}
 
 # Orçamento de caracteres por mensagem do digest (margem sob o teto de 1600 do WhatsApp)
@@ -212,17 +213,28 @@ def _format_help() -> str:
 
 
 def _register(phone: str) -> None:
-    """Registra o número se ainda não existir."""
+    """Registra número NOVO como ativo. NÃO reativa quem deu opt-out — a
+    reinscrição é explícita via _activate (comando 'assinar')."""
     session = get_session()
     try:
         existing = session.query(WhatsAppSubscription).filter_by(phone=phone).first()
-        if existing:
-            if not existing.active:
-                existing.active = True
-                session.commit()
-        else:
+        if not existing:
             session.add(WhatsAppSubscription(phone=phone))
             session.commit()
+    finally:
+        session.close()
+
+
+def _activate(phone: str) -> None:
+    """Reinscrição explícita: cria (se novo) ou reativa um número."""
+    session = get_session()
+    try:
+        sub = session.query(WhatsAppSubscription).filter_by(phone=phone).first()
+        if sub:
+            sub.active = True
+        else:
+            session.add(WhatsAppSubscription(phone=phone))
+        session.commit()
     finally:
         session.close()
 
@@ -238,6 +250,16 @@ def _deactivate(phone: str) -> None:
         session.close()
 
 
+def _is_opted_out(phone: str) -> bool:
+    """True se o número existe e está inativo (deu opt-out)."""
+    session = get_session()
+    try:
+        sub = session.query(WhatsAppSubscription).filter_by(phone=phone).first()
+        return sub is not None and not sub.active
+    finally:
+        session.close()
+
+
 def handle_message(from_phone: str, body: str) -> list[str]:
     """Processa mensagem recebida e retorna a lista de mensagens de resposta.
 
@@ -247,16 +269,28 @@ def handle_message(from_phone: str, body: str) -> list[str]:
     normalized = _normalize(body)
     today = _manaus_today()
 
-    # Opt-out
+    # Opt-out (fixo: só volta com 'assinar')
     if normalized in STOP_COMMANDS:
         _deactivate(from_phone)
         return [
-            "✅ Você foi removido da nossa lista.\n\n"
-            "Para voltar a usar o bot, basta enviar qualquer mensagem.\n"
+            "🔕 Você cancelou o recebimento e não receberá mais respostas do bot.\n\n"
+            "Quando quiser voltar, envie *assinar*.\n"
             f"🔗 {APP_URL}"
         ]
 
-    # Registra/reativa o número em qualquer interação
+    # Reinscrição explícita
+    if normalized in START_COMMANDS:
+        _activate(from_phone)
+        return ["✅ Inscrição reativada! Bem-vindo de volta.\n\n" + _format_help()]
+
+    # Quem deu opt-out fica fora até enviar 'assinar' (não reativa sozinho)
+    if _is_opted_out(from_phone):
+        return [
+            "🔕 Você havia cancelado o recebimento de mensagens.\n\n"
+            "Para voltar a usar o bot, envie *assinar*."
+        ]
+
+    # Registra número novo (ativo)
     _register(from_phone)
 
     # Ajuda / boas-vindas
