@@ -76,7 +76,10 @@ _DIVIDER = "━━━━━━━━━━━━━━━━"
 
 HELP_COMMANDS = {"ajuda", "menu", "oi", "olá", "ola", "hello", "hi", "start", "inicio", "início"}
 STOP_COMMANDS = {"parar", "sair", "cancelar", "stop", "unsubscribe"}
-DIGEST_COMMANDS: set = set()  # desativado temporariamente — limite de chars do TwiML
+DIGEST_COMMANDS = {"resumo", "noticias", "notícias", "hoje", "news"}
+
+# Orçamento de caracteres por mensagem do digest (margem sob o teto de 1600 do WhatsApp)
+DIGEST_CHAR_BUDGET = 1400
 
 APP_URL = os.getenv("APP_URL", "https://www.observatorio.manaus.br")
 
@@ -125,27 +128,52 @@ def _get_topic_summary_by_slug(slug: str, target_date: date) -> tuple[str, str, 
         session.close()
 
 
-def _format_full_digest(summaries: list[tuple[str, str, int]], target_date: date) -> str:
-    """Índice de temas do dia — lista compacta para caber no limite de 1600 chars do WhatsApp.
-    O usuário digita o nome do tema para ver o resumo completo.
+def build_digest_messages(target_date: date) -> list[str]:
+    """Monta o boletim completo do dia agrupado em várias mensagens.
+
+    Junta os resumos de cada tema em blocos respeitando DIGEST_CHAR_BUDGET, de
+    forma que cada mensagem caiba no limite do WhatsApp. Retorna a lista de
+    mensagens (cada uma com cabeçalho e paginação "(i/n)"), enviadas via API.
     """
-    if not summaries:
-        return (
-            f"📭 Ainda não há resumos para hoje ({target_date.strftime('%d/%m/%Y')}).\n"
-            f"Tente mais tarde ou acesse {APP_URL}"
-        )
-
+    summaries = _get_topic_summaries(target_date)
     date_str = target_date.strftime("%d/%m/%Y")
-    lines = [f"🔭 *Observatório de Manaus — {date_str}*\n"]
+    domain = APP_URL.replace("https://", "").replace("http://", "")
 
-    for summary_text, topic_name, article_count in summaries:
-        icon = TOPIC_ICONS.get(topic_name, "📰")
-        lines.append(f"{icon} {topic_name} ({article_count} artigos)")
+    if not summaries:
+        return [
+            f"📭 Ainda não há resumos para hoje ({date_str}).\n"
+            f"Tente mais tarde ou acesse {domain}"
+        ]
 
-    lines.append(f"\n_Digite o tema para o resumo completo:_")
-    lines.append("saude • seguranca • ambiente • politica\neconomia • educacao • infraestrutura\ncultura • esporte • tecnologia • justica • social")
-    lines.append(f"\n🔗 {APP_URL}")
-    return "\n".join(lines)
+    # Um bloco de texto por tema
+    blocks = [
+        f"{TOPIC_ICONS.get(name, '📰')} *{name}*\n{text}\n_({count} artigos locais)_"
+        for text, name, count in summaries
+    ]
+
+    # Agrupa blocos em mensagens sem estourar o orçamento de caracteres
+    groups: list[list[str]] = []
+    current: list[str] = []
+    current_len = 0
+    for block in blocks:
+        addition = len(block) + (2 if current else 0)  # +2 pela junção "\n\n"
+        if current and current_len + addition > DIGEST_CHAR_BUDGET:
+            groups.append(current)
+            current, current_len = [block], len(block)
+        else:
+            current.append(block)
+            current_len += addition
+    if current:
+        groups.append(current)
+
+    total = len(groups)
+    messages = []
+    for i, group in enumerate(groups, start=1):
+        suffix = f" ({i}/{total})" if total > 1 else ""
+        header = f"🔭 *Observatório de Manaus — {date_str}*{suffix}"
+        footer = f"\n\n🔗 {domain}" if i == total else ""
+        messages.append(f"{header}\n\n" + "\n\n".join(group) + footer)
+    return messages
 
 
 def _format_topic_summary(summary_text: str, topic_name: str, article_count: int, target_date: date) -> str:
@@ -209,50 +237,53 @@ def _deactivate(phone: str) -> None:
         session.close()
 
 
-def handle_message(from_phone: str, body: str) -> str:
-    """Processa mensagem recebida e retorna texto de resposta."""
+def handle_message(from_phone: str, body: str) -> list[str]:
+    """Processa mensagem recebida e retorna a lista de mensagens de resposta.
+
+    A maioria dos comandos retorna 1 mensagem (respondida via TwiML). O digest
+    ('resumo') retorna várias, que o webhook envia via API do Twilio.
+    """
     normalized = _normalize(body)
     today = _manaus_today()
 
     # Opt-out
     if normalized in STOP_COMMANDS:
         _deactivate(from_phone)
-        return (
+        return [
             "✅ Você foi removido da nossa lista.\n\n"
             "Para voltar a usar o bot, basta enviar qualquer mensagem.\n"
             f"🔗 {APP_URL}"
-        )
+        ]
 
     # Registra/reativa o número em qualquer interação
     _register(from_phone)
 
     # Ajuda / boas-vindas
     if normalized in HELP_COMMANDS:
-        return _format_help()
+        return [_format_help()]
 
-    # Resumo completo
+    # Resumo completo (boletim do dia, agrupado em várias mensagens)
     if normalized in DIGEST_COMMANDS:
-        summaries = _get_topic_summaries(today)
-        return _format_full_digest(summaries, today)
+        return build_digest_messages(today)
 
     # Tema específico — aceita número (1-12) ou nome do tema
     slug = NUMBER_ALIASES.get(normalized) or TOPIC_ALIASES.get(normalized)
     if slug:
         result = _get_topic_summary_by_slug(slug, today)
         if result:
-            return _format_topic_summary(*result, target_date=today)
+            return [_format_topic_summary(*result, target_date=today)]
         # Nome do tema para a mensagem de "sem resumo"
         label = next((lbl for s, lbl, _ in TOPIC_MENU if s == slug), "este tema")
-        return (
+        return [
             f"📭 Ainda não há resumo de *{label}* hoje.\n\n"
             "Digite *menu* para ver os temas já disponíveis."
-        )
+        ]
 
     # Comando não reconhecido
-    return (
+    return [
         "🤔 Não entendi.\n\n"
         "Digite *menu* para ver os temas, ou o número/nome de um tema (ex: *1* ou *saude*)."
-    )
+    ]
 
 
 def send_whatsapp(to_phone: str, message: str) -> tuple[bool, str]:

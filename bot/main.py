@@ -64,16 +64,27 @@ async def webhook(
 
     print(f"  [WhatsApp webhook] Mensagem de {From}: {Body!r}")
 
-    # Processa e obtém resposta
-    reply = handle_message(From, Body)
+    # Processa e obtém a(s) mensagem(ns) de resposta
+    replies = handle_message(From, Body)
 
-    # Responde usando TwiML (XML que o Twilio interpreta)
-    twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-    <Message>{_escape_xml(reply)}</Message>
-</Response>"""
+    # Caso comum (1 mensagem): responde via TwiML — rápido e sem depender da API.
+    if len(replies) <= 1:
+        body = _escape_xml(replies[0]) if replies else ""
+        twiml = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            f"<Response>\n    <Message>{body}</Message>\n</Response>"
+        )
+        return Response(content=twiml, media_type="application/xml")
 
-    return Response(content=twiml, media_type="application/xml")
+    # Digest (várias mensagens): envia via API do Twilio e responde TwiML vazio
+    # para não duplicar. O usuário acabou de escrever, então estamos na janela de 24h.
+    print(f"  [WhatsApp webhook] Enviando digest em {len(replies)} mensagens via API...")
+    for i, msg in enumerate(replies, start=1):
+        ok, err = send_whatsapp(From, msg)
+        if not ok:
+            print(f"  [WhatsApp webhook] Falha na parte {i}/{len(replies)}: {err}")
+    empty = '<?xml version="1.0" encoding="UTF-8"?>\n<Response></Response>'
+    return Response(content=empty, media_type="application/xml")
 
 
 def _escape_xml(text: str) -> str:
