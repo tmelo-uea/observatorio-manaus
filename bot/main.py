@@ -7,6 +7,13 @@ from notifications.whatsapp_bot import handle_message, send_whatsapp
 app = FastAPI(title="Observatório Manaus — WhatsApp Bot")
 
 
+@app.on_event("startup")
+def startup():
+    from db.connection import get_engine, Base, run_migrations
+    Base.metadata.create_all(get_engine())
+    run_migrations()
+
+
 def _validate_twilio_signature(request: Request, body: bytes) -> bool:
     """Valida que a requisição veio do Twilio (usando X-Twilio-Signature)."""
     auth_token = os.getenv("TWILIO_AUTH_TOKEN", "")

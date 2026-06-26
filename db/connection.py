@@ -114,4 +114,16 @@ def run_migrations():
             conn.execute(text("ALTER TABLE daily_summaries ADD COLUMN image_data LONGBLOB NULL"))
             print("Migration: coluna image_data adicionada em daily_summaries.")
 
+        # Corrige tamanho da coluna phone em whatsapp_subscriptions (VARCHAR(20) → 35)
+        phone_size = conn.execute(text(
+            "SELECT CHARACTER_MAXIMUM_LENGTH FROM information_schema.COLUMNS "
+            "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'whatsapp_subscriptions' "
+            "AND COLUMN_NAME = 'phone'"
+        )).scalar()
+        if phone_size is not None and phone_size < 35:
+            conn.execute(text(
+                "ALTER TABLE whatsapp_subscriptions MODIFY COLUMN phone VARCHAR(35) NOT NULL"
+            ))
+            print("Migration: coluna phone de whatsapp_subscriptions ampliada para 35.")
+
         conn.commit()
