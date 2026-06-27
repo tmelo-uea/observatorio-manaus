@@ -232,3 +232,12 @@ with _gh2:
         "https://github.com/tmelo-uea/observatorio-manaus",
         use_container_width=True,
     )
+
+st.markdown(
+    "<div style='text-align:center;margin-top:32px;'>"
+    "<span style='font-size:0.78rem;color:#9ca3af;'>"
+    "© 2026 Observatório de Manaus · LSI/UEA · "
+    "<a href='/Privacidade' style='color:#9ca3af;'>Política de Privacidade</a>"
+    "</span></div>",
+    unsafe_allow_html=True,
+)
