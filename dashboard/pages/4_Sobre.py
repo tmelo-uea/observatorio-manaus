@@ -45,7 +45,7 @@ try:
         total_articles = conn.execute(text("SELECT COUNT(*) FROM articles")).scalar()
         total_sources = conn.execute(text("SELECT COUNT(*) FROM sources WHERE active = 1")).scalar()
         total_topics = conn.execute(text("SELECT COUNT(*) FROM topics WHERE slug != 'outros'")).scalar()
-        oldest = conn.execute(text("SELECT MIN(published_at) FROM articles WHERE published_at IS NOT NULL")).scalar()
+        oldest = conn.execute(text("SELECT MIN(collected_at) FROM articles")).scalar()
 
     stats = [
         ("📰", _num(total_articles), "notícias coletadas"),
@@ -208,6 +208,27 @@ lc1, lc2, lc3 = st.columns(3)
 lc1.link_button("🏛️ Diretório de Laboratórios — UEA", "https://dirlab.uea.edu.br/publico/view/217/", use_container_width=True)
 lc2.link_button("🔗 Grupo de Pesquisa — CNPq", "http://dgp.cnpq.br/dgp/espelhogrupo/358110", use_container_width=True)
 lc3.link_button("▶️ LSI no YouTube", "https://www.youtube.com/watch?v=up-c4irUINc", use_container_width=True)
+
+st.divider()
+
+
+# ── Sobre o INCT TILDIAR ─────────────────────────────────────────────────────
+st.markdown("### 🔬 Sobre o INCT TILDIAR")
+st.markdown("""
+O **INCT TILDIAR** (Instituto Nacional de Ciência e Tecnologia em Inteligência Artificial
+Responsável para Linguística Computacional, Tratamento e Disseminação de Informação) é uma
+rede nacional de pesquisa, sediada no Departamento de Ciência da Computação da UFMG, que reúne
+cerca de 90 pesquisadores e mais de 30 universidades e centros de pesquisa do Brasil e do exterior
+para desenvolver algoritmos e soluções que garantam informação confiável e ética, com foco na
+língua portuguesa, privacidade e sustentabilidade.
+
+O coordenador do Observatório de Manaus integra essa rede como pesquisador do INCT TILDIAR,
+que conta ainda com instituições como UFAM, UFF, UFRGS, UFPA, UFG, UFCG, UFPE, IFG, CEFET-MG
+e ICMC, além de parcerias corporativas (IBM, Google, Petrobras, JusBrasil) e institucionais
+(TSE, MP-MG, MP-SC).
+""")
+
+st.link_button("🔗 tildiar.dcc.ufmg.br", "https://tildiar.dcc.ufmg.br", use_container_width=False)
 
 st.divider()
 
