@@ -4,23 +4,17 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-from wordcloud import WordCloud
-import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
 from sqlalchemy import text
 from db.connection import get_engine
 from dashboard.components.summary_card import render_summary_card
 from notifications.email_sender import subscribe, unsubscribe_by_token, run_digest
 
-def manaus_today():
-    return (datetime.utcnow() - timedelta(hours=4)).date()
+WHATSAPP_URL = "https://wa.me/559223981517?text=menu"
 
-def manaus_day_utc_range(d):
-    from datetime import date as _date
-    start = datetime(d.year, d.month, d.day, 4, 0, 0)
-    return start, start + timedelta(days=1)
+
+def fmt_br(n: int) -> str:
+    return f"{n:,}".replace(",", ".")
 
 st.set_page_config(
     page_title="Observatório de Manaus",
@@ -40,136 +34,57 @@ st.markdown("""
 <meta name="twitter:description" content="Monitoramento automático de notícias sobre Manaus e o Amazonas. Iniciativa do LSI/UEA.">
 """, unsafe_allow_html=True)
 
-st.markdown("""
-<style>
-    .metric-card { background: #f8f9fa; border-radius: 8px; padding: 16px; }
-    .stMetric label { font-size: 0.85rem; color: #6c757d; }
-</style>
-""", unsafe_allow_html=True)
 
 @st.cache_resource
 def get_db():
     return get_engine()
 
-@st.cache_data(ttl=3600)
-def load_date_bounds():
-    with get_db().connect() as conn:
-        min_utc = conn.execute(text("SELECT MIN(published_at) FROM articles WHERE published_at IS NOT NULL")).scalar()
-        max_utc = conn.execute(text("SELECT MAX(published_at) FROM articles WHERE published_at IS NOT NULL")).scalar()
-    today = pd.Timestamp.today().date()
-    date_min = (pd.Timestamp(min_utc) - pd.Timedelta(hours=4)).date() if min_utc else today
-    date_max = (pd.Timestamp(max_utc) - pd.Timedelta(hours=4)).date() if max_utc else today
-    return date_min, date_max
+
+@st.cache_data(ttl=300)
+def load_panorama():
+    """Métricas das últimas 24 horas (apenas notícias locais)."""
+    engine = get_db()
+    start = datetime.utcnow() - timedelta(hours=24)
+    with engine.connect() as conn:
+        row = conn.execute(text("""
+            SELECT COUNT(*),
+                   COUNT(DISTINCT a.topic_id),
+                   COUNT(DISTINCT a.source_id)
+            FROM articles a
+            WHERE a.published_at >= :s AND a.is_local = 1
+        """), {"s": start}).fetchone()
+        ultima = conn.execute(text("SELECT MAX(collected_at) FROM articles")).scalar()
+    return {"noticias": row[0] or 0, "temas": row[1] or 0, "portais": row[2] or 0, "ultima": ultima}
 
 
 @st.cache_data(ttl=300)
-def load_articles(date_start, date_end):
+def load_latest(limit=8):
     engine = get_db()
-    start_utc = datetime(date_start.year, date_start.month, date_start.day, 4, 0, 0)
-    end_utc = datetime(date_end.year, date_end.month, date_end.day, 4, 0, 0) + timedelta(days=1)
     with engine.connect() as conn:
         result = conn.execute(text("""
-            SELECT
-                a.id, a.title, a.url,
-                LEFT(a.summary, 500) AS summary,
-                a.published_at, a.collected_at, a.topic_score, a.is_local,
-                s.name AS source, s.type AS source_type,
-                t.name AS topic, t.slug AS topic_slug, t.color AS topic_color
+            SELECT a.title, a.url, a.published_at,
+                   s.name AS source, t.name AS topic, t.color AS topic_color
             FROM articles a
             JOIN sources s ON a.source_id = s.id
             LEFT JOIN topics t ON a.topic_id = t.id
-            WHERE a.published_at >= :start AND a.published_at < :end
+            WHERE a.is_local = 1 AND a.published_at IS NOT NULL
             ORDER BY a.published_at DESC
-            LIMIT 5000
-        """), {"start": start_utc, "end": end_utc})
-        df = pd.DataFrame(result.fetchall(), columns=result.keys())
-    df["published_at"] = pd.to_datetime(df["published_at"])
-    df["published_at_manaus"] = df["published_at"] - pd.Timedelta(hours=4)
-    df["date"] = df["published_at_manaus"].dt.date
-    return df
-
-
-@st.cache_data(ttl=300)
-def load_daily_counts(date_start, date_end, show_all, topic, source, source_type):
-    """Agregação por dia sem LIMIT — usada exclusivamente no gráfico de volume."""
-    engine = get_db()
-    start_utc = datetime(date_start.year, date_start.month, date_start.day, 4, 0, 0)
-    end_utc = datetime(date_end.year, date_end.month, date_end.day, 4, 0, 0) + timedelta(days=1)
-
-    filters = ["a.published_at >= :start", "a.published_at < :end"]
-    params = {"start": start_utc, "end": end_utc}
-
-    if not show_all:
-        filters.append("a.is_local = 1")
-    if topic and topic != "Todos":
-        filters.append("t.name = :topic")
-        params["topic"] = topic
-    if source and source != "Todos":
-        filters.append("s.name = :source")
-        params["source"] = source
-    if source_type and source_type != "Todos":
-        filters.append("s.type = :stype")
-        params["stype"] = source_type
-
-    where = " AND ".join(filters)
-    sql = f"""
-        SELECT
-            DATE(a.published_at - INTERVAL 4 HOUR) AS day,
-            s.type AS source_type,
-            COUNT(*) AS cnt
-        FROM articles a
-        JOIN sources s ON a.source_id = s.id
-        LEFT JOIN topics t ON a.topic_id = t.id
-        WHERE {where}
-        GROUP BY DATE(a.published_at - INTERVAL 4 HOUR), s.type
-        ORDER BY day
-    """
-    with engine.connect() as conn:
-        result = conn.execute(text(sql), params)
+            LIMIT :l
+        """), {"l": limit})
         df = pd.DataFrame(result.fetchall(), columns=result.keys())
     if not df.empty:
-        df["day"] = pd.to_datetime(df["day"])
+        df["published_manaus"] = pd.to_datetime(df["published_at"]) - pd.Timedelta(hours=4)
     return df
-
-
-@st.cache_data(ttl=300)
-def load_totals():
-    """Contagens reais do banco, sem o limite de 5000."""
-    engine = get_db()
-    today = manaus_today()
-    start_utc, end_utc = manaus_day_utc_range(today)
-    with engine.connect() as conn:
-        total = conn.execute(text("SELECT COUNT(*) FROM articles")).scalar()
-        hoje = conn.execute(text(
-            "SELECT COUNT(*) FROM articles "
-            "WHERE published_at >= :s AND published_at < :e"
-        ), {"s": start_utc, "e": end_utc}).scalar()
-        semana = conn.execute(text(
-            "SELECT COUNT(*) FROM articles "
-            "WHERE published_at >= NOW() - INTERVAL 7 DAY"
-        )).scalar()
-        fontes = conn.execute(text(
-            "SELECT COUNT(DISTINCT source_id) FROM articles "
-            "WHERE published_at >= :s AND published_at < :e"
-        ), {"s": start_utc, "e": end_utc}).scalar()
-        ultima = conn.execute(text(
-            "SELECT MAX(collected_at) FROM articles"
-        )).scalar()
-    return {"total": total, "hoje": hoje, "semana": semana, "fontes": fontes, "ultima": ultima}
-
-@st.cache_data(ttl=300)
-def load_subscriber_count():
-    engine = get_db()
-    with engine.connect() as conn:
-        return conn.execute(text("SELECT COUNT(*) FROM email_subscriptions WHERE active = 1")).scalar() or 0
 
 
 @st.cache_data(ttl=3600)
-def load_topics():
+def load_institucional():
     engine = get_db()
-    query = text("SELECT id, name, slug, color, display_order FROM topics ORDER BY display_order")
     with engine.connect() as conn:
-        return pd.read_sql(query, conn)
+        total = conn.execute(text("SELECT COUNT(*) FROM articles")).scalar() or 0
+        fontes = conn.execute(text("SELECT COUNT(*) FROM sources WHERE active = 1")).scalar() or 0
+    return {"total": total, "fontes": fontes}
+
 
 # --- Header ---
 st.markdown("""
@@ -191,6 +106,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+# Descadastro de e-mail via token (link do boletim)
 _unsubscribe_token = st.query_params.get("token", "")
 if _unsubscribe_token:
     _ok, _msg = unsubscribe_by_token(_unsubscribe_token)
@@ -201,70 +117,127 @@ if _unsubscribe_token:
     st.query_params.clear()
 
 try:
-    topics_df = load_topics()
-    totals = load_totals()
-    date_min, date_max = load_date_bounds()
+    panorama = load_panorama()
+    latest = load_latest()
+    institucional = load_institucional()
 except Exception as e:
     st.error(f"Erro ao conectar ao banco de dados: {e}")
     st.stop()
 
-# --- Sidebar / Filtros (período antes de carregar artigos) ---
-st.sidebar.header("🔍 Filtros")
+# --- Panorama atual ---
+st.markdown(
+    "<div style='display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-top:4px;'>"
+    "<span style='font-size:1.4rem;font-weight:700;color:#1a3a5c;'>🌅 Panorama atual de Manaus</span>"
+    "<span style='font-size:0.8rem;color:#64748b;background:#f1f5f9;border:1px solid #e2e8f0;"
+    "border-radius:12px;padding:2px 10px;'>Últimas 24 horas · Todos os temas · Todos os portais</span>"
+    "</div>",
+    unsafe_allow_html=True,
+)
+st.write("")
 
-topic_options = ["Todos"] + topics_df["name"].tolist()
-selected_topic = st.sidebar.selectbox("Tema", topic_options)
+render_summary_card(get_db())
 
-default_start = manaus_today() - timedelta(days=6)
-date_range = st.sidebar.date_input(
-    "Período", value=(default_start, date_max),
-    min_value=min(date_min, default_start), max_value=date_max
+c1, c2, c3, c4 = st.columns(4)
+c1.metric("Notícias nas últimas 24h", fmt_br(panorama["noticias"]))
+c2.metric("Temas em destaque", panorama["temas"])
+c3.metric("Portais consultados", panorama["portais"])
+if panorama["ultima"]:
+    _ultima_manaus = pd.Timestamp(panorama["ultima"]) - pd.Timedelta(hours=4)
+    c4.metric("Atualizado às", _ultima_manaus.strftime("%H:%M"))
+
+st.divider()
+
+# --- Últimas notícias ---
+st.subheader("Últimas notícias")
+for _, row in latest.iterrows():
+    date_str = row["published_manaus"].strftime("%d/%m/%Y %H:%M")
+    if pd.notna(row["topic"]):
+        _color = row["topic_color"] or "#64748b"
+        topic_badge = (
+            f"<span style='background:{_color}22;color:{_color};font-size:0.72rem;"
+            f"padding:2px 8px;border-radius:10px;font-weight:600;'>{row['topic']}</span>"
+        )
+    else:
+        topic_badge = ""
+    st.markdown(
+        f"**[{row['title']}]({row['url']})** &nbsp; {topic_badge}  \n"
+        f"<small>{row['source']} · {date_str}</small>",
+        unsafe_allow_html=True,
+    )
+
+st.page_link("pages/1_Explorar_o_Acervo.py", label="Ver todas as notícias →", icon="🔎")
+
+st.divider()
+
+# --- Receba as notícias ---
+st.subheader("📬 Receba as notícias de Manaus")
+col_wa, col_mail = st.columns(2)
+
+with col_wa:
+    st.markdown(f"""
+<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:18px 22px;height:100%;">
+    <div style="font-weight:700;color:#166534;margin-bottom:6px;">💬 Pelo WhatsApp</div>
+    <div style="font-size:0.9rem;color:#374151;line-height:1.6;margin-bottom:12px;">
+        Converse com o bot do Observatório: peça o resumo do dia ou
+        escolha um tema específico, na hora que quiser.
+    </div>
+    <a href="{WHATSAPP_URL}" target="_blank" rel="noopener" style="
+        display:inline-block;background:#25D366;color:#fff;font-weight:600;
+        padding:8px 18px;border-radius:8px;text-decoration:none;font-size:0.9rem;">
+        Abrir conversa no WhatsApp
+    </a>
+</div>
+""", unsafe_allow_html=True)
+
+with col_mail:
+    st.markdown(
+        "<div style='font-weight:700;color:#1e40af;margin-bottom:6px;'>📧 Por e-mail</div>"
+        "<div style='font-size:0.9rem;color:#374151;line-height:1.6;'>"
+        "Assine o boletim diário e receba os principais acontecimentos toda manhã.</div>",
+        unsafe_allow_html=True,
+    )
+    with st.form("subscribe_form", clear_on_submit=True):
+        email_input = st.text_input("Seu e-mail", placeholder="voce@email.com", label_visibility="collapsed")
+        submitted = st.form_submit_button("Inscrever-se", use_container_width=True)
+        if submitted:
+            if email_input and "@" in email_input:
+                ok, msg = subscribe(email_input)
+                if ok:
+                    st.success(msg)
+                else:
+                    st.warning(msg)
+            else:
+                st.error("Informe um e-mail válido.")
+
+# --- Rodapé institucional ---
+st.divider()
+st.markdown(
+    f"<div style='text-align:center;color:#64748b;font-size:0.88rem;padding:6px 0 2px 0;'>"
+    f"Desde o início do projeto, o Observatório já analisou "
+    f"<strong>{fmt_br(institucional['total'])}</strong> notícias de "
+    f"<strong>{institucional['fontes']}</strong> fontes monitoradas.</div>",
+    unsafe_allow_html=True,
 )
 
-# Carrega artigos para o período selecionado
-_d_start = date_range[0] if len(date_range) >= 1 else default_start
-_d_end = date_range[1] if len(date_range) == 2 else date_max
-try:
-    df = load_articles(_d_start, _d_end)
-    render_summary_card(get_db())
-except Exception as e:
-    st.error(f"Erro ao conectar ao banco de dados: {e}")
-    st.stop()
-
-if df.empty:
-    st.warning("Nenhum artigo coletado para o período selecionado.")
-    st.stop()
-
-source_options = ["Todos"] + sorted(df["source"].unique().tolist())
-selected_source = st.sidebar.selectbox("Portal / Blog", source_options)
-
-with get_db().connect() as _conn:
-    _types = [r[0] for r in _conn.execute(text("SELECT DISTINCT type FROM sources WHERE active = 1 ORDER BY type"))]
-source_type_options = ["Todos"] + _types
-selected_type = st.sidebar.selectbox("Tipo de fonte", source_type_options)
-
-busca = st.sidebar.text_input("Buscar por palavra-chave")
-
-show_all = st.sidebar.checkbox("Incluir notícias não locais", value=False)
-
-if st.sidebar.button("↻ Atualizar dados"):
-    st.cache_data.clear()
-    st.rerun()
-
-if st.sidebar.checkbox("⚙️ Admin", key="admin_toggle"):
+# --- Admin (acessível apenas via ?admin=1) ---
+if st.query_params.get("admin") == "1":
+    st.sidebar.header("⚙️ Admin")
     admin_pwd = st.sidebar.text_input("Senha", type="password", key="admin_pwd")
     if admin_pwd == os.getenv("ADMIN_PASSWORD", "obs@manaus"):
+        if st.sidebar.button("↻ Limpar cache de dados"):
+            st.cache_data.clear()
+            st.rerun()
         if st.sidebar.button("📤 Disparar digest agora (teste)", type="primary"):
-            import os as _os
-            _sendgrid_key = _os.getenv("SENDGRID_API_KEY", "")
-            _brevo_key = _os.getenv("BREVO_API_KEY", "")
+            _sendgrid_key = os.getenv("SENDGRID_API_KEY", "")
+            _brevo_key = os.getenv("BREVO_API_KEY", "")
 
             if _sendgrid_key:
                 _provider = "Sendgrid"
-                _from = _os.getenv("SENDGRID_FROM_EMAIL", "")
+                _from = os.getenv("SENDGRID_FROM_EMAIL", "")
                 st.sidebar.caption(f"📧 Provedor: {_provider} | De: `{_from}`")
             elif _brevo_key:
                 _provider = "Brevo"
-                _from = _os.getenv("BREVO_SENDER_EMAIL", "")
+                _from = os.getenv("BREVO_SENDER_EMAIL", "")
                 st.sidebar.caption(f"📧 Provedor: {_provider} | De: `{_from}`")
             else:
                 st.sidebar.error("Nenhum provedor de email configurado (SENDGRID_API_KEY ou BREVO_API_KEY).")
@@ -284,267 +257,3 @@ if st.sidebar.checkbox("⚙️ Admin", key="admin_toggle"):
                             st.sidebar.error(f"❌ Erro ao enviar: {_e}")
     elif admin_pwd:
         st.sidebar.error("Senha incorreta.")
-
-st.sidebar.divider()
-st.sidebar.markdown("### 📬 Receba as notícias de Manaus no seu e-mail")
-_subs_count = load_subscriber_count()
-if _subs_count > 0:
-    _plural = "assinantes" if _subs_count != 1 else "assinante"
-    st.sidebar.markdown(
-        f"<div style='background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;"
-        f"padding:8px 12px;margin-bottom:8px;font-size:0.88rem;color:#1e40af;'>"
-        f"👥 Junte-se a <strong>{_subs_count}</strong> {_plural}.</div>",
-        unsafe_allow_html=True,
-    )
-st.sidebar.caption("Assine o boletim diário e fique por dentro dos principais acontecimentos.")
-with st.sidebar.form("subscribe_form", clear_on_submit=True):
-    email_input = st.text_input("Seu e-mail", placeholder="voce@email.com")
-    submitted = st.form_submit_button("Inscrever-se", use_container_width=True)
-    if submitted:
-        if email_input and "@" in email_input:
-            ok, msg = subscribe(email_input)
-            if ok:
-                st.success(msg)
-            else:
-                st.warning(msg)
-        else:
-            st.error("Informe um e-mail válido.")
-
-# --- Aplicar filtros ---
-filtered = df.copy()
-if selected_topic != "Todos":
-    filtered = filtered[filtered["topic"] == selected_topic]
-if selected_source != "Todos":
-    filtered = filtered[filtered["source"] == selected_source]
-if selected_type != "Todos":
-    filtered = filtered[filtered["source_type"] == selected_type]
-if not show_all and "is_local" in filtered.columns:
-    filtered = filtered[filtered["is_local"] == True]
-if busca:
-    mask = (
-        filtered["title"].str.contains(busca, case=False, na=False) |
-        filtered["summary"].str.contains(busca, case=False, na=False)
-    )
-    filtered = filtered[mask]
-
-# Contagem real por dia (sem LIMIT) — usada no gráfico e na métrica de período
-_daily_raw = load_daily_counts(_d_start, _d_end, show_all, selected_topic, selected_source, selected_type)
-_period_count = int(_daily_raw["cnt"].sum()) if not _daily_raw.empty else 0
-
-# --- Métricas rápidas ---
-st.divider()
-c1, c2, c3, c4, c5, c6 = st.columns(6)
-c1.metric("Total coletado", f"{totals['total']:,}")
-c2.metric("Notícias no período", f"{_period_count:,}")
-c3.metric("Portais monitorados", filtered["source"].nunique())
-c4.metric("Temas identificados", filtered["topic"].nunique())
-c5.metric("Hoje", f"{totals['hoje']:,}")
-c6.metric("Últimos 7 dias", f"{totals['semana']:,}")
-
-# Última coleta
-if totals["ultima"]:
-    ultima_dt = pd.Timestamp(totals["ultima"]).replace(tzinfo=None)
-    diff_min = int((pd.Timestamp(datetime.utcnow()) - ultima_dt).total_seconds() / 60)
-    if diff_min < 60:
-        ultima_str = f"há {diff_min} min"
-    else:
-        ultima_str = f"há {diff_min // 60}h{diff_min % 60:02d}min"
-    st.caption(f"🟢 Última coleta: {ultima_str}")
-
-st.divider()
-
-# --- Linha do tempo ---
-_MESES_ABR = {1:"jan",2:"fev",3:"mar",4:"abr",5:"mai",6:"jun",
-              7:"jul",8:"ago",9:"set",10:"out",11:"nov",12:"dez"}
-
-st.subheader("Volume de notícias por dia")
-_TYPE_LABELS = {"portal": "Portal", "blog": "Blog", "youtube": "YouTube", "orgao_publico": "Órgão público"}
-_TYPE_COLORS = {"Portal": "#2980b9", "Blog": "#e67e22", "YouTube": "#e74c3c", "Órgão público": "#27ae60"}
-daily = _daily_raw.copy()
-daily["tipo"] = daily["source_type"].map(_TYPE_LABELS).fillna("Outros")
-daily = daily.groupby(["day", "tipo"])["cnt"].sum().reset_index(name="count")
-daily = daily.rename(columns={"day": "date_ts"})
-# Eixo X cobre todos os dias do período selecionado (inclusive os sem dados)
-if len(date_range) == 2:
-    _all_days = pd.date_range(date_range[0], date_range[1], freq="D")
-else:
-    _all_days = pd.date_range(default_start, date_max, freq="D")
-_tickvals = list(_all_days)
-_ticktext = [f"{d.day} {_MESES_ABR[d.month]}" for d in _all_days]
-if len(_ticktext) > 0:
-    _ticktext[0] = f"{_all_days[0].day} {_MESES_ABR[_all_days[0].month]}\n{_all_days[0].year}"
-fig_timeline = px.bar(
-    daily, x="date_ts", y="count", color="tipo",
-    labels={"date_ts": "Data", "count": "Notícias", "tipo": "Tipo"},
-    color_discrete_map=_TYPE_COLORS,
-    category_orders={"tipo": ["Portal", "Blog", "YouTube", "Órgão público"]},
-)
-fig_timeline.update_xaxes(
-    tickvals=_tickvals, ticktext=_ticktext,
-    range=[_all_days[0] - pd.Timedelta(hours=12),
-           _all_days[-1] + pd.Timedelta(hours=12)],
-)
-fig_timeline.update_layout(
-    barmode="stack",
-    legend=dict(orientation="h", yanchor="bottom", y=1.02, title_text=""),
-)
-st.plotly_chart(fig_timeline, use_container_width=True)
-
-# --- Linha 2: por tema e por fonte ---
-col_left, col_right = st.columns(2)
-
-with col_left:
-    st.subheader("Distribuição por tema")
-    if filtered["topic"].notna().any():
-        topic_counts = filtered["topic"].value_counts().reset_index()
-        topic_counts.columns = ["Tema", "Quantidade"]
-        color_map = dict(zip(topics_df["name"], topics_df["color"]))
-        fig_topics = px.bar(
-            topic_counts, x="Quantidade", y="Tema", orientation="h",
-            color="Tema", color_discrete_map=color_map,
-        )
-        fig_topics.update_layout(showlegend=False, yaxis=dict(categoryorder="total ascending"))
-        st.plotly_chart(fig_topics, use_container_width=True)
-    else:
-        st.info("Classificação de temas em andamento.")
-
-with col_right:
-    st.subheader("Notícias por fonte")
-    source_counts = filtered["source"].value_counts().reset_index()
-    source_counts.columns = ["Fonte", "Quantidade"]
-    top_sources = source_counts.head(20)
-    fig_sources = px.bar(
-        top_sources, x="Quantidade", y="Fonte", orientation="h",
-        labels={"Quantidade": "Notícias", "Fonte": ""},
-        color="Quantidade",
-        color_continuous_scale="Blues",
-        text="Quantidade",
-    )
-    fig_sources.update_traces(textposition="outside")
-    fig_sources.update_layout(
-        showlegend=False,
-        coloraxis_showscale=False,
-        yaxis=dict(categoryorder="total ascending"),
-        height=520,
-        margin=dict(l=0, r=40, t=10, b=10),
-    )
-    if len(source_counts) > 20:
-        st.caption(f"Top 20 de {len(source_counts)} fontes")
-    st.plotly_chart(fig_sources, use_container_width=True)
-
-_WC_STOPWORDS = {
-    "de", "da", "do", "dos", "das", "em", "no", "na", "nos", "nas",
-    "e", "o", "a", "os", "as", "um", "uma", "uns", "umas",
-    "com", "por", "para", "que", "se", "ao", "aos", "à", "às",
-    "pelo", "pela", "pelos", "pelas", "neste", "nesta", "nestes", "nestas",
-    "deste", "desta", "destes", "destas", "nesse", "nessa", "nesses", "nessas",
-    "desse", "dessa", "desses", "dessas", "num", "numa",
-    "são", "foi", "será", "ser", "tem", "ter", "seus", "sua", "seu", "suas",
-    "isso", "este", "esta", "esse", "essa", "esses", "essas",
-    "ele", "ela", "eles", "elas", "nós", "eu", "você", "vocês",
-    "mais", "já", "ainda", "também", "sobre", "entre", "após", "até", "como",
-    "quando", "onde", "porque", "mas", "ou", "nem", "não", "sim",
-    "muito", "bem", "aqui", "lá", "agora", "então", "assim", "tudo",
-    "todos", "todas", "outro", "outra", "outros", "outras", "mesmo",
-    "disse", "diz", "afirmou", "segundo", "conforme", "durante",
-    "está", "vai", "teve", "foram", "seja", "pode", "podem", "deve", "devem",
-    "quer", "faz", "fez", "ocorreu", "realiza", "realizada", "realizado", "realizou",
-    "apenas", "desde", "através", "partir", "dentro", "fora", "sem",
-    "caso", "vez", "vezes", "além", "contra", "ante", "perante",
-    "dia", "dias", "ano", "anos", "mês", "meses", "semana", "semanas",
-    "manhã", "tarde", "noite", "hoje", "ontem", "amanhã",
-    "meio", "nova", "novo", "novos", "novas", "grande", "grandes",
-    "pais", "país", "área", "áreas", "grupo", "grupos", "equipe",
-    "momento", "parte", "local", "região", "total",
-    "acordo", "apoio", "agenda", "projeto", "ação", "iniciativa",
-    "serviço", "serviços", "encontro", "debate", "proposta",
-    "edição", "escala", "volta", "interior", "capital",
-    "http", "https", "br", "href", "src", "img", "bit", "www",
-    "instagram", "facebook", "tiktok", "youtube", "twitter", "whatsapp",
-    "redes", "sociais", "canal", "site", "post", "vivo",
-    "notificações", "conteúdo", "conteúdos", "exclusivos", "informações",
-    "apareceu", "acompanhe", "inscreva", "leia", "veja", "segue", "acesse",
-    "notícia", "notícias", "noticias", "noticia", "últimas", "ultimas",
-    "portais", "atual", "visita",
-    "segunda", "terça", "terca", "quarta", "quinta", "sexta",
-    "sábado", "sabado", "domingo", "feira",
-    "the", "and", "for", "this", "that", "with", "appeared", "first",
-    "nbsp", "amp", "quot", "apos",
-    "horário", "horario", "brasília", "brasilia",
-    "primeiro", "terceiro",
-    "critica", "crítica", "radar", "holanda",
-    "Manaus", "manaus", "Manau", "manau",
-    "Amazonas", "amazonas", "Amazona", "amazona",
-    "Amazônia", "amazônia", "amazonia", "Amazônico", "amazônico", "Amazônica", "amazônica",
-    "amazonense", "Amazonense", "Amazon", "amazon",
-}
-
-
-def _clean_text(series):
-    import re
-    import html as _html
-    import unicodedata
-    def clean(t):
-        t = _html.unescape(t)                                      # &nbsp; → espaço, &amp; → &
-        t = unicodedata.normalize("NFC", t)                        # recompõe caracteres decompostos (ex: munic\xedpio)
-        t = re.sub(r"appeared first on\s+\S+", " ", t, flags=re.IGNORECASE)  # boilerplate RSS
-        t = re.sub(r"the post .+? appeared first", " ", t, flags=re.IGNORECASE)
-        t = re.sub(r"<[^>]+>", " ", t)
-        t = re.sub(r"https?://\S+", " ", t)
-        t = re.sub(r"\bhttps?\b", " ", t)
-        t = re.sub(r"&\w+;", " ", t)                              # entidades HTML residuais
-        t = re.sub(r"\b\w*\d\w*\b", " ", t)
-        t = re.sub(r"\b\w{1,2}\b", " ", t)
-        return t
-    return series.dropna().apply(clean).str.cat(sep=" ")
-
-
-@st.cache_data(ttl=300, show_spinner=False)
-def _build_wordcloud(all_text: str) -> bytes | None:
-    if not all_text.strip():
-        return None
-    import io
-    wc = WordCloud(
-        width=1200, height=400, background_color="white",
-        collocations=True, max_words=120, stopwords=_WC_STOPWORDS,
-        regexp=r"\b[^\W\d_]{3,}\b",
-        margin=6, max_font_size=120,
-    ).generate(all_text)
-    fig, ax = plt.subplots(figsize=(16, 5))
-    ax.imshow(wc, interpolation="bilinear")
-    ax.axis("off")
-    fig.tight_layout(pad=0.5)
-    buf = io.BytesIO()
-    fig.savefig(buf, format="png", bbox_inches="tight", dpi=96)
-    plt.close(fig)
-    buf.seek(0)
-    return buf.getvalue()
-
-
-# --- Nuvem de palavras ---
-# DIAGNÓSTICO (temporário): geração desativada para confirmar se o bloqueio do
-# IOLoop / loop de reconexão do WebSocket vem do custo de CPU da matplotlib/WordCloud
-# na vCPU restrita do Railway. Toggle via env WORDCLOUD_ENABLED=1.
-if os.getenv("WORDCLOUD_ENABLED", "0") == "1":
-    st.subheader("Nuvem de palavras")
-    texts = []
-    for col in ["title", "summary", "transcript"]:
-        if col in filtered.columns:
-            texts.append(_clean_text(filtered[col]))
-    all_text = " ".join(t for t in texts if t.strip())
-    wc_bytes = _build_wordcloud(all_text)
-    if wc_bytes:
-        st.image(wc_bytes, use_column_width=True)
-
-# --- Feed de últimas notícias ---
-st.divider()
-st.subheader("Últimas notícias coletadas")
-
-for _, row in filtered.head(5).iterrows():
-    date_str = row["published_at_manaus"].strftime("%d/%m/%Y %H:%M") if pd.notna(row["published_at"]) else "—"
-    topic_badge = f"`{row['topic']}`" if pd.notna(row["topic"]) else ""
-    st.markdown(
-        f"**[{row['title']}]({row['url']})** &nbsp; {topic_badge}  \n"
-        f"<small>{row['source']} · {date_str}</small>",
-        unsafe_allow_html=True,
-    )
