@@ -159,13 +159,14 @@ st.write("")
 
 render_summary_card(get_db())
 
-c1, c2, c3, c4 = st.columns(4)
+c1, c2, c3, c4, c5 = st.columns(5)
 c1.metric("Notícias nas últimas 24h", fmt_br(panorama["noticias"]))
 c2.metric("Temas em destaque", panorama["temas"])
 c3.metric("Portais consultados", panorama["portais"])
+c4.metric("Total de notícias na base", fmt_br(institucional["total"]))
 if panorama["ultima"]:
     _ultima_manaus = pd.Timestamp(panorama["ultima"]) - pd.Timedelta(hours=4)
-    c4.metric("Atualizado às", _ultima_manaus.strftime("%H:%M"))
+    c5.metric("Atualizado às", _ultima_manaus.strftime("%H:%M"))
 
 # --- Nuvem de palavras (últimas 24h) ---
 _texts_24h = load_last24h_texts()
