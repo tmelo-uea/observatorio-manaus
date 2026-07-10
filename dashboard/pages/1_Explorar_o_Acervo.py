@@ -262,11 +262,15 @@ if filtered.empty:
 
 # --- Métricas do resultado ---
 st.write("")
-m1, m2 = st.columns(2)
+m0, m1, m2 = st.columns(3)
+m0.metric("Notícias nos gráficos e na lista", fmt_br(len(filtered)))
 m1.metric("Portais nos resultados", filtered["source"].nunique())
 m2.metric("Temas nos resultados", filtered["topic"].nunique())
 if len(df) == 5000:
-    st.caption("⚠️ Período com muitas notícias — listas e distribuições consideram as 5.000 mais recentes.")
+    st.caption(
+        f"⚠️ Período com muitas notícias — os gráficos e a lista abaixo consideram as "
+        f"{fmt_br(len(filtered))} notícias mais recentes dentre as {fmt_br(n_found)} encontradas."
+    )
 
 st.divider()
 
