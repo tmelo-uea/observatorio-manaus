@@ -80,6 +80,7 @@ def load_topic_stats():
         SELECT
             t.id,
             t.name,
+            t.slug,
             t.color,
             t.display_order,
             COUNT(CASE WHEN a.is_local = 1 THEN 1 END) AS total_all,
@@ -91,7 +92,7 @@ def load_topic_stats():
             MAX(CASE WHEN a.is_local = 1 THEN a.published_at END) AS ultima_noticia
         FROM topics t
         LEFT JOIN articles a ON a.topic_id = t.id
-        GROUP BY t.id, t.name, t.color, t.display_order
+        GROUP BY t.id, t.name, t.slug, t.color, t.display_order
         ORDER BY t.display_order
     """)
     with engine.connect() as conn:
@@ -358,6 +359,9 @@ st.caption("Clique em um tema para expandir o resumo do dia.")
 engine = get_db()
 topics_iter = stats_df[stats_df["name"] != "Outros"].iterrows()
 
+# Tema pré-selecionado via URL (?tema=<slug>), usado nos links da Visão Geral
+_tema_url = st.query_params.get("tema", "")
+
 for _, topic_row in topics_iter:
     topic_id = int(topic_row["id"])
     name = topic_row["name"]
@@ -367,7 +371,7 @@ for _, topic_row in topics_iter:
     badge = " 🔥" if em_alta else ""
     label = f"{icon} {name}{badge}  —  {total_hoje} notícias hoje"
 
-    with st.expander(label):
+    with st.expander(label, expanded=(topic_row["slug"] == _tema_url)):
         with engine.connect() as conn:
             summary_row = conn.execute(text(
                 "SELECT summary, article_ids, article_count, generated_at "

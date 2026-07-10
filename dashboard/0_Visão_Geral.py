@@ -13,6 +13,21 @@ from notifications.email_sender import subscribe, unsubscribe_by_token, run_dige
 
 WHATSAPP_URL = "https://wa.me/559223981517?text=menu"
 
+TOPIC_ICONS = {
+    "Saúde": "🏥",
+    "Segurança Pública": "🚔",
+    "Meio Ambiente": "🌿",
+    "Política e Governo": "🏛️",
+    "Economia e Negócios": "💼",
+    "Educação": "🎓",
+    "Infraestrutura e Mobilidade": "🚌",
+    "Cultura e Lazer": "🎭",
+    "Esporte": "⚽",
+    "Tecnologia e Inovação": "💡",
+    "Justiça e Direito": "⚖️",
+    "Social e Cidadania": "🤝",
+}
+
 
 def fmt_br(n: int) -> str:
     return f"{n:,}".replace(",", ".")
@@ -76,6 +91,44 @@ def load_latest(limit=8):
     if not df.empty:
         df["published_manaus"] = pd.to_datetime(df["published_at"]) - pd.Timedelta(hours=4)
     return df
+
+
+@st.cache_data(ttl=300)
+def load_top_topics_24h(limit=3):
+    """Temas com mais notícias locais nas últimas 24h + resumo diário de IA de cada um.
+
+    O resumo é o de hoje (data de Manaus); se ainda não existir (madrugada),
+    usa o de ontem para a seção nunca ficar vazia.
+    """
+    engine = get_db()
+    start = datetime.utcnow() - timedelta(hours=24)
+    today = (datetime.utcnow() - timedelta(hours=4)).date()
+    cards = []
+    with engine.connect() as conn:
+        rows = conn.execute(text("""
+            SELECT t.id, t.name, t.slug, t.color, COUNT(*) AS cnt
+            FROM articles a
+            JOIN topics t ON a.topic_id = t.id
+            WHERE a.published_at >= :s AND a.is_local = 1 AND t.name != 'Outros'
+            GROUP BY t.id, t.name, t.slug, t.color
+            ORDER BY cnt DESC
+            LIMIT :l
+        """), {"s": start, "l": limit}).fetchall()
+        for tid, name, slug, color, cnt in rows:
+            srow = conn.execute(text("""
+                SELECT summary, date FROM daily_summaries
+                WHERE topic_id = :tid AND date >= :ontem
+                ORDER BY date DESC, generated_at DESC
+                LIMIT 1
+            """), {"tid": tid, "ontem": today - timedelta(days=1)}).fetchone()
+            summary = srow[0] if srow else None
+            summary_date = srow[1] if srow else None
+            cards.append({
+                "name": name, "slug": slug, "color": color or "#1e6091", "cnt": cnt,
+                "summary": summary,
+                "de_ontem": bool(summary_date and summary_date < today),
+            })
+    return cards
 
 
 @st.cache_data(ttl=300)
@@ -167,6 +220,35 @@ c4.metric("Total de notícias na base", fmt_br(institucional["total"]))
 if panorama["ultima"]:
     _ultima_manaus = pd.Timestamp(panorama["ultima"]) - pd.Timedelta(hours=4)
     c5.metric("Atualizado às", _ultima_manaus.strftime("%H:%M"))
+
+# --- Temas em destaque hoje ---
+_top_topics = load_top_topics_24h()
+if _top_topics:
+    st.write("")
+    st.subheader("Temas em destaque hoje")
+    st.caption("Os assuntos com mais notícias nas últimas 24 horas, com o resumo do dia de cada tema.")
+    _cols = st.columns(len(_top_topics))
+    for _col, _t in zip(_cols, _top_topics):
+        _icon = TOPIC_ICONS.get(_t["name"], "📰")
+        if _t["summary"]:
+            _snippet = _t["summary"]
+            if len(_snippet) > 220:
+                _snippet = _snippet[:220].rsplit(" ", 1)[0] + "…"
+            _nota = " · resumo de ontem" if _t["de_ontem"] else ""
+        else:
+            _snippet = "Resumo em preparação — será gerado automaticamente na próxima coleta."
+            _nota = ""
+        _plural = "notícias" if _t["cnt"] != 1 else "notícia"
+        _col.markdown(f"""
+<div style="background:#ffffff;border:1px solid #e5e7eb;border-left:4px solid {_t['color']};
+    border-radius:12px;padding:16px 18px;height:100%;">
+  <div style="font-size:0.82rem;font-weight:800;color:{_t['color']};text-transform:uppercase;
+      letter-spacing:0.05em;margin-bottom:4px;">{_icon} {_t['name']}</div>
+  <div style="font-size:0.8rem;color:#64748b;margin-bottom:8px;">{fmt_br(_t['cnt'])} {_plural} nas últimas 24h{_nota}</div>
+  <div style="font-size:0.9rem;color:#334155;line-height:1.55;">{_snippet}</div>
+  <a href="/Temas?tema={_t['slug']}" target="_self" style="display:inline-block;margin-top:10px;
+      font-size:0.85rem;font-weight:700;color:#1d4ed8;text-decoration:none;">Ver tema →</a>
+</div>""", unsafe_allow_html=True)
 
 # --- Nuvem de palavras (últimas 24h) ---
 _texts_24h = load_last24h_texts()
