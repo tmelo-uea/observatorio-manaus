@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import text
 from db.connection import get_engine
 from dashboard.components.summary_card import render_summary_card
+from dashboard.components.word_cloud import render_word_cloud
 from notifications.email_sender import subscribe, unsubscribe_by_token, run_digest
 
 WHATSAPP_URL = "https://wa.me/559223981517?text=menu"
@@ -77,6 +78,20 @@ def load_latest(limit=8):
     return df
 
 
+@st.cache_data(ttl=300)
+def load_last24h_texts():
+    """Títulos e resumos das notícias locais das últimas 24h — usados na nuvem de palavras."""
+    engine = get_db()
+    start = datetime.utcnow() - timedelta(hours=24)
+    with engine.connect() as conn:
+        result = conn.execute(text("""
+            SELECT a.title, LEFT(a.summary, 500) AS summary
+            FROM articles a
+            WHERE a.published_at >= :s AND a.is_local = 1
+        """), {"s": start})
+        return pd.DataFrame(result.fetchall(), columns=result.keys())
+
+
 @st.cache_data(ttl=3600)
 def load_institucional():
     engine = get_db()
@@ -133,6 +148,13 @@ st.markdown(
     "</div>",
     unsafe_allow_html=True,
 )
+st.markdown(
+    "<div style='font-size:0.92rem;color:#475569;line-height:1.6;margin:6px 0 4px 0;'>"
+    "Esta seção mostra o pulso da cidade agora: um resumo do dia gerado automaticamente por "
+    "inteligência artificial a partir das notícias publicadas nas últimas 24 horas, os números "
+    "da cobertura jornalística e os assuntos mais mencionados pelos portais.</div>",
+    unsafe_allow_html=True,
+)
 st.write("")
 
 render_summary_card(get_db())
@@ -144,6 +166,14 @@ c3.metric("Portais consultados", panorama["portais"])
 if panorama["ultima"]:
     _ultima_manaus = pd.Timestamp(panorama["ultima"]) - pd.Timedelta(hours=4)
     c4.metric("Atualizado às", _ultima_manaus.strftime("%H:%M"))
+
+# --- Nuvem de palavras (últimas 24h) ---
+_texts_24h = load_last24h_texts()
+if not _texts_24h.empty:
+    st.write("")
+    st.subheader("Assuntos em destaque")
+    st.caption("Palavras mais frequentes nas notícias das últimas 24 horas — quanto maior a palavra, mais vezes ela apareceu.")
+    render_word_cloud(_texts_24h)
 
 st.divider()
 
