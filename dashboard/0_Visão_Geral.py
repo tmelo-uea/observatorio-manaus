@@ -195,7 +195,7 @@ except Exception as e:
 # --- Panorama atual ---
 st.markdown(
     "<div style='display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-top:4px;'>"
-    "<span style='font-size:1.4rem;font-weight:700;color:#1a3a5c;'>🌅 Panorama atual de Manaus</span>"
+    "<span style='font-size:1.75rem;font-weight:700;color:#1a3a5c;'>🌅 Panorama atual de Manaus</span>"
     "<span style='font-size:0.8rem;color:#64748b;background:#f1f5f9;border:1px solid #e2e8f0;"
     "border-radius:12px;padding:2px 10px;'>Últimas 24 horas · Todos os temas · Todos os portais</span>"
     "</div>",
