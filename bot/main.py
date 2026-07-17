@@ -51,6 +51,18 @@ async def health():
     return {"status": "ok", "service": "whatsapp-bot"}
 
 
+@app.post("/push/test")
+async def push_test(request: Request):
+    """Dispara o push do boletim imediatamente (uso interno/testes)."""
+    admin_password = os.getenv("ADMIN_PASSWORD", "")
+    auth = request.headers.get("X-Admin-Password", "")
+    if admin_password and auth != admin_password:
+        raise HTTPException(status_code=403, detail="Não autorizado")
+    import threading
+    threading.Thread(target=run_whatsapp_push, daemon=True).start()
+    return {"status": "push iniciado"}
+
+
 @app.post("/webhook")
 async def webhook(
     request: Request,
