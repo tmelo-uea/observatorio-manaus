@@ -78,7 +78,14 @@ _DIVIDER = "━━━━━━━━━━━━━━━━"
 HELP_COMMANDS = {"ajuda", "menu", "oi", "olá", "ola", "hello", "hi", "start", "inicio", "início"}
 STOP_COMMANDS = {"parar", "sair", "cancelar", "stop", "unsubscribe"}
 START_COMMANDS = {"assinar", "reativar", "voltar", "inscrever", "subscribe"}
-DIGEST_COMMANDS = {"resumo", "noticias", "notícias", "hoje", "news"}
+DIGEST_COMMANDS = {"resumo", "noticias", "notícias", "hoje", "news", "ver boletim", "boletim"}
+
+# Template aprovado pela Meta usado quando o assinante está fora da janela de 24h.
+# O botão "Ver boletim" abre a janela e o webhook responde com o digest completo.
+PUSH_TEMPLATE_SID = os.getenv("WHATSAPP_PUSH_TEMPLATE_SID", "HX29839d8107051f60f3a960a43bb8cefc")
+
+# Erro Twilio 63016: mensagem livre fora da janela de 24h
+_OUTSIDE_WINDOW_CODE = "63016"
 
 # Orçamento de caracteres por mensagem do digest (margem sob o teto de 1600 do WhatsApp)
 DIGEST_CHAR_BUDGET = 1400
@@ -298,9 +305,16 @@ def handle_message(from_phone: str, body: str) -> list[str]:
     if normalized in HELP_COMMANDS:
         return [_format_help()]
 
-    # Resumo completo (boletim do dia, agrupado em várias mensagens)
+    # Resumo completo (boletim do dia, agrupado em várias mensagens).
+    # De manhã cedo o dia atual ainda não tem resumos — cai para o de ontem
+    # (caso do botão "Ver boletim" do push das 7h).
     if normalized in DIGEST_COMMANDS:
-        return build_digest_messages(today)
+        msgs = build_digest_messages(today)
+        if msgs and msgs[0].startswith("📭"):
+            y_msgs = build_digest_messages(today - timedelta(days=1))
+            if y_msgs and not y_msgs[0].startswith("📭"):
+                return y_msgs
+        return msgs
 
     # Tema específico — aceita número (1-12) ou nome do tema
     slug = NUMBER_ALIASES.get(normalized) or TOPIC_ALIASES.get(normalized)
@@ -347,18 +361,31 @@ def run_whatsapp_push() -> None:
             print(f"  [WhatsApp push] Sem resumos para {yesterday} — abortando.")
             return
 
+        date_str = yesterday.strftime("%d/%m/%Y")
         print(f"  [WhatsApp push] Enviando para {len(subscribers)} assinantes ({len(messages)} msgs cada)...")
         sent = 0
         for sub in subscribers:
-            success = True
-            for msg in messages:
-                ok, err = send_whatsapp(sub.phone, msg)
-                if not ok:
-                    print(f"  [WhatsApp push] Falha para {sub.phone}: {err}")
-                    success = False
-                    break
-            if success:
-                sent += 1
+            # Tenta o boletim completo (vale para quem está na janela de 24h);
+            # fora da janela (erro 63016), envia o template com botão "Ver boletim".
+            ok, err = send_whatsapp(sub.phone, messages[0])
+            if ok:
+                success = True
+                for msg in messages[1:]:
+                    ok, err = send_whatsapp(sub.phone, msg)
+                    if not ok:
+                        print(f"  [WhatsApp push] Falha para {sub.phone}: {err}")
+                        success = False
+                        break
+                if success:
+                    sent += 1
+            elif _OUTSIDE_WINDOW_CODE in err:
+                ok, err = send_whatsapp_template(sub.phone, PUSH_TEMPLATE_SID, {"1": date_str})
+                if ok:
+                    sent += 1
+                else:
+                    print(f"  [WhatsApp push] Falha no template para {sub.phone}: {err}")
+            else:
+                print(f"  [WhatsApp push] Falha para {sub.phone}: {err}")
 
         log = WhatsAppPushLog(date=today, recipients=sent)
         session.add(log)
@@ -391,6 +418,37 @@ def send_whatsapp(to_phone: str, message: str) -> tuple[bool, str]:
         print(f"  [WhatsApp] ✓ Enviado para {to_phone} — SID {msg.sid}")
         return True, ""
     except Exception as e:
-        err = f"{type(e).__name__}: {e}"
+        err = f"{type(e).__name__} (code={getattr(e, 'code', '?')}): {e}"
+        print(f"  [WhatsApp] ✗ {err}")
+        return False, err
+
+
+def send_whatsapp_template(to_phone: str, content_sid: str, variables: dict) -> tuple[bool, str]:
+    """Envia mensagem de template aprovado (Content API) via Twilio WhatsApp.
+
+    Necessário para iniciar conversa fora da janela de 24h. `variables` preenche
+    os placeholders do template (ex: {"1": "16/07/2026"}).
+    """
+    import json as _json
+    account_sid = os.getenv("TWILIO_ACCOUNT_SID")
+    auth_token = os.getenv("TWILIO_AUTH_TOKEN")
+    from_number = os.getenv("TWILIO_WHATSAPP_FROM")
+
+    if not all([account_sid, auth_token, from_number]):
+        return False, "Credenciais Twilio não configuradas."
+
+    try:
+        from twilio.rest import Client
+        client = Client(account_sid, auth_token)
+        msg = client.messages.create(
+            from_=from_number,
+            to=f"whatsapp:{to_phone}" if not to_phone.startswith("whatsapp:") else to_phone,
+            content_sid=content_sid,
+            content_variables=_json.dumps(variables),
+        )
+        print(f"  [WhatsApp] ✓ Template enviado para {to_phone} — SID {msg.sid}")
+        return True, ""
+    except Exception as e:
+        err = f"{type(e).__name__} (code={getattr(e, 'code', '?')}): {e}"
         print(f"  [WhatsApp] ✗ {err}")
         return False, err
