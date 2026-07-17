@@ -17,7 +17,7 @@ def _manaus_day_utc_range(d: date):
 
 
 SUMMARY_MODEL = "gpt-4o-mini"
-CURATOR_MODEL = "gpt-5.5"
+CURATOR_MODEL = "gpt-5.6-luna"
 
 
 def _call_llm(prompt: str) -> str | None:
