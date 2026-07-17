@@ -1,10 +1,20 @@
 import os
+import time
+import threading
 import hmac
 import hashlib
+import schedule as _schedule
 from fastapi import FastAPI, Form, Request, HTTPException, Response
-from notifications.whatsapp_bot import handle_message, send_whatsapp
+from notifications.whatsapp_bot import handle_message, send_whatsapp, run_whatsapp_push
 
 app = FastAPI(title="Observatório Manaus — WhatsApp Bot")
+
+
+def _push_scheduler_loop():
+    _schedule.every().day.at("11:00").do(run_whatsapp_push)  # 07:00 Manaus (UTC-4)
+    while True:
+        _schedule.run_pending()
+        time.sleep(60)
 
 
 @app.on_event("startup")
@@ -12,6 +22,8 @@ def startup():
     from db.connection import get_engine, Base, run_migrations
     Base.metadata.create_all(get_engine())
     run_migrations()
+    threading.Thread(target=_push_scheduler_loop, daemon=True).start()
+    print("  [WhatsApp push] Agendado para 07:00 Manaus (11:00 UTC)")
 
 
 def _validate_twilio_signature(request: Request, body: bytes) -> bool:

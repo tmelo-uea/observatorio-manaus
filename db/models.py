@@ -174,6 +174,16 @@ class WritingInsight(Base):
     created_at:    Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
+class WhatsAppPushLog(Base):
+    __tablename__ = "whatsapp_push_logs"
+    __table_args__ = (UniqueConstraint("date", name="uq_wa_push_date"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    date: Mapped[date] = mapped_column(Date, nullable=False)
+    recipients: Mapped[int] = mapped_column(Integer, default=0)
+    sent_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
 class DailySummaryVersion(Base):
     """Log append-only de todas as versões geradas de cada resumo do dia.
 

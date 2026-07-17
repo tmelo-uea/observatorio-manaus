@@ -1,8 +1,9 @@
 import os
 import unicodedata
 from datetime import date, datetime, timedelta
+from sqlalchemy.exc import IntegrityError
 from db.connection import get_session
-from db.models import DailySummary, Topic, WhatsAppSubscription
+from db.models import DailySummary, Topic, WhatsAppSubscription, WhatsAppPushLog
 
 TOPIC_ICONS = {
     "Saúde": "🏥",
@@ -319,6 +320,55 @@ def handle_message(from_phone: str, body: str) -> list[str]:
         "🤔 Não entendi.\n\n"
         "Digite *menu* para ver os temas, ou o número/nome de um tema (ex: *1* ou *saude*)."
     ]
+
+
+def run_whatsapp_push() -> None:
+    """Envia o boletim do dia anterior para todos os assinantes ativos.
+
+    Chamado às 07h Manaus pelo scheduler do bot. Usa WhatsAppPushLog para
+    garantir que o envio ocorra uma única vez por dia mesmo em caso de restart.
+    """
+    today = _manaus_today()
+    yesterday = today - timedelta(days=1)
+
+    session = get_session()
+    try:
+        if session.query(WhatsAppPushLog).filter_by(date=today).first():
+            print("  [WhatsApp push] Já enviado hoje — abortando.")
+            return
+
+        subscribers = session.query(WhatsAppSubscription).filter_by(active=True).all()
+        if not subscribers:
+            print("  [WhatsApp push] Nenhum assinante ativo.")
+            return
+
+        messages = build_digest_messages(yesterday)
+        if not messages or messages[0].startswith("📭"):
+            print(f"  [WhatsApp push] Sem resumos para {yesterday} — abortando.")
+            return
+
+        print(f"  [WhatsApp push] Enviando para {len(subscribers)} assinantes ({len(messages)} msgs cada)...")
+        sent = 0
+        for sub in subscribers:
+            success = True
+            for msg in messages:
+                ok, err = send_whatsapp(sub.phone, msg)
+                if not ok:
+                    print(f"  [WhatsApp push] Falha para {sub.phone}: {err}")
+                    success = False
+                    break
+            if success:
+                sent += 1
+
+        log = WhatsAppPushLog(date=today, recipients=sent)
+        session.add(log)
+        session.commit()
+        print(f"  [WhatsApp push] Concluído — {sent}/{len(subscribers)} assinantes.")
+    except IntegrityError:
+        session.rollback()
+        print("  [WhatsApp push] Conflito de log — já enviado.")
+    finally:
+        session.close()
 
 
 def send_whatsapp(to_phone: str, message: str) -> tuple[bool, str]:
