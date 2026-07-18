@@ -78,14 +78,13 @@ _DIVIDER = "━━━━━━━━━━━━━━━━"
 HELP_COMMANDS = {"ajuda", "menu", "oi", "olá", "ola", "hello", "hi", "start", "inicio", "início"}
 STOP_COMMANDS = {"parar", "sair", "cancelar", "stop", "unsubscribe"}
 START_COMMANDS = {"assinar", "reativar", "voltar", "inscrever", "subscribe"}
-DIGEST_COMMANDS = {"resumo", "noticias", "notícias", "hoje", "news", "ver boletim", "boletim"}
+DIGEST_COMMANDS = {"resumo", "noticias", "notícias", "hoje", "news"}
+# Boletim diário fechado (dia anterior) — mesmo conteúdo do boletim de e-mail.
+BOLETIM_COMMANDS = {"ver boletim", "boletim"}
 
-# Template aprovado pela Meta usado quando o assinante está fora da janela de 24h.
-# O botão "Ver boletim" abre a janela e o webhook responde com o digest completo.
+# Template aprovado pela Meta usado no push das 7h (mensagem business-initiated).
+# O botão "Ver boletim" abre a janela de 24h e o webhook responde com o boletim.
 PUSH_TEMPLATE_SID = os.getenv("WHATSAPP_PUSH_TEMPLATE_SID", "HX29839d8107051f60f3a960a43bb8cefc")
-
-# Erro Twilio 63016: mensagem livre fora da janela de 24h
-_OUTSIDE_WINDOW_CODE = "63016"
 
 # Orçamento de caracteres por mensagem do digest (margem sob o teto de 1600 do WhatsApp)
 DIGEST_CHAR_BUDGET = 1400
@@ -150,7 +149,7 @@ def build_digest_messages(target_date: date) -> list[str]:
 
     if not summaries:
         return [
-            f"📭 Ainda não há resumos para hoje ({date_str}).\n"
+            f"📭 Ainda não há resumos de {date_str}.\n"
             f"Tente mais tarde ou acesse {domain}"
         ]
 
@@ -305,9 +304,13 @@ def handle_message(from_phone: str, body: str) -> list[str]:
     if normalized in HELP_COMMANDS:
         return [_format_help()]
 
-    # Resumo completo (boletim do dia, agrupado em várias mensagens).
-    # De manhã cedo o dia atual ainda não tem resumos — cai para o de ontem
-    # (caso do botão "Ver boletim" do push das 7h).
+    # Boletim diário: sempre o dia anterior, fechado (mesmo conteúdo do
+    # boletim de e-mail) — caso do botão "Ver boletim" do push das 7h.
+    if normalized in BOLETIM_COMMANDS:
+        return build_digest_messages(today - timedelta(days=1))
+
+    # Resumo do dia em curso (parcial, agrupado em várias mensagens).
+    # De manhã cedo o dia atual ainda não tem resumos — cai para o de ontem.
     if normalized in DIGEST_COMMANDS:
         msgs = build_digest_messages(today)
         if msgs and msgs[0].startswith("📭"):
@@ -362,30 +365,19 @@ def run_whatsapp_push() -> None:
             return
 
         date_str = yesterday.strftime("%d/%m/%Y")
-        print(f"  [WhatsApp push] Enviando para {len(subscribers)} assinantes ({len(messages)} msgs cada)...")
+        print(f"  [WhatsApp push] Enviando template para {len(subscribers)} assinantes...")
         sent = 0
         for sub in subscribers:
-            # Tenta o boletim completo (vale para quem está na janela de 24h);
-            # fora da janela (erro 63016), envia o template com botão "Ver boletim".
-            ok, err = send_whatsapp(sub.phone, messages[0])
+            # Sempre via template aprovado: fora da janela de 24h o Twilio
+            # ACEITA a mensagem livre e só a marca como falha (erro 63016)
+            # depois, de forma assíncrona — não dá para detectar no envio.
+            # O toque no botão "Ver boletim" abre a janela e o webhook
+            # responde com o boletim completo do dia anterior.
+            ok, err = send_whatsapp_template(sub.phone, PUSH_TEMPLATE_SID, {"1": date_str})
             if ok:
-                success = True
-                for msg in messages[1:]:
-                    ok, err = send_whatsapp(sub.phone, msg)
-                    if not ok:
-                        print(f"  [WhatsApp push] Falha para {sub.phone}: {err}")
-                        success = False
-                        break
-                if success:
-                    sent += 1
-            elif _OUTSIDE_WINDOW_CODE in err:
-                ok, err = send_whatsapp_template(sub.phone, PUSH_TEMPLATE_SID, {"1": date_str})
-                if ok:
-                    sent += 1
-                else:
-                    print(f"  [WhatsApp push] Falha no template para {sub.phone}: {err}")
+                sent += 1
             else:
-                print(f"  [WhatsApp push] Falha para {sub.phone}: {err}")
+                print(f"  [WhatsApp push] Falha no template para {sub.phone}: {err}")
 
         log = WhatsAppPushLog(date=today, recipients=sent)
         session.add(log)
