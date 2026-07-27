@@ -2,6 +2,7 @@ import sys
 import os
 import time
 import random
+import threading
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from db.connection import get_session
@@ -9,6 +10,30 @@ from db.models import Article, Source
 from collector.youtube_collector import _get_transcript, _video_id_from_url
 
 MAX_SECONDS = 20 * 60  # nunca ultrapassa 20 min para não atrasar o próximo ciclo
+PER_VIDEO_TIMEOUT = 240  # nenhum vídeo individual pode travar o ciclo por mais que isso
+
+
+def _get_transcript_with_timeout(video_id: str, url: str, timeout: int = PER_VIDEO_TIMEOUT):
+    """Roda _get_transcript em thread separada e desiste após `timeout`s.
+
+    _captions() faz uma chamada de rede sem timeout próprio (youtube_transcript_api);
+    se travar, o job() inteiro do runner trava junto e a coleta de RSS das outras
+    ~60 fontes fica bloqueada até o próximo restart do container. Rodar em thread
+    permite abandonar a chamada travada e seguir o ciclo, mesmo que a thread órfã
+    continue existindo em segundo plano.
+    """
+    result = {}
+
+    def target():
+        result["value"] = _get_transcript(video_id, url)
+
+    t = threading.Thread(target=target, daemon=True)
+    t.start()
+    t.join(timeout)
+    if t.is_alive():
+        print(f"  [backfill] Timeout ({timeout}s) travado em {video_id}, seguindo para o próximo")
+        return None
+    return result.get("value")
 
 
 def backfill(limit: int = 50):
@@ -38,7 +63,7 @@ def backfill(limit: int = 50):
             if not video_id:
                 continue
 
-            transcript = _get_transcript(video_id, article.url)
+            transcript = _get_transcript_with_timeout(video_id, article.url)
             if transcript:
                 article.transcript = transcript
                 session.commit()
