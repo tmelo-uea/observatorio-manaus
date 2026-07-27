@@ -328,6 +328,7 @@ SOURCES = [
     {"name": "Amazonas365",          "url": "https://amazonas365.com.br",        "rss_url": "https://amazonas365.com.br/feed/",                              "type": "portal"},
     {"name": "Portal Web Manaus",    "url": "https://portalwebmanaus.com",       "rss_url": "https://portalwebmanaus.com/feed/",                             "type": "portal"},
     {"name": "Portal Amazônia",      "url": "https://portalamazonia.com",        "rss_url": "https://portalamazonia.com/feed/",                              "type": "portal"},
+    {"name": "Segundo a Segundo",    "url": "https://segundoasegundo.com.br",    "rss_url": "https://segundoasegundo.com.br/feed/",                          "type": "portal"},  # feed nativo WordPress confirmado do IP do Railway — 2026-07-27
     # Órgãos governamentais do Amazonas
     {"name": "Governo do Amazonas",  "url": "https://www.amazonas.am.gov.br",    "rss_url": "https://www.amazonas.am.gov.br/feed/",                          "type": "portal", "active": False},
     {"name": "ALEAM",                "url": "https://www.aleam.gov.br",          "rss_url": "https://news.google.com/rss/search?q=site:aleam.gov.br+when:7d&hl=pt-BR&gl=BR&ceid=BR:pt-419", "type": "portal"},  # firewall gov bloqueia IP do Railway (timeout); via Google News RSS — 2026-06-18
