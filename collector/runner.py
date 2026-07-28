@@ -37,35 +37,48 @@ seed_all()
 seed_prompts()
 
 
+def _safe(step_name, fn, *args, **kwargs):
+    """Roda uma etapa do pipeline isolada: uma exceção aqui não pode derrubar
+    o processo inteiro, senão a coleta de RSS das ~60 fontes fica bloqueada
+    até alguém notar e reiniciar manualmente (caso real: run_digest() estourou
+    RuntimeError quando o Sendgrid ficou sem créditos, e como job() não isolava
+    as etapas, isso matou o container e a coleta ficou parada por 11h)."""
+    try:
+        return fn(*args, **kwargs)
+    except Exception as e:
+        print(f"[ERRO] Etapa '{step_name}' falhou: {e}")
+        return None
+
+
 def job():
     print("\n--- Iniciando coleta ---")
-    run_collection()
-    n_yt = run_youtube_collection()
+    _safe("run_collection", run_collection)
+    n_yt = _safe("run_youtube_collection", run_youtube_collection)
     print(f"YouTube: {n_yt} novos vídeos")
-    n = run_classification()
+    n = _safe("run_classification", run_classification)
     print(f"Classificados: {n} artigos")
-    n_local = run_local_classification()
+    n_local = _safe("run_local_classification", run_local_classification)
     print(f"Localidade classificada: {n_local} artigos")
-    backfill(limit=50)  # processa até 50 vídeos, respeitando limite de 20 min
-    backfill_content(limit=30)  # busca texto completo dos 30 artigos mais recentes sem content
-    reclassify_outros(batch_size=200)  # reclassifica vídeos que ganharam transcript
-    run_daily_summary()
-    run_topic_summaries(min_articles=5)
-    run_digest()
-    run_adjective_extraction()
-    run_writing_metrics()
-    run_writing_insight("source")
-    run_writing_insight("topic")
+    _safe("backfill", backfill, limit=50)  # processa até 50 vídeos, respeitando limite de 20 min
+    _safe("backfill_content", backfill_content, limit=30)  # busca texto completo dos 30 artigos mais recentes sem content
+    _safe("reclassify_outros", reclassify_outros, batch_size=200)  # reclassifica vídeos que ganharam transcript
+    _safe("run_daily_summary", run_daily_summary)
+    _safe("run_topic_summaries", run_topic_summaries, min_articles=5)
+    _safe("run_digest", run_digest)
+    _safe("run_adjective_extraction", run_adjective_extraction)
+    _safe("run_writing_metrics", run_writing_metrics)
+    _safe("run_writing_insight_source", run_writing_insight, "source")
+    _safe("run_writing_insight_topic", run_writing_insight, "topic")
 
 print("Observatório do Amazonas — Coletor iniciado")
 print("Reclassificando artigos em 'Outros'...")
-reclassify_outros(batch_size=2000)
+_safe("reclassify_outros_inicial", reclassify_outros, batch_size=2000)
 print("Classificando localidade de artigos históricos (keywords)...")
-n_backfill = backfill_local_keywords(batch_size=10000)
+n_backfill = _safe("backfill_local_keywords", backfill_local_keywords, batch_size=10000)
 print(f"  Backfill is_local: {n_backfill} artigos classificados")
 print("Gerando resumos iniciais...")
-run_daily_summary()
-run_topic_summaries(min_articles=5)
+_safe("run_daily_summary_inicial", run_daily_summary)
+_safe("run_topic_summaries_inicial", run_topic_summaries, min_articles=5)
 job()
 
 schedule.every(30).minutes.do(job)
