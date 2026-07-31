@@ -22,11 +22,11 @@ import json
 import os
 from datetime import date, datetime, timedelta
 
-from sqlalchemy import bindparam, text as sql_text
+from sqlalchemy import bindparam, or_, text as sql_text
 from sqlalchemy.exc import IntegrityError
 
 from db.connection import get_session
-from db.models import Article, CrimeMention, Topic
+from db.models import Article, CrimeMention, Source, Topic
 from nlp.crime_types import (
     VALID_SLUGS,
     group as crime_group,
@@ -114,10 +114,16 @@ def _select_pending(session, limit: int):
         return []
     return (
         session.query(Article)
+        .join(Source, Article.source_id == Source.id)
         .filter(
             Article.is_local.is_(True),
             Article.topic_id.in_(topic_ids),
             Article.crime_processed_at.is_(None),
+            # Vídeo do YouTube ainda sem transcrição é só um título. Como a
+            # extração passou a rodar ANTES da transcrição no job(), sem este
+            # filtro ele seria avaliado pelo título e marcado como processado
+            # para sempre. Espera a transcrição e entra num ciclo seguinte.
+            or_(Source.type != "youtube", Article.transcript.isnot(None)),
         )
         # Sem nulls_last(): o MySQL não aceita a cláusula NULLS LAST, e em DESC
         # ele já ordena os NULL por último, que é o comportamento desejado.
@@ -345,9 +351,11 @@ def pending_count() -> int:
         stmt = sql_text("""
             SELECT COUNT(*) FROM articles a
             JOIN topics t ON a.topic_id = t.id
+            JOIN sources s ON a.source_id = s.id
             WHERE a.is_local = 1
               AND a.crime_processed_at IS NULL
               AND t.name IN :nomes
+              AND (s.type <> 'youtube' OR a.transcript IS NOT NULL)
         """).bindparams(bindparam("nomes", expanding=True))
         row = session.execute(stmt, {"nomes": list(TARGET_TOPICS)}).scalar()
         return int(row or 0)

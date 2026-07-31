@@ -10,6 +10,13 @@ from db.models import Article, Source
 from collector.youtube_collector import _get_transcript, _video_id_from_url
 
 MAX_SECONDS = 20 * 60  # nunca ultrapassa 20 min para não atrasar o próximo ciclo
+
+# Disjuntor: com 50 vídeos e pausa obrigatória de 8-15s entre eles, só de espera
+# esta etapa gasta 9 a 12 minutos mesmo que TODA requisição falhe na hora. Quando
+# o YouTube bloqueia o IP do datacenter, ela queimava os 20 min de teto todo ciclo
+# sem entregar uma transcrição. Falhas seguidas indicam bloqueio, não vídeo sem
+# legenda — nesse caso vale abortar e tentar no ciclo seguinte.
+CONSEC_FAIL_LIMIT = 8
 PER_VIDEO_TIMEOUT = 240  # nenhum vídeo individual pode travar o ciclo por mais que isso
 
 
@@ -54,6 +61,7 @@ def backfill(limit: int = 50):
         print(f"Transcrições pendentes: {total_pending} | Processando até: {batch}")
 
         done = 0
+        consec_fail = 0
         for i, article in enumerate(articles, 1):
             if time.time() - start > MAX_SECONDS:
                 print(f"  [backfill] Limite de tempo atingido após {done} transcrições")
@@ -68,10 +76,17 @@ def backfill(limit: int = 50):
                 article.transcript = transcript
                 session.commit()
                 done += 1
+                consec_fail = 0
                 elapsed = int(time.time() - start)
                 print(f"[{i}/{batch}] OK ({elapsed}s): {article.title[:60]}")
             else:
+                consec_fail += 1
                 print(f"[{i}/{batch}] Sem transcrição: {article.title[:60]}")
+                if consec_fail >= CONSEC_FAIL_LIMIT:
+                    print(f"  [backfill] {CONSEC_FAIL_LIMIT} falhas seguidas — o YouTube "
+                          f"provavelmente está bloqueando o IP do datacenter. Abortando a "
+                          f"etapa; os vídeos seguem pendentes para o próximo ciclo.")
+                    break
 
             # Pausa entre requisições para evitar HTTP 429 do YouTube
             time.sleep(random.uniform(8, 15))

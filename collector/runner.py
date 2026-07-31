@@ -61,14 +61,16 @@ def job():
     print(f"Classificados: {n} artigos")
     n_local = _safe("run_local_classification", run_local_classification)
     print(f"Localidade classificada: {n_local} artigos")
-    _safe("backfill", backfill, limit=50)  # processa até 50 vídeos, respeitando limite de 20 min
+    # Ordem importa: as etapas baratas e determinísticas vêm primeiro. A
+    # transcrição do YouTube é a mais lenta e a mais instável — quando o YouTube
+    # bloqueia o IP do datacenter ela consome os 20 min de teto sem entregar nada,
+    # e tudo que estivesse atrás dela ficava com o que sobrasse da janela (em
+    # geral, nada). Cobertura criminal depende só do backfill_content, então sobe.
     _safe("backfill_content", backfill_content, limit=30)  # busca texto completo dos 30 artigos mais recentes sem content
-    _safe("reclassify_outros", reclassify_outros, batch_size=200)  # reclassifica vídeos que ganharam transcript
-    # Cobertura criminal: depois do backfill_content, para o extrator ler o CORPO
-    # da matéria e não só o título. O agrupamento vem logo atrás, sobre o que
-    # acabou de ser extraído.
     _safe("run_crime_extraction", run_crime_extraction, limit=20)
     _safe("run_crime_clustering", run_crime_clustering, limit=200)
+    _safe("backfill", backfill, limit=50)  # transcrições: até 50 vídeos, teto de 20 min, com disjuntor
+    _safe("reclassify_outros", reclassify_outros, batch_size=200)  # reclassifica vídeos que ganharam transcript
     _safe("run_daily_summary", run_daily_summary)
     _safe("run_topic_summaries", run_topic_summaries, min_articles=5)
     _safe("run_digest", run_digest)
