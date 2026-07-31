@@ -130,6 +130,13 @@ MUNICIPIOS_AM = [
 
 _MUNICIPIOS_INDEX = {_norm(m): m for m in MUNICIPIOS_AM}
 
+# Referências ao estado inteiro, em vez de um município. Contam como locais.
+_ESTADO_TOKENS = {
+    "amazonas", "am", "estado do amazonas", "interior do amazonas",
+    "interior do estado", "interior", "amazonia", "amazonia ocidental",
+    "regiao metropolitana de manaus", "interior do am",
+}
+
 # "Manaus/AM", "Manaus (AM)", "Parintins - Amazonas" e afins
 _SUFIXO_UF = re.compile(r"[\s,\-–—/()]+(am|amazonas)\s*\)?$")
 
@@ -149,6 +156,13 @@ def is_amazonas(municipio: str | None) -> bool | None:
     # descartaria a menção.
     if key in {"null", "none", "nulo", "n/a", "na", "-", "desconhecido", "nao informado"}:
         return None
+
+    # Checagem de estado ANTES de remover o sufixo de UF: o removedor come a
+    # palavra "amazonas" e deixaria "interior do" ou "estado do", que não casam
+    # com nada — e a menção local seria descartada.
+    if key in _ESTADO_TOKENS:
+        return True
+
     key = _SUFIXO_UF.sub("", key).strip()
     if not key:
         return None
@@ -162,6 +176,11 @@ def is_amazonas(municipio: str | None) -> bool | None:
 
     conhecidos = {_norm(a) for a in ALIASES}
     for parte in partes:
+        # O modelo às vezes preenche o campo com o ESTADO em vez do município
+        # ("Amazonas", "interior do Amazonas"). Isso é local, não estrangeiro —
+        # a guarda estava descartando crime legítimo por falta de precisão.
+        if parte in _ESTADO_TOKENS:
+            return True
         parte = _SUFIXO_UF.sub("", parte).strip()
         if not parte:
             continue

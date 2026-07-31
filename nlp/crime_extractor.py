@@ -221,6 +221,16 @@ def _clean_slug(value) -> str:
     if normalizado in SLUG_ALIASES:
         return SLUG_ALIASES[normalizado]
 
+    # "tentativa_feminicidio", "tentativa_de_homicidio": não existe figura penal
+    # separada para tentativa — é a mesma figura com o marcador. Recupera a
+    # figura aqui; quem marca tentativa=True é _build_mention, que vê o valor cru.
+    sem_tentativa = re.sub(r"^tentativa_(de_)?", "", normalizado)
+    if sem_tentativa != normalizado:
+        if sem_tentativa in VALID_SLUGS:
+            return sem_tentativa
+        if sem_tentativa in SLUG_ALIASES:
+            return SLUG_ALIASES[sem_tentativa]
+
     if slug:
         print(f"  [crimes] Figura penal desconhecida sugerida pelo modelo: '{slug}' "
               f"— avaliar inclusão em nlp/crime_types.py")
@@ -238,6 +248,11 @@ def _build_mention(article: Article, item: dict, reported_on: date) -> CrimeMent
     # de "consumado", e a série precisa distinguir as duas coisas.
     tentativa = item.get("tentativa")
     tentativa = bool(tentativa) if isinstance(tentativa, bool) else None
+
+    # Quando o modelo codifica a tentativa DENTRO do identificador
+    # ("tentativa_feminicidio"), o marcador vinha vazio e a informação se perdia.
+    if str(item.get("type") or "").strip().lower().startswith("tentativa"):
+        tentativa = True
 
     bairro, zona = resolve_bairro(_clean_str(item.get("bairro"), 80))
 
