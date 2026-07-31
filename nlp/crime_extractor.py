@@ -284,7 +284,16 @@ def _build_mention(article: Article, item: dict, reported_on: date) -> CrimeMent
     # rodada e 2023-06-01 na seguinte, ambas como "dia".
     # Inclui 'prisao' porque prender alguém por crime de 2019 também é
     # desdobramento — foi por essa fresta que passou um "2019-01-01".
-    if (occurred and stage in {"prisao", "julgamento", "condenacao"}
+    #
+    # A condição `day == 1` é essencial e foi acrescentada depois: sem ela a
+    # guarda destruía data VERDADEIRA. Uma matéria de condenação informava
+    # "16 de abril de 2021, por volta das 19h45" e virava 2021-01-01, porque só
+    # a distância temporal bastava para disparar. Quando o modelo inventa, ele
+    # quase sempre usa o dia 1 — foi assim nos dois casos que motivaram esta
+    # guarda (2023-01-01 e depois 2023-06-01). Exigir dia 1 mantém a invenção
+    # barrada e preserva a data que a fonte realmente informou.
+    if (occurred and occurred.day == 1
+            and stage in {"prisao", "julgamento", "condenacao"}
             and (reported_on - occurred).days > 60):
         precisao = "ano"
         occurred = occurred.replace(month=1, day=1)

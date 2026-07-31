@@ -1,0 +1,295 @@
+================================================================================
+BRIEFING PARA AVALIACAO DA CLASSIFICACAO CRIMINAL
+Observatorio de Manaus - LSI/UEA
+================================================================================
+
+Arquivo a avaliar: cobertura_criminal_AAAAMMDD.csv
+Separador: ponto e virgula (;)
+Codificacao: UTF-8 com BOM (abre direto no Excel; em pandas, use sep=';')
+
+
+--------------------------------------------------------------------------------
+1. O QUE E ESTE ARQUIVO
+--------------------------------------------------------------------------------
+
+Cada linha e um crime noticiado que um modelo de linguagem identificou em uma
+materia jornalistica do Amazonas.
+
+O objeto de estudo e a COBERTURA DA IMPRENSA, nao a criminalidade real. So entra
+no arquivo o que foi publicado por algum veiculo. Crimes que nao viraram noticia
+sao invisiveis para o metodo, e um mesmo crime muito noticiado aparece varias
+vezes.
+
+O sistema foi configurado para PRIORIZAR PRECISAO SOBRE COBERTURA. Deixar um
+crime de fora e aceitavel; registrar um crime errado nao e. Isso tem uma
+consequencia importante para quem avalia:
+
+    ABSTER-SE E COMPORTAMENTO CORRETO.
+
+Campo vazio, figura penal generica ou o valor "Outro crime" NAO sao defeitos por
+si sos. Sao defeitos apenas quando a materia oferecia informacao suficiente para
+uma resposta mais precisa e o sistema nao a usou.
+
+Todos os registros foram produzidos pela MESMA versao do classificador, entao a
+taxa de acerto medida aqui e interpretavel.
+
+
+--------------------------------------------------------------------------------
+2. DICIONARIO DAS COLUNAS
+--------------------------------------------------------------------------------
+
+IDENTIFICACAO E ORIGEM
+  mencao_id ............ identificador do registro
+  materia .............. titulo da noticia
+  link ................. endereco da noticia (ABRIR PARA CONFERIR)
+  veiculo .............. portal, blog ou canal que publicou
+  publicada_em ......... data de publicacao da materia
+
+CLASSIFICACAO PENAL
+  figura_slug .......... identificador interno da figura penal
+  figura_penal ......... nome legivel da figura penal
+  grupo_slug ........... identificador interno do grupo
+  grupo ................ bem juridico protegido (Titulo do Codigo Penal)
+  dispositivo_legal .... artigo de lei correspondente a figura
+  etapa ................ momento processual noticiado:
+                         fato | investigacao | prisao | julgamento | condenacao
+  tentativa ............ "tentado", "consumado" ou VAZIO
+                         vazio = o modelo nao se pronunciou
+
+TEMPO
+  data_do_fato ......... quando o crime ocorreu, FORMATADA CONFORME A PRECISAO:
+                         "2021-04-16" = a materia informa o dia
+                         "2025-10"    = a materia informa so o mes e o ano
+                         "2025"       = a materia informa so o ano
+                         vazio        = a materia nao permite datar
+                         O sistema NUNCA completa o que a fonte nao diz. Uma
+                         data curta indica fonte imprecisa, nao falha.
+  precisao_da_data ..... ate onde a materia permite datar: dia | mes | ano |
+                         desconhecida. Redundante com o formato acima, serve
+                         para filtrar em analise.
+
+LUGAR
+  municipio ............ municipio onde o crime ocorreu
+  zona ................. zona administrativa de Manaus, derivada do bairro
+  bairro ............... bairro citado na materia
+
+CONTEUDO
+  envolvidos ........... numero de pessoas envolvidas. ATENCAO: a definicao
+                         deste campo e ambigua e esta sendo revista. Ora conta
+                         vitimas, ora conta presos ou investigados. NAO
+                         reporte divergencia aqui - ja e defeito conhecido.
+  descricao_extraida ... resumo do fato, gerado pelo modelo, SEM nomes de pessoas
+  texto_da_materia ..... TRECHO DO TEXTO ORIGINAL, coletado pelo sistema quando
+                         a materia foi publicada. Use-o para conferir quando o
+                         link nao abrir (ver secao 7).
+  materia_cita_lei ..... "sim" se a propria materia nomeia a figura penal ou o
+                         artigo de lei; "nao" se apenas narra o fato
+
+PROCESSAMENTO
+  caso_id .............. VAZIO EM TODA A BASE nesta versao (ver secao 4)
+  modelo ............... modelo de linguagem usado
+  extraido_em .......... quando o registro foi produzido
+
+
+--------------------------------------------------------------------------------
+3. O QUE AVALIAR, LINHA A LINHA
+--------------------------------------------------------------------------------
+
+Abra a materia pelo campo `link`, leia o texto e confira seis pontos.
+
+
+(1) E CRIME?
+
+    A materia noticia uma ocorrencia criminal concreta?
+
+    NAO contam como crime noticiado:
+      - acidente de transito, incendio sem indicio de crime, afogamento,
+        desabamento, resgate, pessoa desaparecida encontrada;
+      - materia institucional: nota de gabinete, seminario, posse, entrevista,
+        campanha educativa, treinamento;
+      - politica publica ou tramitacao legislativa: projeto de lei, votacao,
+        mudanca de regra sobre algum crime;
+      - balanco ou relatorio estatistico: "registrou queda de 32%", "1.628
+        vitimas em 2025". Os numeros ali sao agregados, nao pessoas de uma
+        ocorrencia;
+      - referencia historica: materia sobre crime antigo que nao noticia fato
+        novo;
+      - acao civel ou trabalhista, inclusive com condenacao a indenizar;
+      - cumprimento de mandado sem o crime de origem informado.
+
+
+(2) FIGURA PENAL
+
+    `figura_penal` e `dispositivo_legal` correspondem ao fato narrado?
+
+    Verifique tres regras:
+
+    a) FIGURA AUTONOMA ANTES DA GENERICA
+       feminicidio, e nao homicidio, quando a vitima e mulher morta por
+       companheiro, ex-companheiro ou familiar, ou por razao de genero;
+       latrocinio, e nao roubo nem homicidio, quando ha roubo seguido de morte;
+       estupro de vulneravel, e nao estupro, quando a vitima tem menos de 14
+       anos ou nao pode consentir;
+       lesao corporal domestica exige vinculo conjugal, familiar ou de
+       coabitacao explicito - agressao de professor contra aluno, de vizinho ou
+       de desconhecido e lesao corporal simples.
+
+    b) CRIME-FIM ANTES DE CRIME-MEIO
+       quando a violencia serve a outro crime, o principal e o crime que ela
+       serviu: assalto com agressao e ROUBO, com lesao corporal como secundario.
+
+    c) O FATO NOVO, NAO O ANTECEDENTE
+       se a materia noticia um crime e menciona outro apenas como pano de fundo,
+       a figura registrada deve ser a do fato novo.
+
+
+(3) TENTADO OU CONSUMADO
+
+    O campo `tentativa` confere com a materia? Crime que nao se consumou por
+    circunstancias alheias a vontade do agente e tentado, e usa a MESMA figura
+    penal do crime consumado.
+
+
+(4) DATAS
+
+    A data sai no formato correspondente ao que a materia permite afirmar:
+
+      materia diz "no dia 16 de abril de 2021"  ->  2021-04-16
+      materia diz "em outubro de 2025"          ->  2025-10
+      materia diz "um crime de 2019"            ->  2019
+      materia nao permite datar                 ->  vazio
+
+    Data CURTA nao e erro: significa que a fonte era imprecisa, e o sistema
+    preservou so o que ela sustenta. Isso e comportamento correto.
+
+    Sao erros:
+      GRAVE ..... data que a materia NAO informa (dia, mes ou ano inventados);
+      GRAVE ..... data que contradiz a materia;
+      MODERADO .. a materia informava o dia e o registro trouxe so o mes ou so
+                  o ano, perdendo precisao disponivel;
+      MODERADO .. `precisao_da_data` incompativel com o formato exibido.
+
+    Ao apontar erro de data, TRANSCREVA o trecho da materia que informa a data.
+
+
+(5) LUGAR
+
+    `municipio`, `bairro` e `zona` batem com o texto da materia?
+
+    Crime ocorrido FORA do Amazonas nao deveria estar neste arquivo. Se
+    aparecer, e erro grave.
+
+
+(6) DESCRICAO
+
+    `descricao_extraida` resume o fato corretamente?
+    Ela NAO pode conter nome de pessoa. Nome na descricao e erro grave.
+
+
+--------------------------------------------------------------------------------
+4. O QUE NAO REPORTAR
+--------------------------------------------------------------------------------
+
+Os pontos abaixo sao conhecidos e ja decididos. Reporta-los nao acrescenta
+informacao.
+
+  - `caso_id` esta VAZIO em toda a base. O agrupamento de materias sobre o mesmo
+    caso foi desativado de proposito e sera refeito. NAO avalie duplicacao,
+    fragmentacao de casos nem repeticao de noticias.
+
+  - O TOTAL DE LINHAS NAO E O NUMERO DE CRIMES DISTINTOS. Varias materias sobre
+    o mesmo crime aparecem como linhas separadas. Isso e esperado nesta versao.
+
+  - Nao existe campo de confianca. Foi removido por ser constante e nao
+    informativo.
+
+  - NAO avalie a classificacao tematica do portal (Saude, Educacao, Politica e
+    Governo, Seguranca Publica). E outro sistema, independente deste.
+
+  - O arquivo contem apenas o que foi CLASSIFICADO COMO CRIME. Materias
+    descartadas nao estao aqui, entao nao e possivel avaliar crimes perdidos.
+    Dada a prioridade por precisao, isso e aceitavel.
+
+
+--------------------------------------------------------------------------------
+5. ESCOLHA DA AMOSTRA
+--------------------------------------------------------------------------------
+
+Defina antes qual dos dois objetivos voce quer, porque eles pedem amostras
+diferentes:
+
+  MEDIR QUALIDADE
+    amostra aleatoria, ou estratificada por figura penal. Produz uma taxa de
+    acerto que representa a base. Sugestao: 40 a 60 registros.
+
+  ENCONTRAR DEFEITOS
+    amostra intencional, escolhendo casos dificeis ou suspeitos. Encontra mais
+    problemas, mas a taxa de erro resultante NAO representa a base e nao deve
+    ser apresentada como tal.
+
+Se estratificar, inclua figuras raras e nao apenas as frequentes: sao nelas que
+os erros costumam se concentrar.
+
+
+--------------------------------------------------------------------------------
+6. FORMATO DA RESPOSTA
+--------------------------------------------------------------------------------
+
+Informe primeiro os numeros:
+
+    Objetivo da amostra: medir qualidade | encontrar defeitos
+    Registros revisados: N
+    Inteiramente corretos: N
+    Com algum erro: N
+
+Depois a lista de problemas:
+
+    mencao_id | campo com erro | esta | deveria ser | gravidade
+
+Use tres niveis de gravidade:
+
+    GRAVE ......... nao e crime; crime ocorrido fora do Amazonas; data
+                    inventada; nome de pessoa na descricao; figura penal de
+                    natureza completamente diferente
+    MODERADO ...... figura penal imprecisa mas do mesmo grupo; local errado;
+                    tentado e consumado trocados
+    DISCUTIVEL .... questao de interpretacao juridica em que duas
+                    classificacoes sao defensaveis
+
+Por fim, agrupe os erros por PADRAO. Erro sistematico - o mesmo tipo de falha
+repetido em varios registros - vale muito mais que erro isolado, porque indica
+correcao de regra e nao de caso.
+
+
+--------------------------------------------------------------------------------
+7. SE QUEM AVALIAR FOR UM ASSISTENTE DE IA
+--------------------------------------------------------------------------------
+
+Acrescente estas instrucoes:
+
+  - ABRA E LEIA cada materia pelo campo `link` antes de julgar. Nao avalie a
+    partir do titulo, da descricao extraida ou de paginas arquivadas.
+
+  - QUANDO O LINK NAO ABRIR, use a coluna `texto_da_materia`. Ela traz o texto
+    original coletado quando a noticia foi publicada, e nao o resumo do modelo,
+    entao julgar por ela e legitimo. Muitos links sao redirecionamentos do
+    Google News que deixam de resolver com o tempo - numa avaliacao anterior,
+    46 de 50 materias ficaram inacessiveis por esse motivo. Registre nesses
+    casos que a verificacao foi feita pelo texto armazenado.
+
+  - So registre "nao verificavel" quando o link NAO abrir E a coluna
+    `texto_da_materia` estiver vazia. Registro nao verificado nao entra na
+    contagem.
+
+  - Nao proponha mudancas de arquitetura, de esquema de dados ou de
+    funcionalidades. O escopo e a CORRECAO DA CLASSIFICACAO de cada linha.
+
+  - Ao apontar tipificacao penal, cite o dispositivo. Quando a classificacao
+    depender de informacao que a materia nao traz, marque DISCUTIVEL em vez de
+    afirmar.
+
+
+================================================================================
+Duvidas sobre o metodo estao na propria pagina, em Cobertura Criminal, no bloco
+recolhido "Metodologia da analise".
+================================================================================

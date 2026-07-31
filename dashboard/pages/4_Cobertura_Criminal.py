@@ -184,6 +184,8 @@ def load_export() -> pd.DataFrame:
                    m.municipio, m.zona, m.bairro,
                    m.count_people          AS envolvidos,
                    m.description           AS descricao_extraida,
+                   COALESCE(NULLIF(a.content, ''), NULLIF(a.summary, ''),
+                            NULLIF(a.transcript, '')) AS texto_da_materia,
                    m.legal_cited_by_source AS materia_cita_lei,
                    m.event_id              AS caso_id,
                    m.model                 AS modelo,
@@ -201,6 +203,34 @@ def load_export() -> pd.DataFrame:
     df["materia_cita_lei"] = df["materia_cita_lei"].map({1: "sim", 0: "não"})
     # Vazio significa que o modelo não se pronunciou — diferente de "consumado".
     df["tentativa"] = df["tentativa"].map({1: "tentado", 0: "consumado"})
+
+    # A data sai formatada conforme a precisão declarada. Guardamos internamente
+    # 2025-01-01 com precisão "ano" para preservar o ano, mas exportar isso cru
+    # faz 1º de janeiro parecer o dia do crime — uma auditoria leu exatamente
+    # assim. Aqui "2025" é ano, "2025-10" é mês e a data cheia só aparece quando
+    # a matéria realmente permitiu datar até o dia.
+    def _data_por_precisao(row):
+        d, prec = row["data_do_fato"], row["precisao_da_data"]
+        if d is None or prec not in ("dia", "mes", "ano"):
+            return ""
+        if prec == "dia":
+            return d.strftime("%Y-%m-%d")
+        if prec == "mes":
+            return d.strftime("%Y-%m")
+        return d.strftime("%Y")
+    df["data_do_fato"] = df.apply(_data_por_precisao, axis=1)
+
+    # Texto da matéria, para conferir sem depender de o link abrir. Os feeds
+    # vindos do Google News guardam URL de redirecionamento que muitas vezes não
+    # resolve — numa avaliação de 50 registros, 46 ficaram inverificáveis por
+    # isso. Sem tags HTML e sem quebras de linha, para não estourar a planilha.
+    df["texto_da_materia"] = (
+        df["texto_da_materia"].fillna("")
+        .str.replace(r"<[^>]+>", " ", regex=True)
+        .str.replace(r"&[a-z]+;|&#\d+;", " ", regex=True)
+        .str.replace(r"\s+", " ", regex=True)
+        .str.strip().str.slice(0, 1500)
+    )
     return df
 
 

@@ -117,7 +117,12 @@ DEFAULT_PROMPTS: dict[str, str] = {
         "novo — venda do imóvel onde ocorreu um crime, aniversário de um caso, "
         "retrospectiva.\n"
         "- Cumprimento de mandado sem crime informado: 'preso por mandado em aberto' "
-        "sem dizer de que crime. Não invente a figura que originou o mandado.\n\n"
+        "sem dizer de que crime. Não invente a figura que originou o mandado.\n"
+        "- CRIME OCORRIDO FORA DO AMAZONAS. Esta base cobre crimes acontecidos no "
+        "estado do Amazonas. Se o fato ocorreu em outro estado ou em outro país, "
+        "responda is_crime = false — mesmo que a vítima seja amazonense, mesmo que a "
+        "família more em Manaus, mesmo que o veículo que publicou seja daqui. O que "
+        "importa é ONDE O CRIME ACONTECEU.\n\n"
 
         "DUAS ARMADILHAS:\n"
         "1. Nome de repartição não é fato. 'Delegacia Especializada em Roubos, Furtos e "
