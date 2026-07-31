@@ -74,10 +74,11 @@ LUGAR
   bairro ............... bairro citado na materia
 
 CONTEUDO
-  envolvidos ........... numero de pessoas envolvidas. ATENCAO: a definicao
-                         deste campo e ambigua e esta sendo revista. Ora conta
-                         vitimas, ora conta presos ou investigados. NAO
-                         reporte divergencia aqui - ja e defeito conhecido.
+  vitimas .............. numero de vitimas que a materia permite contar
+  suspeitos ............ numero de suspeitos, presos ou investigados
+                         Os dois sao contados SEPARADAMENTE e nunca somados:
+                         "3 vitimas" e "1 autor" sao grandezas diferentes.
+                         Vazio significa que a materia nao permite contar.
   descricao_extraida ... resumo do fato, gerado pelo modelo, SEM nomes de pessoas
   texto_da_materia ..... TRECHO DO TEXTO ORIGINAL, coletado pelo sistema quando
                          a materia foi publicada. Use-o para conferir quando o

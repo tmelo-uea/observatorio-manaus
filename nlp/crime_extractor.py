@@ -12,7 +12,9 @@ Decisões de projeto que explicam o formato do prompt:
     inteiro do tema, ~61 artigos/dia, o que é barato.
 
   • Uma menção por FIGURA PENAL, não por pessoa. Operação com 12 prisões por
-    tráfico = 1 menção com count_people=12.
+    tráfico = 1 menção com count_suspects=12. Vítimas e suspeitos são contados
+    em campos separados e nunca somados: o total misturado não responde a
+    pergunta nenhuma.
 
   • O dispositivo legal NÃO é pedido ao modelo: vem do mapa determinístico em
     nlp/crime_types.py. Ao modelo só se pergunta se a MATÉRIA citou algum
@@ -322,7 +324,11 @@ def _build_mention(article: Article, item: dict, reported_on: date) -> CrimeMent
         if isinstance(e, str) and e.strip()
     ]
 
-    contagem = _clean_int(item.get("count_people"))
+    vitimas = _clean_int(item.get("count_victims"))
+    suspeitos = _clean_int(item.get("count_suspects"))
+    # A guarda de balanço estatístico olha a MAIOR das duas contagens: num
+    # relatório anual o número inflado pode aparecer em qualquer uma delas.
+    contagem = max([v for v in (vitimas, suspeitos) if v is not None], default=None)
 
     # Rede de proteção contra matéria de balanço estatístico que escapou do
     # prompt. Uma auditoria encontrou registros com 1.628 e 775 "envolvidos":
@@ -374,7 +380,8 @@ def _build_mention(article: Article, item: dict, reported_on: date) -> CrimeMent
         zona=zona,
         bairro=bairro,
         location_text=local_txt,
-        count_people=contagem,
+        count_victims=vitimas,
+        count_suspects=suspeitos,
         description=descricao[:2000],
         legal_ref=legal_ref(slug),
         legal_cited_by_source=citou,

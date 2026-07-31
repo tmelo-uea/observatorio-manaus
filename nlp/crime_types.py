@@ -95,6 +95,8 @@ CRIME_TYPES = {
     # ------------------------------------------------------------------
     "falsidade_ideologica":    ("Falsidade ideológica",          "CP art. 299",            "fe_publica"),
     "falsificacao_documento":  ("Falsificação de DOCUMENTO",     "CP arts. 297 e 298",     "fe_publica"),
+    "uso_documento_falso":     ("Uso de documento falso",        "CP art. 304",            "fe_publica"),
+    "fraude_processual":       ("Fraude processual",             "CP art. 347",            "fe_publica"),
     # Um lote falsificado de Mounjaro estava indo para falsificação documental.
     "falsificacao_medicamento": ("Falsificação ou adulteração de medicamento", "CP art. 273", "fe_publica"),
     "moeda_falsa":             ("Moeda falsa",                   "CP art. 289",            "fe_publica"),

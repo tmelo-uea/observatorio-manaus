@@ -96,7 +96,7 @@ DEFAULT_PROMPTS: dict[str, str] = {
         "- na dúvida se é crime → is_crime = false;\n"
         "- na dúvida sobre qual figura penal → use a mais geral compatível, ou "
         "'outro';\n"
-        "- na dúvida sobre data, local, número de envolvidos ou tentativa → deixe "
+        "- na dúvida sobre data, local, contagem de pessoas ou tentativa → deixe "
         "null.\n"
         "Não preencha campo por plausibilidade. Abster-se é resposta correta.\n\n"
 
@@ -133,7 +133,8 @@ DEFAULT_PROMPTS: dict[str, str] = {
         "data do FATO, não a da publicação, e ajuste stage.\n\n"
 
         "REGRA DE CONTAGEM: um item por FIGURA PENAL, nunca por pessoa. Uma operação com "
-        "12 presos por tráfico é UM item, com count_people = 12. Só gere mais de um item "
+        "12 presos por tráfico é UM item, com count_suspects = 12. Conte VÍTIMAS e "
+        "SUSPEITOS em campos separados e NUNCA some os dois. Só gere mais de um item "
         "se a matéria noticiar crimes de TIPOS DIFERENTES.\n\n"
 
         "PREFIRA SEMPRE A FIGURA AUTÔNOMA E MAIS ESPECÍFICA, nunca a genérica:\n"
@@ -223,7 +224,8 @@ DEFAULT_PROMPTS: dict[str, str] = {
         '      "municipio": "Manaus, Parintins, ... ou null",\n'
         '      "bairro": "bairro citado ou null",\n'
         '      "location_text": "trecho curto indicando o local ou null",\n'
-        '      "count_people": "número de pessoas envolvidas (presas, vítimas) ou null",\n'
+        '      "count_victims": "número de VÍTIMAS, ou null se a matéria não disser",\n'
+        '      "count_suspects": "número de SUSPEITOS, presos ou investigados, ou null",\n'
         '      "description": "1 a 2 frases sobre o fato, SEM nomes próprios",\n'
         '      "entities": ["nomes próprios de pessoas citadas na matéria"],\n'
         '      "legal_cited_by_source": true,\n'

@@ -149,6 +149,19 @@ def run_migrations():
                 conn.commit()
                 print("Migration: coluna tentativa adicionada em crime_mentions.")
 
+            # Separa vítimas de suspeitos. O campo único count_people misturava
+            # as duas contagens e ficava sem significado analítico.
+            for coluna in ("count_victims", "count_suspects"):
+                existe = conn.execute(text(
+                    "SELECT COUNT(*) FROM information_schema.COLUMNS "
+                    "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'crime_mentions' "
+                    "AND COLUMN_NAME = :col"
+                ), {"col": coluna}).scalar()
+                if not existe:
+                    conn.execute(text(f"ALTER TABLE crime_mentions ADD COLUMN {coluna} INT NULL"))
+                    conn.commit()
+                    print(f"Migration: coluna {coluna} adicionada em crime_mentions.")
+
         # Corrige tamanho da coluna phone em whatsapp_subscriptions (VARCHAR(20) → 35)
         phone_size = conn.execute(text(
             "SELECT CHARACTER_MAXIMUM_LENGTH FROM information_schema.COLUMNS "

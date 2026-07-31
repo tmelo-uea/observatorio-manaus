@@ -185,7 +185,8 @@ def load_export() -> pd.DataFrame:
                    m.occurred_on           AS data_do_fato,
                    m.occurred_precision    AS precisao_da_data,
                    m.municipio, m.zona, m.bairro,
-                   m.count_people          AS envolvidos,
+                   m.count_victims         AS vitimas,
+                   m.count_suspects        AS suspeitos,
                    m.description           AS descricao_extraida,
                    COALESCE(NULLIF(a.content, ''), NULLIF(a.summary, ''),
                             NULLIF(a.transcript, '')) AS texto_da_materia,
@@ -242,8 +243,9 @@ def load_amostra(n: int = 10) -> pd.DataFrame:
     with get_db().connect() as conn:
         res = conn.execute(text("""
             SELECT m.id, m.crime_type, m.stage, m.tentativa, m.occurred_on, m.occurred_precision,
-                   m.reported_on, m.municipio, m.zona, m.bairro, m.count_people,
+                   m.reported_on, m.municipio, m.zona, m.bairro,
                    m.description, m.legal_ref, m.legal_cited_by_source,
+                   m.count_victims, m.count_suspects,
                    m.event_id, a.title, a.url, s.name AS fonte
             FROM crime_mentions m
             JOIN articles a ON a.id = m.article_id
@@ -479,8 +481,8 @@ descartada nessa leitura.
 **Unidade de análise.** A unidade primária é a *matéria*, não o crime. Isso é
 deliberado: o objeto de estudo é a cobertura jornalística, e só é possível observar o
 que foi publicado. Uma operação policial com doze prisões por tráfico conta como uma
-matéria, com o número de envolvidos registrado à parte. Uma matéria só gera mais de um
-registro se noticiar crimes de tipos diferentes.
+matéria, com vítimas e suspeitos contados em campos separados. Uma matéria só gera mais
+de um registro se noticiar crimes de tipos diferentes.
 
 **Agrupamento por caso — em desenvolvimento, atualmente desligado.** Um mesmo crime
 costuma ser noticiado por vários veículos, e distinguir *"vinte crimes noticiados uma
@@ -551,7 +553,7 @@ modo que a distribuição geográfica descreve onde a imprensa *localiza* os fat
         st.dataframe(pd.DataFrame({
             "Campo": ["Figura penal", "Dispositivo", "Etapa", "Tentado?", "Data do fato",
                       "Precisão da data", "Publicação", "Município", "Zona",
-                      "Bairro", "Envolvidos", "Matéria cita enquadramento",
+                      "Bairro", "Vítimas", "Suspeitos", "Matéria cita enquadramento",
                       "Caso agrupado"],
             "Extraído": [
                 tipo_label(r["crime_type"]), r["legal_ref"] or "—", r["stage"],
@@ -559,7 +561,8 @@ modo que a distribuição geográfica descreve onde a imprensa *localiza* os fat
                 r["occurred_on"] or "não informada",
                 r["occurred_precision"] or "—", r["reported_on"],
                 r["municipio"] or "—", r["zona"] or "—", r["bairro"] or "—",
-                r["count_people"] if r["count_people"] is not None else "—",
+                r["count_victims"] if r["count_victims"] is not None else "—",
+                r["count_suspects"] if r["count_suspects"] is not None else "—",
                 {1: "sim", 0: "não"}.get(r["legal_cited_by_source"], "—"),
                 f"#{r['event_id']}" if r["event_id"] else "—",
             ],

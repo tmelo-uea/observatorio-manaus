@@ -240,7 +240,16 @@ class CrimeMention(Base):
     bairro:        Mapped[str] = mapped_column(String(80), nullable=True, index=True)
     location_text: Mapped[str] = mapped_column(String(255), nullable=True)
 
-    count_people: Mapped[int] = mapped_column(Integer, nullable=True)  # presos, vítimas, apreensões
+    # Contagens SEPARADAS. Um único campo "envolvidos" era inutilizável: ora o
+    # modelo contava vítimas, ora contava presos, e somar as duas coisas produz
+    # um número que não responde a pergunta nenhuma. Uma auditoria externa
+    # apontou a divergência em dois registros e a causa era a definição, não a
+    # contagem. `count_people` fica na tabela sem uso, por ser mais seguro que
+    # remover coluna de base em produção.
+    count_people:   Mapped[int] = mapped_column(Integer, nullable=True)  # OBSOLETO
+    count_victims:  Mapped[int] = mapped_column(Integer, nullable=True)
+    count_suspects: Mapped[int] = mapped_column(Integer, nullable=True)
+
     description:  Mapped[str] = mapped_column(Text, nullable=False)    # 1-2 frases, SEM nomes próprios
 
     # legal_ref NÃO vem do LLM: é consultado em nlp/crime_types.py a partir de
