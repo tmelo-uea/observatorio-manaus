@@ -33,7 +33,7 @@ from nlp.crime_types import (
     legal_ref,
     prompt_vocabulary,
 )
-from nlp.manaus_geo import resolve as resolve_bairro
+from nlp.manaus_geo import is_amazonas, resolve as resolve_bairro
 from nlp.prompts import render
 
 EXTRACT_MODEL = "gpt-4o-mini"
@@ -257,6 +257,19 @@ def _build_mention(article: Article, item: dict, reported_on: date) -> CrimeMent
         confianca = None
 
     municipio = _clean_str(item.get("municipio"), 80)
+
+    # Guarda de localidade. O filtro is_local já roda antes, na seleção dos
+    # artigos — mas ele erra: numa amostra de 25 matérias TODAS com is_local=1,
+    # três noticiavam crimes de Medellín, São Paulo e Rio de Janeiro (o caso
+    # Henry Borel está registrado como falso positivo conhecido desde junho).
+    # Como o modelo extrai o município, dá para barrar aqui de graça.
+    # Município ausente não é motivo para descartar: a maioria das matérias não
+    # o nomeia, e descartar o desconhecido trocaria contaminação por perda.
+    if is_amazonas(municipio) is False:
+        print(f"  [crimes] Menção descartada — município fora do Amazonas: "
+              f"'{municipio}' (artigo {article.id}; is_local errou)")
+        return None
+
     local_txt = _clean_str(item.get("location_text"), 255)
     trecho_legal = _clean_str(item.get("legal_text_source"), 255)
 

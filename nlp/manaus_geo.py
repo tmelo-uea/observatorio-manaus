@@ -101,3 +101,60 @@ def resolve(bairro: str | None) -> tuple[str | None, str | None]:
 
 
 ALL_BAIRROS = sorted({b for bs in ZONAS.values() for b in bs})
+
+
+# ---------------------------------------------------------------------------
+# Municípios do Amazonas
+#
+# Fonte: API de localidades do IBGE, estado 13 (AM) — os 62 municípios oficiais.
+# Serve de guarda contra contaminação da série de cobertura criminal: numa
+# amostra de 25 matérias todas marcadas is_local=1, três noticiavam crimes de
+# Medellín, São Paulo e Rio de Janeiro. O classificador is_local as deu como
+# locais; o município extraído pelo modelo denuncia o engano de graça.
+# ---------------------------------------------------------------------------
+MUNICIPIOS_AM = [
+    "Alvarães", "Amaturá", "Anamã", "Anori", "Apuí", "Atalaia do Norte",
+    "Autazes", "Barcelos", "Barreirinha", "Benjamin Constant", "Beruri",
+    "Boa Vista do Ramos", "Boca do Acre", "Borba", "Caapiranga", "Canutama",
+    "Carauari", "Careiro", "Careiro da Várzea", "Coari", "Codajás", "Eirunepé",
+    "Envira", "Fonte Boa", "Guajará", "Humaitá", "Ipixuna", "Iranduba",
+    "Itacoatiara", "Itamarati", "Itapiranga", "Japurá", "Juruá", "Jutaí",
+    "Lábrea", "Manacapuru", "Manaquiri", "Manaus", "Manicoré", "Maraã",
+    "Maués", "Nhamundá", "Nova Olinda do Norte", "Novo Airão", "Novo Aripuanã",
+    "Parintins", "Pauini", "Presidente Figueiredo", "Rio Preto da Eva",
+    "Santa Isabel do Rio Negro", "Santo Antônio do Içá", "Silves",
+    "São Gabriel da Cachoeira", "São Paulo de Olivença",
+    "São Sebastião do Uatumã", "Tabatinga", "Tapauá", "Tefé", "Tonantins",
+    "Uarini", "Urucará", "Urucurituba",
+]
+
+_MUNICIPIOS_INDEX = {_norm(m): m for m in MUNICIPIOS_AM}
+
+# "Manaus/AM", "Manaus (AM)", "Parintins - Amazonas" e afins
+_SUFIXO_UF = re.compile(r"[\s,\-–—/()]+(am|amazonas)\s*\)?$")
+
+
+def is_amazonas(municipio: str | None) -> bool | None:
+    """True se o município é do Amazonas, False se não é, None se não dá para saber.
+
+    None é resposta legítima e frequente: a maioria das matérias não nomeia o
+    município. Nesse caso a menção é mantida — descartar o que não se sabe seria
+    trocar uma contaminação por uma perda.
+    """
+    if not municipio:
+        return None
+    key = _norm(municipio).strip()
+    # A função é pública e pode receber a saída crua do modelo, que às vezes traz
+    # a STRING "null". Sem isto, "null" seria lido como município estrangeiro e
+    # descartaria a menção.
+    if key in {"null", "none", "nulo", "n/a", "na", "-", "desconhecido", "nao informado"}:
+        return None
+    key = _SUFIXO_UF.sub("", key).strip()
+    if not key:
+        return None
+    if key in _MUNICIPIOS_INDEX:
+        return True
+    # O modelo às vezes põe um bairro de Manaus no campo de município.
+    if key in _INDEX or key in {_norm(a) for a in ALIASES}:
+        return True
+    return False
