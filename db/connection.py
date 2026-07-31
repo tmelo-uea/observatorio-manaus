@@ -131,6 +131,24 @@ def run_migrations():
             conn.commit()
             print("Migration: coluna crime_processed_at adicionada em articles.")
 
+        # Adiciona coluna tentativa em crime_mentions se a tabela já existir.
+        # Distingue crime tentado de consumado (CP art. 14, II) — sem ela,
+        # "tentativa de feminicídio" e feminicídio consumado ficavam idênticos.
+        tem_tabela_crimes = conn.execute(text(
+            "SELECT COUNT(*) FROM information_schema.TABLES "
+            "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'crime_mentions'"
+        )).scalar()
+        if tem_tabela_crimes:
+            has_tentativa = conn.execute(text(
+                "SELECT COUNT(*) FROM information_schema.COLUMNS "
+                "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'crime_mentions' "
+                "AND COLUMN_NAME = 'tentativa'"
+            )).scalar()
+            if not has_tentativa:
+                conn.execute(text("ALTER TABLE crime_mentions ADD COLUMN tentativa TINYINT(1) NULL"))
+                conn.commit()
+                print("Migration: coluna tentativa adicionada em crime_mentions.")
+
         # Corrige tamanho da coluna phone em whatsapp_subscriptions (VARCHAR(20) → 35)
         phone_size = conn.execute(text(
             "SELECT CHARACTER_MAXIMUM_LENGTH FROM information_schema.COLUMNS "

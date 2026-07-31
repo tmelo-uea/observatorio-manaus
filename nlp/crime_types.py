@@ -33,6 +33,11 @@ CRIME_TYPES = {
     # Acrescentado depois que o modelo inventou este identificador sozinho ao
     # classificar "matar e ocultar cadáver do próprio pai" — sinal de lacuna.
     "ocultacao_cadaver":       ("Ocultação de cadáver",          "CP art. 211",            "vida"),
+    # NÃO é figura penal: é o registro policial de morte sob apuração, sem
+    # tipificação definida. Existe porque o modelo, sem esta saída, afirmava
+    # "homicídio culposo" para uma morte após colonoscopia que ainda estava
+    # sendo investigada — inventava a tipificação para não ficar sem resposta.
+    "morte_a_esclarecer":      ("Morte a esclarecer (sem tipificação definida)", None,     "vida"),
 
     # ------------------------------------------------------------------
     # Lesão e liberdade pessoal — CP, Títulos I e I-A
@@ -84,7 +89,9 @@ CRIME_TYPES = {
     # Fé pública — CP, Título X
     # ------------------------------------------------------------------
     "falsidade_ideologica":    ("Falsidade ideológica",          "CP art. 299",            "fe_publica"),
-    "falsificacao_documento":  ("Falsificação de documento",     "CP arts. 297 e 298",     "fe_publica"),
+    "falsificacao_documento":  ("Falsificação de DOCUMENTO",     "CP arts. 297 e 298",     "fe_publica"),
+    # Um lote falsificado de Mounjaro estava indo para falsificação documental.
+    "falsificacao_medicamento": ("Falsificação ou adulteração de medicamento", "CP art. 273", "fe_publica"),
     "moeda_falsa":             ("Moeda falsa",                   "CP art. 289",            "fe_publica"),
     # Acrescentado após o modelo classificar "moto sem placa e sem chassi" como
     # crime contra a fauna silvestre: faltava a figura, e ele preferiu uma
@@ -113,7 +120,10 @@ CRIME_TYPES = {
     # ------------------------------------------------------------------
     "posse_ilegal_arma":       ("Posse ilegal de arma de fogo",  "Lei 10.826/2003, art. 12", "armas"),
     "porte_ilegal_arma":       ("Porte ilegal de arma de fogo",  "Lei 10.826/2003, art. 14", "armas"),
-    "arma_uso_restrito":       ("Arma de fogo de uso restrito",  "Lei 10.826/2003, art. 16", "armas"),
+    # Rótulo explícito sobre MUNIÇÃO: com "Arma de fogo de uso restrito", 485
+    # munições de calibre 5,56 saíam como posse/porte comum (arts. 12 e 14). O
+    # art. 16 abrange munição de uso restrito expressamente.
+    "arma_uso_restrito":       ("Arma, MUNIÇÃO ou acessório de uso restrito", "Lei 10.826/2003, art. 16", "armas"),
 
     # ------------------------------------------------------------------
     # Ambientais — Lei 9.605/1998 (relevante para a Amazônia)

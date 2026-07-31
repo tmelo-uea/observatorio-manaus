@@ -191,6 +191,11 @@ def _build_mention(article: Article, item: dict, reported_on: date) -> CrimeMent
     if stage not in VALID_STAGES:
         stage = "fato"
 
+    # Tentado x consumado. None quando o modelo não se pronuncia — é diferente
+    # de "consumado", e a série precisa distinguir as duas coisas.
+    tentativa = item.get("tentativa")
+    tentativa = bool(tentativa) if isinstance(tentativa, bool) else None
+
     bairro, zona = resolve_bairro(_clean_str(item.get("bairro"), 80))
 
     # A data só entra se a matéria permitir datar o fato ATÉ O DIA. O modelo não
@@ -282,6 +287,7 @@ def _build_mention(article: Article, item: dict, reported_on: date) -> CrimeMent
         crime_group=crime_group(slug),
         crime_types=secundarios or None,
         stage=stage,
+        tentativa=tentativa,
         occurred_on=occurred,
         occurred_precision=precisao,
         reported_on=reported_on,

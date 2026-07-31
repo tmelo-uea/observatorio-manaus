@@ -217,6 +217,12 @@ class CrimeMention(Base):
     crime_types: Mapped[dict] = mapped_column(JSON, nullable=True)   # figuras secundárias do mesmo fato
     stage:       Mapped[str]  = mapped_column(String(20), nullable=False)  # fato|investigacao|prisao|julgamento|condenacao
 
+    # Tentado x consumado (CP art. 14, II). Ortogonal a `stage`, que é o momento
+    # processual: cabe "tentativa de homicídio" em etapa de julgamento. Sem este
+    # campo, homicídio tentado e consumado viravam o mesmo registro — e numa
+    # série sobre crime isso muda o significado do número, não é detalhe.
+    tentativa: Mapped[bool] = mapped_column(Boolean, nullable=True)
+
     # Duas datas: um release de hoje sobre condenação de um crime de 2023 é
     # cobertura de hoje sobre fato antigo. Misturar as duas cria pico falso.
     occurred_on: Mapped[date] = mapped_column(Date, nullable=True, index=True)

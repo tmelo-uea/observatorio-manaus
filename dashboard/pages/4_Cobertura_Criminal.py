@@ -195,6 +195,7 @@ def load_export() -> pd.DataFrame:
                    m.crime_group           AS grupo_slug,
                    m.legal_ref             AS dispositivo_legal,
                    m.stage                 AS etapa,
+                   m.tentativa,
                    m.occurred_on           AS data_do_fato,
                    m.occurred_precision    AS precisao_da_data,
                    m.municipio, m.zona, m.bairro,
@@ -216,6 +217,8 @@ def load_export() -> pd.DataFrame:
     df.insert(6, "figura_penal", [tipo_label(s) for s in df["figura_slug"]])
     df.insert(8, "grupo", [CRIME_GROUPS.get(g, g) for g in df["grupo_slug"]])
     df["materia_cita_lei"] = df["materia_cita_lei"].map({1: "sim", 0: "não"})
+    # Vazio significa que o modelo não se pronunciou — diferente de "consumado".
+    df["tentativa"] = df["tentativa"].map({1: "tentado", 0: "consumado"})
     return df
 
 
@@ -223,7 +226,7 @@ def load_export() -> pd.DataFrame:
 def load_amostra(n: int = 10) -> pd.DataFrame:
     with get_db().connect() as conn:
         res = conn.execute(text("""
-            SELECT m.id, m.crime_type, m.stage, m.occurred_on, m.occurred_precision,
+            SELECT m.id, m.crime_type, m.stage, m.tentativa, m.occurred_on, m.occurred_precision,
                    m.reported_on, m.municipio, m.zona, m.bairro, m.count_people,
                    m.description, m.confidence, m.legal_ref, m.legal_cited_by_source,
                    m.event_id, a.title, a.url, s.name AS fonte
@@ -532,12 +535,13 @@ modo que a distribuição geográfica descreve onde a imprensa *localiza* os fat
         conf = f"{r['confidence']:.2f}" if r["confidence"] is not None else "—"
         st.markdown(f"**[{r['title']}]({r['url']})**  \n*{r['fonte']}*")
         st.dataframe(pd.DataFrame({
-            "Campo": ["Figura penal", "Dispositivo", "Etapa", "Data do fato",
+            "Campo": ["Figura penal", "Dispositivo", "Etapa", "Tentado?", "Data do fato",
                       "Precisão da data", "Publicação", "Município", "Zona",
                       "Bairro", "Envolvidos", "Matéria cita enquadramento",
                       "Confiança", "Caso agrupado"],
             "Extraído": [
                 tipo_label(r["crime_type"]), r["legal_ref"] or "—", r["stage"],
+                {1: "tentado", 0: "consumado"}.get(r["tentativa"], "—"),
                 r["occurred_on"] or "não informada",
                 r["occurred_precision"] or "—", r["reported_on"],
                 r["municipio"] or "—", r["zona"] or "—", r["bairro"] or "—",

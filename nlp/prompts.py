@@ -130,6 +130,32 @@ DEFAULT_PROMPTS: dict[str, str] = {
         "dois, quando a vítima é mulher e há indício de contexto doméstico ou de "
         "gênero, use 'feminicidio' e registre 'homicidio_doloso' em secondary_types.\n\n"
 
+        "CRIME-FIM ANTES DE CRIME-MEIO. Quando a violência serve a outro crime, o "
+        "principal é o crime que a violência serviu, e a violência vai em "
+        "secondary_types: assalto com agressão é 'roubo' com 'lesao_corporal' "
+        "secundária, não o contrário. Vale para qualquer meio — invasão, ameaça, "
+        "restrição de liberdade — quando instrumental a um fim.\n\n"
+
+        "IDADE DA VÍTIMA MANDA NO CRIME SEXUAL. Vítima menor de 14 anos, ou incapaz "
+        "de consentir, é SEMPRE 'estupro_vulneravel' (art. 217-A), nunca 'estupro'. "
+        "Se a matéria informa idades como 4, 6 ou 7 anos, a figura é vulnerável — "
+        "não há exceção.\n\n"
+
+        "NÃO AFIRME TIPIFICAÇÃO QUE A MATÉRIA NÃO SUSTENTA. Se ela noticia um fato "
+        "SOB APURAÇÃO sem indicar o enquadramento, não escolha a figura por "
+        "suposição:\n"
+        "- morte sem causa estabelecida, ainda em investigação → 'morte_a_esclarecer', "
+        "nunca 'homicidio_culposo' ou 'homicidio_doloso';\n"
+        "- mandado ou prisão descritos genericamente ('por violência doméstica', 'por "
+        "crimes sexuais') sem dizer a conduta → use a figura mais geral compatível, ou "
+        "'outro'; não escolha uma figura específica como violência psicológica só "
+        "porque é plausível.\n\n"
+
+        "AÇÃO CÍVEL OU TRABALHISTA NÃO É CRIME. Condenação a indenizar, processo em "
+        "Juizado Especial Cível, reclamação trabalhista, assédio moral no trabalho, "
+        "decisão de TRT — nada disso é matéria criminal, mesmo quando a conduta é "
+        "grave e mesmo quando há condenação. Responda is_crime = false.\n\n"
+
         "NA AUSÊNCIA DE FIGURA ADEQUADA, USE 'outro'. Nunca escolha uma figura por "
         "semelhança superficial de palavras: moto sem placa e sem chassi NÃO é crime "
         "contra a fauna. 'outro' é resposta correta e útil — figura errada corrompe a "
@@ -164,6 +190,7 @@ DEFAULT_PROMPTS: dict[str, str] = {
         '      "type": "identificador do vocabulário",\n'
         '      "secondary_types": ["outras figuras que o MESMO fato configure"],\n'
         '      "stage": "fato|investigacao|prisao|julgamento|condenacao",\n'
+        '      "tentativa": false,\n'
         '      "occurred_on": "AAAA-MM-DD ou null se a matéria não informar",\n'
         '      "occurred_precision": "dia|mes|ano|desconhecida",\n'
         '      "municipio": "Manaus, Parintins, ... ou null",\n'
@@ -180,6 +207,11 @@ DEFAULT_PROMPTS: dict[str, str] = {
         "}}\n\n"
 
         "Se is_crime for false, 'crimes' deve ser lista vazia.\n"
+        "'tentativa' é true quando o crime NÃO se consumou por circunstâncias alheias "
+        "à vontade do agente (CP art. 14, II): 'tentou matar', 'tentativa de "
+        "feminicídio', 'a vítima sobreviveu'. Use a MESMA figura penal do crime "
+        "consumado e marque tentativa = true — não existe figura separada para "
+        "tentativa.\n"
         "NUNCA escreva nomes próprios de pessoas em 'description' — eles vão apenas em "
         "'entities'.\n"
         "NÃO invente data nem local: o que a matéria não informa vai como null.\n"
