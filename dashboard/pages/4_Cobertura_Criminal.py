@@ -68,18 +68,18 @@ def load_panorama(dias: int, municipio: str | None):
     with get_db().connect() as conn:
         row = conn.execute(text(f"""
             SELECT COUNT(*)                       AS mencoes,
-                   COUNT(DISTINCT m.event_id)     AS casos,
                    COUNT(DISTINCT m.crime_type)   AS figuras,
-                   COUNT(DISTINCT a.source_id)    AS veiculos
+                   COUNT(DISTINCT a.source_id)    AS veiculos,
+                   COUNT(DISTINCT m.municipio)    AS municipios
             FROM crime_mentions m
             JOIN articles a ON a.id = m.article_id
             WHERE m.reported_on >= :ini {filtro}
         """), params).fetchone()
     return {
         "mencoes": row[0] or 0,
-        "casos": row[1] or 0,
-        "figuras": row[2] or 0,
-        "veiculos": row[3] or 0,
+        "figuras": row[1] or 0,
+        "veiculos": row[2] or 0,
+        "municipios": row[3] or 0,
     }
 
 
@@ -132,23 +132,6 @@ def load_zonas(dias: int) -> pd.DataFrame:
             WHERE reported_on >= :ini AND zona IS NOT NULL
             GROUP BY zona, crime_group
         """), {"ini": inicio})
-        return pd.DataFrame(res.fetchall(), columns=res.keys())
-
-
-@st.cache_data(ttl=300)
-def load_repercussao(dias: int, limite: int = 15) -> pd.DataFrame:
-    inicio = (datetime.utcnow() - timedelta(hours=4)).date() - timedelta(days=dias)
-    with get_db().connect() as conn:
-        res = conn.execute(text("""
-            SELECT e.id, e.crime_type, e.occurred_on, e.bairro, e.municipio,
-                   e.mention_count, e.source_count,
-                   (SELECT m.description FROM crime_mentions m
-                     WHERE m.event_id = e.id ORDER BY m.id LIMIT 1) AS descricao
-            FROM crime_events e
-            WHERE e.occurred_on >= :ini
-            ORDER BY e.mention_count DESC, e.source_count DESC
-            LIMIT :lim
-        """), {"ini": inicio, "lim": limite})
         return pd.DataFrame(res.fetchall(), columns=res.keys())
 
 
@@ -286,14 +269,14 @@ municipio = None if escolha_mun == "Todos" else escolha_mun
 pan = load_panorama(dias, municipio)
 c1, c2, c3, c4 = st.columns(4)
 c1.metric("Matérias sobre crime", fmt_br(pan["mencoes"]))
-c2.metric("Casos distintos", fmt_br(pan["casos"]))
-razao = (pan["mencoes"] / pan["casos"]) if pan["casos"] else 0
-c3.metric("Matérias por caso", f"{razao:.1f}".replace(".", ","))
-c4.metric("Veículos", fmt_br(pan["veiculos"]))
+c2.metric("Figuras penais distintas", fmt_br(pan["figuras"]))
+c3.metric("Veículos", fmt_br(pan["veiculos"]))
+c4.metric("Municípios", fmt_br(pan["municipios"]))
 
 st.caption(
-    "“Matérias por caso” é a razão entre cobertura e ocorrências distintas: quanto "
-    "maior, mais a imprensa repetiu os mesmos casos."
+    "Cada matéria que noticia um crime gera um registro. Matérias diferentes sobre "
+    "o mesmo caso ainda são contadas separadamente — o agrupamento por ocorrência "
+    "está em desenvolvimento e é descrito na metodologia."
 )
 
 st.divider()
@@ -392,39 +375,7 @@ if not df_zonas.empty:
     )
     st.plotly_chart(fig_z, use_container_width=True)
 
-# ---------------------------------------------------------------- repercussão
-
-st.subheader("Casos com maior repercussão")
-st.caption("Ocorrências que mais renderam matérias — a medida de amplificação editorial.")
-
-df_rep = load_repercussao(dias)
-if df_rep.empty:
-    st.info("Ainda não há casos agrupados no período.")
-else:
-    for _, r in df_rep.iterrows():
-        if r["mention_count"] < 2:
-            continue
-        local = " · ".join(x for x in [r["bairro"], r["municipio"]] if x)
-        data = r["occurred_on"].strftime("%d/%m/%Y") if r["occurred_on"] else "data não informada"
-        st.markdown(f"""
-<div style="background:#f8fafc;border-left:4px solid #4a90d9;border-radius:8px;
-            padding:12px 18px;margin-bottom:8px;">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
-        <span style="font-weight:700;color:#1e40af;font-size:0.92rem;">
-            {tipo_label(r['crime_type'])}
-        </span>
-        <span style="font-size:0.78rem;color:#7f8c8d;white-space:nowrap;">
-            {r['mention_count']} matérias · {r['source_count']} veículos
-        </span>
-    </div>
-    <div style="color:#475569;line-height:1.6;font-size:0.9rem;margin-top:6px;">
-        {r['descricao'] or ''}
-    </div>
-    <div style="font-size:0.76rem;color:#94a3b8;margin-top:6px;">
-        {data}{' · ' + local if local else ''}
-    </div>
-</div>
-""", unsafe_allow_html=True)
+# ---------------------------------------------------------------- rodapé
 
 st.divider()
 
@@ -468,13 +419,15 @@ que foi publicado. Uma operação policial com doze prisões por tráfico conta 
 matéria, com o número de envolvidos registrado à parte. Uma matéria só gera mais de um
 registro se noticiar crimes de tipos diferentes.
 
-**Agrupamento por caso.** Um mesmo crime costuma ser noticiado por vários veículos.
-Para distinguir *"vinte crimes noticiados uma vez cada"* de *"um crime noticiado vinte
-vezes"* — afirmações opostas sobre a imprensa —, os registros são agrupados por caso
-quando coincidem em tipo penal, município, data aproximada, bairro e pessoas citadas. O
-agrupamento é determinístico e revisável: não altera os registros originais e pode ser
-recalculado a qualquer momento. Casos duvidosos permanecem separados, de modo que a
-contagem de casos distintos é um limite superior.
+**Agrupamento por caso — em desenvolvimento, atualmente desligado.** Um mesmo crime
+costuma ser noticiado por vários veículos, e distinguir *"vinte crimes noticiados uma
+vez cada"* de *"um crime noticiado vinte vezes"* é uma pergunta central sobre a
+imprensa. A primeira versão do agrupamento não conseguia fundir registros quando a
+matéria não nomeava pessoas — o que é a regra no noticiário policial brasileiro — e
+produzia praticamente um caso por matéria. Como isso levava a página a afirmar que não
+há repetição de cobertura, o que é falso, o agrupamento foi desativado até ser
+refeito. **Enquanto isso, cada matéria conta como um registro, e o total NÃO deve ser
+lido como número de crimes distintos.**
 
 **Classificação legal.** As categorias correspondem a figuras do Código Penal e da
 legislação penal especial, organizadas pelos Títulos do Código — o bem jurídico

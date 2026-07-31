@@ -31,7 +31,6 @@ from notifications.email_sender import run_digest
 from nlp.adjective_extractor import run_adjective_extraction
 from nlp.writing_metrics import run_writing_metrics, run_writing_insight
 from nlp.crime_extractor import run_crime_extraction
-from nlp.crime_clusterer import run_crime_clustering
 
 Base.metadata.create_all(get_engine())
 run_migrations()
@@ -68,7 +67,15 @@ def job():
     # geral, nada). Cobertura criminal depende só do backfill_content, então sobe.
     _safe("backfill_content", backfill_content, limit=30)  # busca texto completo dos 30 artigos mais recentes sem content
     _safe("run_crime_extraction", run_crime_extraction, limit=20)
-    _safe("run_crime_clustering", run_crime_clustering, limit=200)
+    # Agrupamento DESLIGADO do ciclo. Ele é determinístico e não custa API, mas
+    # com o limiar atual não funde nada: 189 menções produziram 165 casos, e a
+    # página passava a exibir "1,0 matéria por caso" — afirmando que a imprensa
+    # não repete cobertura, o que a medição inicial desmente (5 matérias para o
+    # mesmo latrocínio). Publicar número errado é pior que não publicar.
+    # A causa é estrutural: CrimeEvent carrega UM tipo penal, então o bloco de
+    # candidatos nunca junta crimes diferentes do mesmo fato. Religar só depois
+    # de rever o modelo e calibrar o limiar com dados do backfill.
+    # _safe("run_crime_clustering", run_crime_clustering, limit=200)
     _safe("backfill", backfill, limit=50)  # transcrições: até 50 vídeos, teto de 20 min, com disjuntor
     _safe("reclassify_outros", reclassify_outros, batch_size=200)  # reclassifica vídeos que ganharam transcript
     _safe("run_daily_summary", run_daily_summary)
