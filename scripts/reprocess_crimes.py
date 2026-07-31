@@ -73,8 +73,10 @@ def main():
             print("\n(dry-run — nada apagado. Exporte o CSV antes e use --apply.)\n")
             return
 
-        session.execute(text("DELETE FROM crime_events"))
+        # Ordem importa: crime_mentions.event_id referencia crime_events.id, então
+        # apagar os casos primeiro esbarra na chave estrangeira (erro 1451).
         session.execute(text("DELETE FROM crime_mentions"))
+        session.execute(text("DELETE FROM crime_events"))
         n = session.execute(text(
             "UPDATE articles SET crime_processed_at = NULL "
             "WHERE crime_processed_at IS NOT NULL"
