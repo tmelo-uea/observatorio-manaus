@@ -55,6 +55,48 @@ def load_precisao_datas(dias: int) -> pd.DataFrame:
         return pd.DataFrame(res.fetchall(), columns=res.keys())
 
 
+@st.cache_data(ttl=300)
+def load_export() -> pd.DataFrame:
+    """Todas as menções com a matéria de origem, para conferência externa.
+
+    NÃO inclui o campo de nomes próprios: ele existe apenas para agrupar
+    menções do mesmo caso e não deve sair numa página pública.
+    """
+    with get_db().connect() as conn:
+        res = conn.execute(text("""
+            SELECT m.id                    AS mencao_id,
+                   a.title                 AS materia,
+                   a.url                   AS link,
+                   s.name                  AS veiculo,
+                   m.reported_on           AS publicada_em,
+                   m.crime_type            AS figura_slug,
+                   m.crime_group           AS grupo_slug,
+                   m.legal_ref             AS dispositivo_legal,
+                   m.stage                 AS etapa,
+                   m.occurred_on           AS data_do_fato,
+                   m.occurred_precision    AS precisao_da_data,
+                   m.municipio, m.zona, m.bairro,
+                   m.count_people          AS envolvidos,
+                   m.description           AS descricao_extraida,
+                   m.legal_cited_by_source AS materia_cita_lei,
+                   m.confidence            AS confianca,
+                   m.event_id              AS caso_id,
+                   m.model                 AS modelo,
+                   m.extracted_at          AS extraido_em
+            FROM crime_mentions m
+            JOIN articles a ON a.id = m.article_id
+            JOIN sources s  ON s.id = a.source_id
+            ORDER BY m.reported_on DESC, m.id DESC
+        """))
+        df = pd.DataFrame(res.fetchall(), columns=res.keys())
+    if df.empty:
+        return df
+    df.insert(6, "figura_penal", [tipo_label(s) for s in df["figura_slug"]])
+    df.insert(8, "grupo", [CRIME_GROUPS.get(g, g) for g in df["grupo_slug"]])
+    df["materia_cita_lei"] = df["materia_cita_lei"].map({1: "sim", 0: "não"})
+    return df
+
+
 @st.cache_data(ttl=120)
 def load_amostra(n: int = 10) -> pd.DataFrame:
     with get_db().connect() as conn:
@@ -185,6 +227,29 @@ st.caption(
     "com que frequência a imprensa local tipifica juridicamente o que noticia e com "
     "que precisão data os fatos."
 )
+
+st.subheader("Conferir os dados")
+
+df_export = load_export()
+if not df_export.empty:
+    csv = df_export.to_csv(index=False, sep=";").encode("utf-8-sig")
+    col_a, col_b = st.columns([1, 3])
+    with col_a:
+        st.download_button(
+            "⬇️ Baixar CSV",
+            data=csv,
+            file_name=f"cobertura_criminal_{datetime.utcnow():%Y%m%d}.csv",
+            mime="text/csv",
+            use_container_width=True,
+        )
+    with col_b:
+        st.caption(
+            f"**{len(df_export)} registros**, um por crime noticiado, com o link da "
+            "matéria de origem ao lado da classificação — feito para conferir linha a "
+            "linha. Separado por ponto e vírgula e codificado em UTF-8 com BOM, para "
+            "abrir direto no Excel sem quebrar acentuação. O campo interno de nomes "
+            "próprios não é exportado."
+        )
 
 with st.expander("Amostra de verificação — comparar extração com a matéria original", expanded=True):
     st.caption(
