@@ -91,13 +91,16 @@ def load_serie(dias: int, municipio: str | None) -> pd.DataFrame:
     if municipio:
         params["mun"] = municipio
     with get_db().connect() as conn:
+        # Agrupa por DIA no banco; a decisão entre dia e semana é tomada depois,
+        # em função de quanto período há de fato. Agrupar por semana direto no
+        # SQL fazia toda a base recente cair num bucket só, e um gráfico de área
+        # com um único ponto por série não desenha nada.
         res = conn.execute(text(f"""
-            SELECT DATE_SUB(reported_on, INTERVAL WEEKDAY(reported_on) DAY) AS semana,
-                   crime_group, COUNT(*) AS cnt
+            SELECT reported_on AS dia, crime_group, COUNT(*) AS cnt
             FROM crime_mentions
             WHERE reported_on >= :ini {filtro}
-            GROUP BY semana, crime_group
-            ORDER BY semana
+            GROUP BY dia, crime_group
+            ORDER BY dia
         """), params)
         return pd.DataFrame(res.fetchall(), columns=res.keys())
 
@@ -314,31 +317,61 @@ st.divider()
 # ---------------------------------------------------------------- série temporal
 
 st.subheader("Evolução da cobertura")
-st.caption("Matérias publicadas por semana, agrupadas pelo bem jurídico protegido.")
+st.caption("Matérias publicadas ao longo do tempo, agrupadas pelo bem jurídico protegido.")
 
 df_serie = load_serie(dias, municipio)
 if df_serie.empty:
     st.info("Sem dados no período selecionado.")
 else:
-    df_serie["semana"] = pd.to_datetime(df_serie["semana"])
+    df_serie["dia"] = pd.to_datetime(df_serie["dia"])
+    span = (df_serie["dia"].max() - df_serie["dia"].min()).days
+
+    # Semana só faz sentido com período suficiente; abaixo disso, dia.
+    if span > 60:
+        df_serie["periodo"] = df_serie["dia"] - pd.to_timedelta(
+            df_serie["dia"].dt.weekday, unit="D")
+        unidade, rotulo = "semana", "Matérias por semana"
+    else:
+        df_serie["periodo"] = df_serie["dia"]
+        unidade, rotulo = "dia", "Matérias por dia"
+
+    df_serie = (df_serie.groupby(["periodo", "crime_group"], as_index=False)["cnt"]
+                .sum())
+    n_periodos = df_serie["periodo"].nunique()
     ordem = df_serie.groupby("crime_group")["cnt"].sum().sort_values(ascending=False)
+
+    # Com poucos períodos, barras empilhadas: área e linha precisam de dois
+    # pontos para desenhar, e um período único renderizava um gráfico em branco.
+    usar_barra = n_periodos < 4
+
     fig = go.Figure()
     for grupo in ordem.index:
-        gdf = df_serie[df_serie["crime_group"] == grupo].sort_values("semana")
+        gdf = df_serie[df_serie["crime_group"] == grupo].sort_values("periodo")
         cor = GROUP_COLORS.get(grupo, "#95a5a6")
         nome = CRIME_GROUPS.get(grupo, grupo)
-        fig.add_trace(go.Scatter(
-            x=gdf["semana"], y=gdf["cnt"], name=nome, mode="lines",
-            stackgroup="one", line=dict(color=cor, width=0.5),
-            hovertemplate=f"<b>{nome}</b><br>Semana de %{{x|%d/%m}}: %{{y}} matérias<extra></extra>",
-        ))
+        tip = f"<b>{nome}</b><br>%{{x|%d/%m/%Y}}: %{{y}} matérias<extra></extra>"
+        if usar_barra:
+            fig.add_trace(go.Bar(x=gdf["periodo"], y=gdf["cnt"], name=nome,
+                                 marker=dict(color=cor), hovertemplate=tip))
+        else:
+            fig.add_trace(go.Scatter(
+                x=gdf["periodo"], y=gdf["cnt"], name=nome, mode="lines",
+                stackgroup="one", line=dict(color=cor, width=0.5),
+                hovertemplate=tip))
     fig.update_layout(
         height=400, hovermode="x unified",
+        barmode="stack" if usar_barra else None,
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
         margin=dict(l=60, r=40, t=80, b=50),
-        plot_bgcolor="#fafafa", xaxis_title="", yaxis_title="Matérias por semana",
+        plot_bgcolor="#fafafa", xaxis_title="", yaxis_title=rotulo,
+        xaxis=dict(type="date", tickformat="%d/%m"),
     )
     st.plotly_chart(fig, use_container_width=True)
+    if n_periodos < 4:
+        st.caption(
+            f"Há apenas {n_periodos} dia(s) com registros. A série temporal só "
+            "ganha forma conforme a extração cobrir um período maior."
+        )
 
 # ---------------------------------------------------------------- ranking
 
