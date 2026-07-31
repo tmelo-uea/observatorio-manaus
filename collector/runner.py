@@ -30,6 +30,8 @@ from collector.content_fetcher import backfill_content
 from notifications.email_sender import run_digest
 from nlp.adjective_extractor import run_adjective_extraction
 from nlp.writing_metrics import run_writing_metrics, run_writing_insight
+from nlp.crime_extractor import run_crime_extraction
+from nlp.crime_clusterer import run_crime_clustering
 
 Base.metadata.create_all(get_engine())
 run_migrations()
@@ -62,6 +64,11 @@ def job():
     _safe("backfill", backfill, limit=50)  # processa até 50 vídeos, respeitando limite de 20 min
     _safe("backfill_content", backfill_content, limit=30)  # busca texto completo dos 30 artigos mais recentes sem content
     _safe("reclassify_outros", reclassify_outros, batch_size=200)  # reclassifica vídeos que ganharam transcript
+    # Cobertura criminal: depois do backfill_content, para o extrator ler o CORPO
+    # da matéria e não só o título. O agrupamento vem logo atrás, sobre o que
+    # acabou de ser extraído.
+    _safe("run_crime_extraction", run_crime_extraction, limit=20)
+    _safe("run_crime_clustering", run_crime_clustering, limit=200)
     _safe("run_daily_summary", run_daily_summary)
     _safe("run_topic_summaries", run_topic_summaries, min_articles=5)
     _safe("run_digest", run_digest)

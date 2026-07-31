@@ -114,6 +114,23 @@ def run_migrations():
             conn.execute(text("ALTER TABLE daily_summaries ADD COLUMN image_data LONGBLOB NULL"))
             print("Migration: coluna image_data adicionada em daily_summaries.")
 
+        # Adiciona coluna crime_processed_at se não existir. Marca os artigos já
+        # avaliados pelo extrator de cobertura criminal — inclusive os que NÃO
+        # tinham crime, para não reprocessá-los a cada ciclo. Deixar NULL em caso
+        # de falha é o que torna a etapa retomável sozinha.
+        has_crime_processed = conn.execute(text(
+            "SELECT COUNT(*) FROM information_schema.COLUMNS "
+            "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'articles' "
+            "AND COLUMN_NAME = 'crime_processed_at'"
+        )).scalar()
+        if not has_crime_processed:
+            conn.execute(text("ALTER TABLE articles ADD COLUMN crime_processed_at DATETIME NULL"))
+            conn.execute(text(
+                "CREATE INDEX ix_articles_crime_processed ON articles (crime_processed_at)"
+            ))
+            conn.commit()
+            print("Migration: coluna crime_processed_at adicionada em articles.")
+
         # Corrige tamanho da coluna phone em whatsapp_subscriptions (VARCHAR(20) → 35)
         phone_size = conn.execute(text(
             "SELECT CHARACTER_MAXIMUM_LENGTH FROM information_schema.COLUMNS "

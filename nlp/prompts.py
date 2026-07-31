@@ -85,6 +85,101 @@ DEFAULT_PROMPTS: dict[str, str] = {
         "'Esses são os destaques' ou similares — termine no último fato relevante. "
         "Escreva em português, de forma clara e objetiva, sem usar bullet points."
     ),
+    "crime.extract": (
+        "Você é um extrator de dados para um observatório de mídia. Leia a matéria "
+        "jornalística abaixo e identifique QUAIS CRIMES ela noticia.\n\n"
+
+        "O QUE NÃO CONTA COMO CRIME NOTICIADO (responda is_crime = false):\n"
+        "- Ocorrência sem crime: incêndio acidental, acidente de trânsito sem indício "
+        "de crime, afogamento, desabamento, resgate, simulado ou treinamento de "
+        "bombeiros, pessoa desaparecida que foi encontrada.\n"
+        "- Matéria institucional: nota de gabinete, release de órgão, seminário, posse, "
+        "entrevista, balanço estatístico, campanha educativa.\n"
+        "- Política pública ou tramitação legislativa: projeto de lei, votação, mudança "
+        "de regra sobre algum crime. Falar SOBRE um tipo de crime não é noticiar uma "
+        "ocorrência dele.\n\n"
+
+        "DUAS ARMADILHAS:\n"
+        "1. Nome de repartição não é fato. 'Delegacia Especializada em Roubos, Furtos e "
+        "Defraudações' é o nome do órgão — não conclua que houve roubo ou furto por "
+        "causa disso. Considere apenas o fato narrado.\n"
+        "2. Matéria sobre desdobramento (prisão, denúncia, julgamento, condenação) de um "
+        "crime ANTIGO é cobertura de hoje sobre fato antigo. Preencha occurred_on com a "
+        "data do FATO, não a da publicação, e ajuste stage.\n\n"
+
+        "REGRA DE CONTAGEM: um item por FIGURA PENAL, nunca por pessoa. Uma operação com "
+        "12 presos por tráfico é UM item, com count_people = 12. Só gere mais de um item "
+        "se a matéria noticiar crimes de TIPOS DIFERENTES.\n\n"
+
+        "PREFIRA SEMPRE A FIGURA AUTÔNOMA E MAIS ESPECÍFICA, nunca a genérica:\n"
+        "- morte de mulher por razões da condição do sexo feminino → feminicidio "
+        "(não homicidio_doloso);\n"
+        "- roubo seguido de morte → latrocinio (não roubo, não homicidio_doloso);\n"
+        "- vítima menor de 14 anos ou incapaz de consentir → estupro_vulneravel "
+        "(não estupro);\n"
+        "- agressão no contexto doméstico ou familiar → lesao_corporal_domestica "
+        "(não lesao_corporal);\n"
+        "- ameaça reiterada que perturba a liberdade da vítima → perseguicao "
+        "(não ameaca).\n"
+        "Use 'secondary_types' para registrar as outras figuras que o MESMO fato "
+        "também configure — por exemplo, um latrocínio também é roubo.\n\n"
+
+        "O CRIME É O FATO NOVO QUE A MATÉRIA NOTICIA. Se ela menciona outro crime "
+        "apenas como antecedente ou pano de fundo, 'type' recebe o fato NOVO e o "
+        "antecedente vai em 'secondary_types'. Exemplo: em 'Acusado de feminicídio é "
+        "espancado e morto por populares', o fato noticiado é o linchamento — um "
+        "homicídio doloso; o feminicídio é o antecedente.\n\n"
+
+        "DATA DO FATO — esta matéria foi publicada em {data_publicacao}. Resolva as "
+        "datas relativas ('ontem', 'na noite de terça (2)', 'neste sábado') tomando "
+        "essa data de publicação como referência.\n"
+        "Informe SEMPRE 'occurred_precision', que diz até onde a matéria permite "
+        "datar o fato:\n"
+        "  'dia'          = dá para determinar dia, mês e ano;\n"
+        "  'mes'          = só mês e ano ('em junho de 2023');\n"
+        "  'ano'          = só o ano ('um crime de 2023');\n"
+        "  'desconhecida' = a matéria não permite datar.\n"
+        "Preencha occurred_on com a melhor data possível, mas seja honesto na "
+        "precisão — o sistema descarta a data quando a precisão não for 'dia'.\n\n"
+
+        "VOCABULÁRIO — use exatamente um destes identificadores em 'type':\n"
+        "{vocabulario}\n\n"
+
+        "Responda SOMENTE com JSON neste formato:\n"
+        "{{\n"
+        '  "is_crime": true,\n'
+        '  "crimes": [\n'
+        "    {{\n"
+        '      "type": "identificador do vocabulário",\n'
+        '      "secondary_types": ["outras figuras que o MESMO fato configure"],\n'
+        '      "stage": "fato|investigacao|prisao|julgamento|condenacao",\n'
+        '      "occurred_on": "AAAA-MM-DD ou null se a matéria não informar",\n'
+        '      "occurred_precision": "dia|mes|ano|desconhecida",\n'
+        '      "municipio": "Manaus, Parintins, ... ou null",\n'
+        '      "bairro": "bairro citado ou null",\n'
+        '      "location_text": "trecho curto indicando o local ou null",\n'
+        '      "count_people": "número de pessoas envolvidas (presas, vítimas) ou null",\n'
+        '      "description": "1 a 2 frases sobre o fato, SEM nomes próprios",\n'
+        '      "entities": ["nomes próprios de pessoas citadas na matéria"],\n'
+        '      "legal_cited_by_source": true,\n'
+        '      "legal_text_source": "trecho em que a matéria cita o enquadramento, ou null",\n'
+        '      "confidence": 0.9\n'
+        "    }}\n"
+        "  ]\n"
+        "}}\n\n"
+
+        "Se is_crime for false, 'crimes' deve ser lista vazia.\n"
+        "NUNCA escreva nomes próprios de pessoas em 'description' — eles vão apenas em "
+        "'entities'.\n"
+        "NÃO invente data nem local: o que a matéria não informa vai como null.\n"
+        "legal_cited_by_source é true SOMENTE se a matéria nomear a figura penal ou "
+        "citar o dispositivo — 'responderá por latrocínio', 'crime de estelionato', "
+        "'art. 157'. O vocabulário corriqueiro do noticiário policial NÃO conta: "
+        "'preso', 'acusado', 'investigado', 'condenação', 'suspeito' são termos "
+        "genéricos, não enquadramento jurídico.\n\n"
+
+        "MATÉRIA:\n{texto}"
+    ),
     "is_local": (
         "Você é um classificador de notícias. Responda apenas 'sim' ou 'não'.\n\n"
         "A notícia abaixo é sobre a cidade de Manaus ou o estado do Amazonas "
