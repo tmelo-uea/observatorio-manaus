@@ -167,13 +167,21 @@ def _clean_int(value) -> int | None:
 
 
 def _clean_slug(value) -> str:
-    """Slug inválido vira 'outro' em vez de descartar o registro.
+    """Slug inválido vira 'outro', mas NUNCA em silêncio.
 
-    Se 'outro' crescer demais na série, é sinal de lacuna na taxonomia — o que
-    é informação útil, ao contrário de um registro perdido em silêncio.
+    Quando o modelo usa um identificador fora da lista, quase sempre é porque a
+    figura penal existe no noticiário e falta na taxonomia — foi assim que
+    apareceram ocultação de cadáver e exploração sexual de vulnerável, ambas
+    inventadas pelo modelo antes de eu tê-las cadastrado. Registrar no log faz a
+    próxima lacuna se revelar sozinha, em vez de sumir dentro de 'outro'.
     """
     slug = (value or "").strip().lower()
-    return slug if slug in VALID_SLUGS else "outro"
+    if slug in VALID_SLUGS:
+        return slug
+    if slug:
+        print(f"  [crimes] Figura penal desconhecida sugerida pelo modelo: '{slug}' "
+              f"— avaliar inclusão em nlp/crime_types.py")
+    return "outro"
 
 
 def _build_mention(article: Article, item: dict, reported_on: date) -> CrimeMention | None:
@@ -191,16 +199,39 @@ def _build_mention(article: Article, item: dict, reported_on: date) -> CrimeMent
     precisao = (_clean_str(item.get("occurred_precision"), 12) or "").lower()
     if precisao not in {"dia", "mes", "ano", "desconhecida"}:
         precisao = None
-    occurred = _parse_date(item.get("occurred_on")) if precisao == "dia" else None
+    # A data é guardada NORMALIZADA pela precisão, não descartada: o ano de um
+    # crime antigo é informação real e útil; só o dia é que seria invenção. A
+    # coluna occurred_precision diz como ler o campo — quem consultar occurred_on
+    # sem olhar a precisão precisa saber que 1º de janeiro pode significar
+    # "algum dia de 2019".
+    # Efeito colateral bom: duas matérias sobre o mesmo caso de 2019 caem no
+    # mesmo bloco de agrupamento. Com NULL cairiam no bloco de HOJE, porque o
+    # clusterer usa reported_on como alternativa — misturadas a crimes recentes.
+    occurred = _parse_date(item.get("occurred_on"))
+    if occurred and precisao == "mes":
+        occurred = occurred.replace(day=1)
+    elif occurred and precisao == "ano":
+        occurred = occurred.replace(month=1, day=1)
+    elif occurred and precisao != "dia":
+        occurred = None  # precisão desconhecida: não há ano confiável a preservar
 
-    # Guarda para caso antigo retomado por matéria de desdobramento judicial: a
-    # imprensa quase nunca repete a data exata do fato nesse contexto, e o modelo
-    # afirma precisão de dia que não tem. Medido no mesmo release do Caso Débora:
-    # respondeu 2023-01-01 numa rodada, 2023-06-01 na seguinte, ambas com
-    # precisão "dia". Para o acervo, null vale mais que data plausível e errada.
-    if (occurred and stage in {"julgamento", "condenacao"}
+    # Guarda para fato antigo retomado por matéria de desdobramento. A imprensa
+    # raramente repete a data exata nesse contexto e o modelo afirma precisão de
+    # dia que não tem: o mesmo release do Caso Débora respondeu 2023-01-01 numa
+    # rodada e 2023-06-01 na seguinte, ambas como "dia".
+    # Inclui 'prisao' porque prender alguém por crime de 2019 também é
+    # desdobramento — foi por essa fresta que passou um "2019-01-01".
+    if (occurred and stage in {"prisao", "julgamento", "condenacao"}
             and (reported_on - occurred).days > 60):
-        precisao, occurred = "ano", None
+        precisao = "ano"
+        occurred = occurred.replace(month=1, day=1)
+
+    # 1º de janeiro de ano anterior é a assinatura clássica de preenchimento:
+    # crime de réveillon seria noticiado na época, não anos depois. Mantém o
+    # ano, que é a parte verdadeira, e rebaixa a precisão.
+    if (occurred and occurred.month == 1 and occurred.day == 1
+            and occurred.year < reported_on.year):
+        precisao = "ano"
 
     descricao = (item.get("description") or "").strip()
     if not descricao:

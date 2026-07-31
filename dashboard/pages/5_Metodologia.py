@@ -134,9 +134,12 @@ O sistema guarda duas datas: a da publicação e a do fato. Elas são diferentes
 distinção importa — uma nota divulgada hoje sobre a condenação de um crime de anos
 atrás é cobertura de hoje sobre um fato antigo.
 
-A data do fato só é registrada quando a matéria permite determiná-la até o dia. Quando
-o texto diz apenas o mês ou apenas o ano, o campo fica vazio e a imprecisão é
-registrada. Os gráficos de evolução usam a data de **publicação**, porque medem
+Junto com a data do fato guarda-se **até onde a matéria permite datá-lo**: dia, mês ou
+apenas ano. Quando o texto diz somente "em 2019", registra-se o ano — que é informação
+real — e a imprecisão fica anotada, em vez de o sistema inventar um dia. Toda leitura
+da data do fato deve considerar esse campo de precisão.
+
+Os gráficos de evolução usam a data de **publicação**, e não a do fato, porque medem
 cobertura.
 
 ### Localização

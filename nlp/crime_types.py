@@ -30,6 +30,9 @@ CRIME_TYPES = {
     "feminicidio":             ("Feminicídio",                   "CP art. 121-A",          "vida"),
     "infanticidio":            ("Infanticídio",                  "CP art. 123",            "vida"),
     "aborto":                  ("Aborto",                        "CP arts. 124 a 128",     "vida"),
+    # Acrescentado depois que o modelo inventou este identificador sozinho ao
+    # classificar "matar e ocultar cadáver do próprio pai" — sinal de lacuna.
+    "ocultacao_cadaver":       ("Ocultação de cadáver",          "CP art. 211",            "vida"),
 
     # ------------------------------------------------------------------
     # Lesão e liberdade pessoal — CP, Títulos I e I-A
@@ -65,6 +68,8 @@ CRIME_TYPES = {
     "estupro":                 ("Estupro",                       "CP art. 213",            "dignidade_sexual"),
     "estupro_vulneravel":      ("Estupro de vulnerável",         "CP art. 217-A",          "dignidade_sexual"),
     "importunacao_sexual":     ("Importunação sexual",           "CP art. 215-A",          "dignidade_sexual"),
+    # Idem: inventado pelo modelo num caso de estupro de vulnerável.
+    "exploracao_sexual":       ("Exploração sexual de vulnerável", "CP art. 218-B",        "dignidade_sexual"),
     "assedio_sexual":          ("Assédio sexual",                "CP art. 216-A",          "dignidade_sexual"),
     "pornografia_infantil":    ("Pornografia infantil",          "ECA arts. 241 a 241-B",  "dignidade_sexual"),
 
