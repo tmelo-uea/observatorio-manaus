@@ -63,6 +63,10 @@ CRIME_TYPES = {
     "extorsao":                ("Extorsão",                      "CP art. 158",            "patrimonio"),
     "extorsao_sequestro":      ("Extorsão mediante sequestro",   "CP art. 159",            "patrimonio"),
     "dano":                    ("Dano",                          "CP art. 163",            "patrimonio"),
+    # Pôr fogo em residência expondo terceiros a perigo é art. 250, não dano.
+    "incendio":                ("Incêndio (com perigo a pessoas ou patrimônio alheio)", "CP art. 250", "patrimonio"),
+    # Agiotagem: o núcleo da Operação Usura saía como extorsão ou 'outro'.
+    "usura":                   ("Usura / agiotagem",             "Lei 1.521/1951, art. 4º", "patrimonio"),
     "apropriacao_indebita":    ("Apropriação indébita",          "CP art. 168",            "patrimonio"),
     "estelionato":             ("Estelionato",                   "CP art. 171",            "patrimonio"),
     "receptacao":              ("Receptação",                    "CP art. 180",            "patrimonio"),
@@ -77,6 +81,7 @@ CRIME_TYPES = {
     "exploracao_sexual":       ("Exploração sexual de vulnerável", "CP art. 218-B",        "dignidade_sexual"),
     "assedio_sexual":          ("Assédio sexual",                "CP art. 216-A",          "dignidade_sexual"),
     "pornografia_infantil":    ("Pornografia infantil",          "ECA arts. 241 a 241-B",  "dignidade_sexual"),
+    "corrupcao_menores":       ("Corrupção de menores",          "ECA art. 244-B",         "dignidade_sexual"),
 
     # ------------------------------------------------------------------
     # Crimes contra a paz pública — CP, Título IX / Lei 12.850

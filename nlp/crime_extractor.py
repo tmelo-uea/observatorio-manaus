@@ -49,6 +49,10 @@ VALID_STAGES = {"fato", "investigacao", "prisao", "julgamento", "condenacao"}
 # inflar o custo por chamada.
 MAX_CONTENT_CHARS = 4000
 
+# Acima disto, "envolvidos" quase certamente é total de relatório, não gente de
+# uma ocorrência. Megaoperações reais ficam bem abaixo.
+MAX_ENVOLVIDOS = 100
+
 
 def _manaus_today() -> date:
     return (datetime.utcnow() - timedelta(hours=4)).date()
@@ -256,6 +260,18 @@ def _build_mention(article: Article, item: dict, reported_on: date) -> CrimeMent
     ]
 
     contagem = _clean_int(item.get("count_people"))
+
+    # Rede de proteção contra matéria de balanço estatístico que escapou do
+    # prompt. Uma auditoria encontrou registros com 1.628 e 775 "envolvidos":
+    # eram totais anuais de um relatório, tratados como ocorrência única, o que
+    # inflaria homicídio, lesão e roubo de uma só vez. Nenhum crime noticiado
+    # individualmente tem essa ordem de grandeza — a menção inteira é suspeita,
+    # não só o número, então descarta-se ela toda (a base prioriza precisão).
+    if contagem is not None and contagem > MAX_ENVOLVIDOS:
+        print(f"  [crimes] Menção descartada — {contagem} envolvidos excede o "
+              f"plausível para uma ocorrência (artigo {article.id}; provável "
+              f"balanço estatístico lido como ocorrência)")
+        return None
 
     confianca = item.get("confidence")
     if isinstance(confianca, bool) or not isinstance(confianca, (int, float)):

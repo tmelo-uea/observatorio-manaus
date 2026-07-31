@@ -202,7 +202,6 @@ def load_export() -> pd.DataFrame:
                    m.count_people          AS envolvidos,
                    m.description           AS descricao_extraida,
                    m.legal_cited_by_source AS materia_cita_lei,
-                   m.confidence            AS confianca,
                    m.event_id              AS caso_id,
                    m.model                 AS modelo,
                    m.extracted_at          AS extraido_em
@@ -228,7 +227,7 @@ def load_amostra(n: int = 10) -> pd.DataFrame:
         res = conn.execute(text("""
             SELECT m.id, m.crime_type, m.stage, m.tentativa, m.occurred_on, m.occurred_precision,
                    m.reported_on, m.municipio, m.zona, m.bairro, m.count_people,
-                   m.description, m.confidence, m.legal_ref, m.legal_cited_by_source,
+                   m.description, m.legal_ref, m.legal_cited_by_source,
                    m.event_id, a.title, a.url, s.name AS fonte
             FROM crime_mentions m
             JOIN articles a ON a.id = m.article_id
@@ -532,13 +531,12 @@ modo que a distribuição geográfica descreve onde a imprensa *localiza* os fat
     if st.button("Sortear outra amostra"):
         load_amostra.clear()
     for _, r in load_amostra().iterrows():
-        conf = f"{r['confidence']:.2f}" if r["confidence"] is not None else "—"
         st.markdown(f"**[{r['title']}]({r['url']})**  \n*{r['fonte']}*")
         st.dataframe(pd.DataFrame({
             "Campo": ["Figura penal", "Dispositivo", "Etapa", "Tentado?", "Data do fato",
                       "Precisão da data", "Publicação", "Município", "Zona",
                       "Bairro", "Envolvidos", "Matéria cita enquadramento",
-                      "Confiança", "Caso agrupado"],
+                      "Caso agrupado"],
             "Extraído": [
                 tipo_label(r["crime_type"]), r["legal_ref"] or "—", r["stage"],
                 {1: "tentado", 0: "consumado"}.get(r["tentativa"], "—"),
@@ -547,7 +545,7 @@ modo que a distribuição geográfica descreve onde a imprensa *localiza* os fat
                 r["municipio"] or "—", r["zona"] or "—", r["bairro"] or "—",
                 r["count_people"] if r["count_people"] is not None else "—",
                 {1: "sim", 0: "não"}.get(r["legal_cited_by_source"], "—"),
-                conf, f"#{r['event_id']}" if r["event_id"] else "—",
+                f"#{r['event_id']}" if r["event_id"] else "—",
             ],
         }), use_container_width=True, hide_index=True)
         st.caption(f"Descrição extraída: {r['description']}")
