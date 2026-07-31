@@ -20,6 +20,8 @@ Decisões de projeto que explicam o formato do prompt:
 """
 import json
 import os
+import re
+import unicodedata
 from datetime import date, datetime, timedelta
 
 from sqlalchemy import bindparam, or_, text as sql_text
@@ -170,6 +172,31 @@ def _clean_int(value) -> int | None:
     return None
 
 
+# Nomes que o modelo usa espontaneamente, mapeados para o identificador real.
+# Cresce a partir do log de "figura penal desconhecida" — cada entrada aqui é um
+# caso visto em produção, não especulação.
+SLUG_ALIASES = {
+    "zoofilia": "maus_tratos_animais",
+    "abuso_de_animais": "maus_tratos_animais",
+    "trafico_de_drogas": "trafico_drogas",
+    "porte_de_arma": "porte_ilegal_arma",
+    "posse_de_arma": "posse_ilegal_arma",
+    "agiotagem": "usura",
+    "roubo_seguido_de_morte": "latrocinio",
+    "violencia_domestica": "lesao_corporal_domestica",
+    "tentativa_de_homicidio": "homicidio_doloso",
+    "tentativa_de_feminicidio": "feminicidio",
+    "estupro_de_vulneravel": "estupro_vulneravel",
+    "corrupcao_de_menores": "corrupcao_menores",
+    "ocultacao_de_cadaver": "ocultacao_cadaver",
+    "exploracao_sexual_de_vulneravel": "exploracao_sexual",
+    "adulteracao_de_veiculo": "adulteracao_veiculo",
+    "carcere_privado": "sequestro_carcere",
+    "sequestro": "sequestro_carcere",
+    "trafico_humano": "trafico_pessoas",
+}
+
+
 def _clean_slug(value) -> str:
     """Slug inválido vira 'outro', mas NUNCA em silêncio.
 
@@ -182,6 +209,18 @@ def _clean_slug(value) -> str:
     slug = (value or "").strip().lower()
     if slug in VALID_SLUGS:
         return slug
+
+    # O modelo escreve o identificador com acento — devolveu "ameaça" onde a
+    # lista tem "ameaca". Sem normalizar, toda ameaça virava 'outro' em
+    # silêncio. Compara sem acento e com espaço/hífen como underscore.
+    normalizado = unicodedata.normalize("NFD", slug)
+    normalizado = "".join(c for c in normalizado if unicodedata.category(c) != "Mn")
+    normalizado = re.sub(r"[\s\-]+", "_", normalizado)
+    if normalizado in VALID_SLUGS:
+        return normalizado
+    if normalizado in SLUG_ALIASES:
+        return SLUG_ALIASES[normalizado]
+
     if slug:
         print(f"  [crimes] Figura penal desconhecida sugerida pelo modelo: '{slug}' "
               f"— avaliar inclusão em nlp/crime_types.py")

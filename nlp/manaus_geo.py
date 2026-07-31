@@ -152,9 +152,20 @@ def is_amazonas(municipio: str | None) -> bool | None:
     key = _SUFIXO_UF.sub("", key).strip()
     if not key:
         return None
-    if key in _MUNICIPIOS_INDEX:
-        return True
-    # O modelo às vezes põe um bairro de Manaus no campo de município.
-    if key in _INDEX or key in {_norm(a) for a in ALIASES}:
-        return True
+
+    # O modelo às vezes devolve MAIS DE UM município quando a matéria cobre
+    # vários ("Tonantins, Benjamin Constant"). Comparação exata rejeitava a
+    # string inteira e descartava crime legítimo — os dois são do Amazonas.
+    partes = [p.strip() for p in re.split(r"[,;/]| e ", key) if p.strip()]
+    if not partes:
+        return None
+
+    conhecidos = {_norm(a) for a in ALIASES}
+    for parte in partes:
+        parte = _SUFIXO_UF.sub("", parte).strip()
+        if not parte:
+            continue
+        # basta UM município do Amazonas para a menção ser local
+        if parte in _MUNICIPIOS_INDEX or parte in _INDEX or parte in conhecidos:
+            return True
     return False
