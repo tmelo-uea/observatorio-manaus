@@ -357,7 +357,7 @@ st.divider()
 
 st.page_link(
     "pages/5_Metodologia.py",
-    label="Como estes dados são produzidos, e o que o método não alcança",
+    label="Metodologia da análise",
     icon="📐",
 )
 
