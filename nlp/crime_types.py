@@ -86,6 +86,10 @@ CRIME_TYPES = {
     "falsidade_ideologica":    ("Falsidade ideológica",          "CP art. 299",            "fe_publica"),
     "falsificacao_documento":  ("Falsificação de documento",     "CP arts. 297 e 298",     "fe_publica"),
     "moeda_falsa":             ("Moeda falsa",                   "CP art. 289",            "fe_publica"),
+    # Acrescentado após o modelo classificar "moto sem placa e sem chassi" como
+    # crime contra a fauna silvestre: faltava a figura, e ele preferiu uma
+    # categoria absurda a responder 'outro'.
+    "adulteracao_veiculo":     ("Adulteração de sinal identificador de veículo", "CP art. 311", "fe_publica"),
 
     # ------------------------------------------------------------------
     # Administração pública — CP, Título XI

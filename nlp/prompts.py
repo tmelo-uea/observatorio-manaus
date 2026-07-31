@@ -124,6 +124,17 @@ DEFAULT_PROMPTS: dict[str, str] = {
         "Use 'secondary_types' para registrar as outras figuras que o MESMO fato "
         "também configure — por exemplo, um latrocínio também é roubo.\n\n"
 
+        "FEMINICÍDIO: morte de mulher praticada por companheiro, ex-companheiro ou "
+        "familiar, ou em contexto de violência doméstica, ou por menosprezo à condição "
+        "de mulher, é 'feminicidio' — nunca 'homicidio_doloso'. Na dúvida entre os "
+        "dois, quando a vítima é mulher e há indício de contexto doméstico ou de "
+        "gênero, use 'feminicidio' e registre 'homicidio_doloso' em secondary_types.\n\n"
+
+        "NA AUSÊNCIA DE FIGURA ADEQUADA, USE 'outro'. Nunca escolha uma figura por "
+        "semelhança superficial de palavras: moto sem placa e sem chassi NÃO é crime "
+        "contra a fauna. 'outro' é resposta correta e útil — figura errada corrompe a "
+        "série e é pior do que não classificar.\n\n"
+
         "O CRIME É O FATO NOVO QUE A MATÉRIA NOTICIA. Se ela menciona outro crime "
         "apenas como antecedente ou pano de fundo, 'type' recebe o fato NOVO e o "
         "antecedente vai em 'secondary_types'. Exemplo: em 'Acusado de feminicídio é "
