@@ -153,36 +153,6 @@ def load_repercussao(dias: int, limite: int = 15) -> pd.DataFrame:
 
 
 @st.cache_data(ttl=300)
-def load_cobertura_do_direito(dias: int) -> dict:
-    """Quantas matérias citam o enquadramento jurídico — dado sobre a imprensa."""
-    inicio = (datetime.utcnow() - timedelta(hours=4)).date() - timedelta(days=dias)
-    with get_db().connect() as conn:
-        row = conn.execute(text("""
-            SELECT SUM(legal_cited_by_source = 1), COUNT(legal_cited_by_source)
-            FROM crime_mentions WHERE reported_on >= :ini
-        """), {"ini": inicio}).fetchone()
-    return {"citam": int(row[0] or 0), "total": int(row[1] or 0)}
-
-
-@st.cache_data(ttl=120)
-def load_amostra(n: int = 10) -> pd.DataFrame:
-    with get_db().connect() as conn:
-        res = conn.execute(text("""
-            SELECT m.id, m.crime_type, m.stage, m.occurred_on, m.occurred_precision,
-                   m.reported_on,
-                   m.municipio, m.zona, m.bairro, m.count_people, m.description,
-                   m.confidence, m.legal_ref, m.legal_cited_by_source, m.event_id,
-                   a.title, a.url, s.name AS fonte
-            FROM crime_mentions m
-            JOIN articles a ON a.id = m.article_id
-            JOIN sources s  ON s.id = a.source_id
-            ORDER BY RAND()
-            LIMIT :n
-        """), {"n": n})
-        return pd.DataFrame(res.fetchall(), columns=res.keys())
-
-
-@st.cache_data(ttl=300)
 def load_municipios() -> list[str]:
     with get_db().connect() as conn:
         rows = conn.execute(text("""
@@ -195,7 +165,7 @@ def load_municipios() -> list[str]:
 
 # ---------------------------------------------------------------- cabeçalho
 
-st.title("⚖️ Cobertura criminal na imprensa")
+st.title("⚖️ Cobertura Criminal")
 st.caption(
     "Quanto e como a imprensa do Amazonas noticia crimes. Esta página acompanha, ao "
     "longo do tempo, quais crimes aparecem nas notícias, em que parte da cidade e com "
@@ -385,83 +355,11 @@ st.divider()
 
 # ---------------------------------------------------------------- metodologia
 
-st.subheader("📐 Metodologia")
-
-leis = load_cobertura_do_direito(dias)
-pct_leis = (100 * leis["citam"] / leis["total"]) if leis["total"] else 0
-
-st.markdown(f"""
-**O que é medido.** O Observatório coleta continuamente as publicações de dezenas de
-portais, blogs e canais do Amazonas. Desta página participam apenas as matérias
-classificadas como locais e pertencentes aos temas *Segurança Pública* e
-*Justiça e Direito*. Cada matéria desse conjunto é lida por um modelo de linguagem
-que responde se ela noticia um crime e, em caso afirmativo, qual figura penal,
-em que etapa (fato, investigação, prisão, julgamento ou condenação), quando, onde
-e quantas pessoas estavam envolvidas.
-
-**Unidade de análise.** A unidade primária é a *matéria*, não o crime. Isso é
-deliberado: o objeto de estudo é a cobertura jornalística, e só é possível observar
-o que foi publicado. Uma operação policial com doze prisões por tráfico conta como
-uma matéria, com o número de envolvidos registrado à parte. Uma matéria só gera mais
-de um registro se noticiar crimes de tipos diferentes.
-
-**Agrupamento por caso.** Um mesmo crime costuma ser noticiado por vários veículos.
-Para distinguir "vinte crimes noticiados uma vez" de "um crime noticiado vinte vezes",
-os registros são agrupados por caso quando coincidem em tipo penal, município, data
-aproximada, bairro e pessoas citadas. O agrupamento é determinístico e revisável: ele
-não altera os registros originais, e pode ser recalculado a qualquer momento. Casos
-duvidosos permanecem separados — a contagem de casos distintos é, portanto, um limite
-superior.
-
-**Classificação legal.** As categorias correspondem a figuras do Código Penal e da
-legislação penal especial. O dispositivo legal exibido **não** é gerado pelo modelo:
-ele vem de uma tabela fixa associada a cada categoria, o que evita citações de artigos
-inventadas. Separadamente, registra-se se a própria matéria mencionou o enquadramento
-jurídico — no período selecionado, **{pct_leis:.0f}% das matérias** citaram algum
-enquadramento, o que é uma característica do texto jornalístico, não do crime.
-
-**Localização.** O bairro é extraído do texto quando citado, e a zona da cidade é
-derivada dele. A maioria das matérias não informa bairro, de modo que a distribuição
-geográfica descreve onde a imprensa localiza os fatos que noticia.
-
-**Limitações conhecidas.**
-- Crimes não noticiados são invisíveis para o método.
-- Veículos com maior volume de publicação pesam mais no resultado.
-- A classificação é automática e contém erros; a amostra de verificação abaixo permite
-  estimar a taxa de acerto.
-- Matérias sobre desdobramentos judiciais de casos antigos entram com a data do fato
-  quando ela é informada, e com a data de publicação quando não é.
-""")
-
-with st.expander("Amostra de verificação — comparar extração com a matéria original"):
-    st.caption(
-        "Dez registros sorteados aleatoriamente. Serve para conferir se a leitura "
-        "automática corresponde ao que a matéria diz."
-    )
-    if st.button("Sortear outra amostra"):
-        load_amostra.clear()
-    amostra = load_amostra()
-    for _, r in amostra.iterrows():
-        conf = f"{r['confidence']:.2f}" if r["confidence"] is not None else "—"
-        st.markdown(f"**[{r['title']}]({r['url']})**  \n*{r['fonte']}*")
-        detalhes = pd.DataFrame({
-            "Campo": ["Figura penal", "Dispositivo", "Etapa", "Data do fato",
-                      "Precisão da data", "Publicação", "Município", "Zona",
-                      "Bairro", "Envolvidos", "Matéria cita enquadramento",
-                      "Confiança", "Caso agrupado"],
-            "Extraído": [
-                tipo_label(r["crime_type"]), r["legal_ref"] or "—", r["stage"],
-                r["occurred_on"] or "não informada",
-                r["occurred_precision"] or "—", r["reported_on"],
-                r["municipio"] or "—", r["zona"] or "—", r["bairro"] or "—",
-                r["count_people"] if r["count_people"] is not None else "—",
-                {1: "sim", 0: "não"}.get(r["legal_cited_by_source"], "—"),
-                conf, f"#{r['event_id']}" if r["event_id"] else "—",
-            ],
-        })
-        st.dataframe(detalhes, use_container_width=True, hide_index=True)
-        st.caption(f"Descrição extraída: {r['description']}")
-        st.divider()
+st.page_link(
+    "pages/5_Metodologia.py",
+    label="Como estes dados são produzidos, e o que o método não alcança",
+    icon="📐",
+)
 
 st.caption(
     "Observatório de Manaus — LSI/UEA. Dados atualizados automaticamente a cada 30 minutos."
