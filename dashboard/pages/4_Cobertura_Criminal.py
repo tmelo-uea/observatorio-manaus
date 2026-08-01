@@ -37,6 +37,15 @@ GROUP_COLORS = {
     "outros":                "#adb5bd",
 }
 
+ZONA_CORES = {
+    "Norte":        "#4e79a7",
+    "Sul":          "#f28e2b",
+    "Leste":        "#59a14f",
+    "Oeste":        "#b07aa1",
+    "Centro-Sul":   "#edc948",
+    "Centro-Oeste": "#76b7b2",
+}
+
 PERIODOS = {
     "Últimos 30 dias": 30,
     "Últimos 90 dias": 90,
@@ -140,6 +149,26 @@ def load_ranking(versao: int, dias: int, municipio: str | None) -> pd.DataFrame:
             ORDER BY mencoes DESC
         """), params)
         return pd.DataFrame(res.fetchall(), columns=res.keys())
+
+
+@st.cache_data
+def carrega_bairros_geojson() -> dict:
+    """Polígonos dos bairros de Manaus, com a zona de cada um.
+
+    Montados a partir dos limites do OpenStreetMap: o OSM guarda cada contorno
+    em vários trechos de linha abertos, que foram costurados ponta a ponta em
+    anéis fechados. Todos fecharam naturalmente, sem emenda forçada.
+
+    São 57 dos 64 bairros oficiais — alguns não estão mapeados na base aberta.
+    A divisão em zonas é a da Lei Municipal nº 1.401/2010.
+    """
+    caminho = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                           "data", "bairros_manaus.geojson")
+    try:
+        with open(caminho, encoding="utf8") as fh:
+            return json.load(fh)
+    except Exception:
+        return {}
 
 
 @st.cache_data
@@ -544,60 +573,69 @@ if not df_zonas.empty:
     st.plotly_chart(fig_z, use_container_width=True)
 
     # ------------------------------------------------------------------ mapa
+    geo = carrega_bairros_geojson()
     centros = carrega_centros_zonas()
-    if centros:
+    if geo:
         MIN_PARA_PINTAR = 20
-        st.markdown("**Grupo predominante na cobertura de cada zona**")
+        st.markdown("**Mapa das zonas e do grupo predominante**")
         st.caption(
-            "A cor indica qual grupo criminal MAIS aparece na cobertura daquela "
-            "zona — é o perfil do que a imprensa noticia ali, não a intensidade "
-            "da criminalidade. O tamanho do marcador é fixo de propósito: zona "
-            "com mais matérias não é pintada como “mais crime”."
+            "Cada zona tem uma cor. Passe o mouse para ver o bairro e qual grupo "
+            "criminal mais aparece na cobertura daquela zona — é o perfil do que a "
+            "imprensa noticia ali, não a intensidade da criminalidade."
         )
-        linhas = []
-        for zona, c in centros.items():
-            if zona not in pivot.index:
-                continue
+
+        # grupo predominante por zona, calculado sobre o período selecionado
+        dominante = {}
+        for zona in pivot.index:
             serie = pivot.loc[zona]
             total = int(serie.sum())
-            grupo = serie.idxmax()
-            n = int(serie.max())
-            nome_g = "Outros grupos" if grupo == OUTROS else CRIME_GROUPS.get(grupo, grupo)
-            poucos = total < MIN_PARA_PINTAR
-            linhas.append({
-                "zona": zona, "lat": c["lat"], "lon": c["lon"],
-                "grupo": nome_g, "n": n, "total": total,
-                "pct": 100 * n / max(1, total),
-                "cor": "#cfd6da" if poucos else (
-                    "#adb5bd" if grupo == OUTROS else GROUP_COLORS.get(grupo, "#95a5a6")),
-                "rotulo": f"{zona}" + (" *" if poucos else ""),
-                "poucos": poucos,
-            })
-        dfm = pd.DataFrame(linhas)
-        fig_m = go.Figure(go.Scattermapbox(
-            lat=dfm["lat"], lon=dfm["lon"], mode="markers+text",
-            marker=dict(size=26, color=dfm["cor"]),
-            text=dfm["rotulo"], textposition="top center",
-            textfont=dict(size=12, color="#33414a"),
-            customdata=dfm[["grupo", "n", "total", "pct"]].values,
-            hovertemplate=("<b>%{text}</b><br>Grupo predominante: %{customdata[0]}"
-                           "<br>%{customdata[1]} de %{customdata[2]} matérias "
-                           "(%{customdata[3]:.0f}%)<extra></extra>"),
-        ))
-        fig_m.update_layout(
-            mapbox=dict(style="carto-positron", center=dict(lat=-3.06, lon=-60.01), zoom=9.4),
-            height=380, margin=dict(l=0, r=0, t=10, b=0), showlegend=False,
+            g = serie.idxmax()
+            nome_g = "Outros grupos" if g == OUTROS else CRIME_GROUPS.get(g, g)
+            dominante[zona] = {
+                "grupo": nome_g if total >= MIN_PARA_PINTAR else "amostra pequena",
+                "n": int(serie.max()), "total": total,
+            }
+
+        fig_mapa = go.Figure()
+        for zona, cor in ZONA_CORES.items():
+            locais = [f["properties"]["bairro"] for f in geo["features"]
+                      if f["properties"]["zona"] == zona]
+            if not locais:
+                continue
+            d = dominante.get(zona, {"grupo": "sem registros", "n": 0, "total": 0})
+            fig_mapa.add_trace(go.Choroplethmapbox(
+                geojson=geo, locations=locais, z=[1] * len(locais),
+                featureidkey="properties.bairro", name=zona,
+                colorscale=[[0, cor], [1, cor]], showscale=False,
+                marker=dict(line=dict(width=0.6, color="white"), opacity=0.72),
+                customdata=[[zona, d["grupo"], d["n"], d["total"]]] * len(locais),
+                hovertemplate=("<b>%{location}</b><br>Zona %{customdata[0]}"
+                               "<br>Predominante na zona: %{customdata[1]}"
+                               "<br>%{customdata[2]} de %{customdata[3]} matérias"
+                               "<extra></extra>"),
+            ))
+
+        if centros:
+            rot = [(z, c) for z, c in centros.items() if z in pivot.index]
+            fig_mapa.add_trace(go.Scattermapbox(
+                lat=[c["lat"] for _, c in rot], lon=[c["lon"] for _, c in rot],
+                mode="text", text=[z for z, _ in rot],
+                textfont=dict(size=13, color="#2f3b42"),
+                hoverinfo="skip", showlegend=False,
+            ))
+
+        fig_mapa.update_layout(
+            mapbox=dict(style="carto-positron", center=dict(lat=-3.06, lon=-60.00), zoom=9.7),
+            height=460, margin=dict(l=0, r=0, t=10, b=0),
+            legend=dict(orientation="h", yanchor="bottom", y=1.01, xanchor="left", x=0),
         )
-        st.plotly_chart(fig_m, use_container_width=True)
-        if dfm["poucos"].any():
-            st.caption(
-                f"⁎ Zona com menos de {MIN_PARA_PINTAR} matérias no período: o grupo "
-                "predominante muda com poucos registros e não é exibido em cor."
-            )
+        st.plotly_chart(fig_mapa, use_container_width=True)
         st.caption(
-            "Marcadores posicionados no centro aproximado de cada zona, calculado a "
-            "partir dos limites de bairro do OpenStreetMap. Não são contornos "
-            "administrativos — a divisão oficial é a da Lei Municipal nº 1.401/2010."
+            f"{len(geo['features'])} dos 64 bairros oficiais têm limite cartográfico "
+            "na base aberta usada (OpenStreetMap); os demais aparecem em branco. A "
+            "divisão em zonas é a da Lei Municipal nº 1.401/2010. Zona com menos de "
+            f"{MIN_PARA_PINTAR} matérias no período não tem grupo predominante "
+            "informado."
         )
 
 # ---------------------------------------------------------------- rodapé
