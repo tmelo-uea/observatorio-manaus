@@ -134,7 +134,10 @@ DEFAULT_PROMPTS: dict[str, str] = {
 
         "REGRA DE CONTAGEM: um item por FIGURA PENAL, nunca por pessoa. Uma operação com "
         "12 presos por tráfico é UM item, com count_suspects = 12. Conte VÍTIMAS e "
-        "SUSPEITOS em campos separados e NUNCA some os dois. Só gere mais de um item "
+        "SUSPEITOS em campos separados e NUNCA some os dois. count_suspects inclui "
+        "TODAS as pessoas apontadas como autoras que a matéria identifica — presas, "
+        "detidas, foragidas, procuradas ou que fugiram: 'um foi detido e três "
+        "fugiram' são 4 suspeitos. Só gere mais de um item "
         "se a matéria noticiar crimes de TIPOS DIFERENTES.\n\n"
 
         "PREFIRA SEMPRE A FIGURA AUTÔNOMA E MAIS ESPECÍFICA, nunca a genérica:\n"
@@ -157,6 +160,20 @@ DEFAULT_PROMPTS: dict[str, str] = {
         "de mulher, é 'feminicidio' — nunca 'homicidio_doloso'. Na dúvida entre os "
         "dois, quando a vítima é mulher e há indício de contexto doméstico ou de "
         "gênero, use 'feminicidio' e registre 'homicidio_doloso' em secondary_types.\n\n"
+
+        "ETAPA é o fato processual que a matéria NOTICIA, não a existência genérica de "
+        "uma investigação:\n"
+        "  'fato' .......... o crime acabou de ocorrer, sem providência noticiada;\n"
+        "  'investigacao' .. apuração em curso, SEM prisão e SEM decisão judicial;\n"
+        "  'prisao' ........ alguém foi preso, detido, ou teve mandado cumprido. Use "
+        "SEMPRE que houver prisão noticiada, mesmo que a investigação continue — este "
+        "é o erro mais frequente neste campo;\n"
+        "  'julgamento' .... denúncia recebida, audiência, júri, recurso;\n"
+        "  'condenacao' .... houve sentença condenatória.\n\n"
+
+        "LATROCÍNIO EXIGE MORTE. Roubo em que ninguém morreu é 'roubo' — e, se não se "
+        "consumou, 'roubo' com tentativa = true. Só use 'latrocinio' quando houver "
+        "morte decorrente do roubo.\n\n"
 
         "CRIME-FIM ANTES DE CRIME-MEIO. Quando a violência serve a outro crime, o "
         "principal é o crime que a violência serviu, e a violência vai em "
@@ -194,6 +211,18 @@ DEFAULT_PROMPTS: dict[str, str] = {
         "antecedente vai em 'secondary_types'. Exemplo: em 'Acusado de feminicídio é "
         "espancado e morto por populares', o fato noticiado é o linchamento — um "
         "homicídio doloso; o feminicídio é o antecedente.\n\n"
+
+        "A DATA DO FATO NÃO É A DATA DA NOTÍCIA POLICIAL. Este é o erro mais comum: "
+        "as datas abaixo NÃO são a data do crime e NUNCA devem ir em occurred_on:\n"
+        "- data da prisão ou do cumprimento de mandado ('preso nesta terça (28)');\n"
+        "- data da operação policial ('a operação foi deflagrada em 27/7');\n"
+        "- data em que o fato foi descoberto ('o corpo foi encontrado no dia 23');\n"
+        "- data do registro do boletim de ocorrência;\n"
+        "- data da denúncia, do julgamento ou da condenação.\n"
+        "Preencha occurred_on SOMENTE quando a matéria disser quando o CRIME ocorreu. "
+        "Se ela data apenas o desdobramento policial ou judicial, occurred_on = null e "
+        "occurred_precision = 'desconhecida'. Uma prisão hoje por um abuso sem data "
+        "informada é occurred_on = null, não a data da prisão.\n\n"
 
         "DATA DO FATO — esta matéria foi publicada em {data_publicacao}. Resolva as "
         "datas relativas ('ontem', 'na noite de terça (2)', 'neste sábado') tomando "

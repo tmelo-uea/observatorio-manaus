@@ -47,7 +47,9 @@ CRIME_TYPES = {
     "ameaca":                  ("Ameaça",                        "CP art. 147",            "integridade"),
     "perseguicao":             ("Perseguição (stalking)",        "CP art. 147-A",          "integridade"),
     "violencia_psicologica":   ("Violência psicológica contra a mulher", "CP art. 147-B",   "integridade"),
-    "maus_tratos":             ("Maus-tratos",                   "CP art. 136",            "integridade"),
+    "maus_tratos":             ("Maus-tratos (quem está sob guarda ou cuidado)", "CP art. 136", "integridade"),
+    # Deixar crianças pequenas sozinhas e expostas a risco é art. 133, não 136.
+    "abandono_incapaz":        ("Abandono de incapaz",           "CP art. 133",            "integridade"),
 
     "sequestro_carcere":       ("Sequestro e cárcere privado",   "CP art. 148",            "liberdade"),
     "trafico_pessoas":         ("Tráfico de pessoas",            "CP art. 149-A",          "liberdade"),
@@ -159,6 +161,8 @@ CRIME_TYPES = {
     "medida_protetiva":        ("Descumprimento de medida protetiva", "Lei 11.340/2006, art. 24-A", "outras_leis"),
     "tortura":                 ("Tortura",                       "Lei 9.455/1997, art. 1º", "outras_leis"),
     "crime_eleitoral":         ("Crime eleitoral",               "Lei 4.737/1965 (Código Eleitoral)", "outras_leis"),
+    "exercicio_ilegal_profissao": ("Exercício ilegal de profissão", "LCP art. 47",         "outras_leis"),
+    "divulgacao_cena_intima":  ("Divulgação de cena íntima sem consentimento", "CP art. 218-C", "dignidade_sexual"),
 
     # ------------------------------------------------------------------
     # Escape. Usado quando há crime noticiado sem figura identificável.
