@@ -155,6 +155,15 @@ def _parse_date(value) -> date | None:
 _VAZIOS = {"null", "none", "nulo", "n/a", "na", "-", "—", "desconhecido", "não informado"}
 
 
+# Valores de uf_ou_pais que significam "aconteceu no Amazonas".
+_UF_LOCAIS = {"am", "amazonas", "estado do amazonas", "br-am", "amazonas (br)"}
+
+
+def _norm_simples(s: str) -> str:
+    s = unicodedata.normalize("NFD", (s or "").lower().strip())
+    return "".join(c for c in s if unicodedata.category(c) != "Mn")
+
+
 def _clean_str(value, max_len: int) -> str | None:
     if not isinstance(value, str):
         return None
@@ -353,6 +362,19 @@ def _build_mention(article: Article, item: dict, reported_on: date) -> CrimeMent
         confianca = None
 
     municipio = _clean_str(item.get("municipio"), 80)
+
+    # Guarda de UF/país, que é a defesa PRIMÁRIA de localidade.
+    # A guarda de município abaixo só age quando o modelo escreve um município
+    # conhecido e estrangeiro — e ele não escreve: numa matéria que dizia
+    # textualmente "detida na cidade de Medellín, na Colômbia", ele respondeu
+    # is_crime=true, municipio=null e bairro="Belén". Leu o lugar, extraiu o
+    # bairro e ainda assim não aplicou a política. Pedir política ao modelo é
+    # frágil; capturar o dado e decidir no código é o que vem funcionando.
+    uf = _clean_str(item.get("uf_ou_pais"), 40)
+    if uf and _norm_simples(uf) not in _UF_LOCAIS:
+        print(f"  [crimes] Menção descartada — fato fora do Amazonas: UF/país "
+              f"'{uf}' (artigo {article.id})")
+        return None
 
     # Guarda de localidade. O filtro is_local já roda antes, na seleção dos
     # artigos — mas ele erra: numa amostra de 25 matérias TODAS com is_local=1,

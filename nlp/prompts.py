@@ -124,6 +124,19 @@ DEFAULT_PROMPTS: dict[str, str] = {
         "família more em Manaus, mesmo que o veículo que publicou seja daqui. O que "
         "importa é ONDE O CRIME ACONTECEU.\n\n"
 
+        "CAMPO 'uf_ou_pais' — PREENCHA SEMPRE, é o que determina se o caso entra na "
+        "base. Use a sigla do estado brasileiro onde o crime ocorreu ('AM', 'SP', "
+        "'RJ', 'MT') ou o nome do país quando ocorreu fora do Brasil ('Colômbia', "
+        "'Portugal'). Preencha mesmo quando for descartar a matéria por ser de fora, "
+        "e mesmo quando não souber o município — a cidade de Medellín é "
+        "uf_ou_pais = 'Colômbia'. Nunca deixe este campo em null quando a matéria "
+        "disser onde o fato ocorreu.\n"
+        "NÃO CHUTE 'AM'. Este prompt trata do Amazonas o tempo todo, mas isso não "
+        "torna o fato daqui. Se a matéria cita um lugar cujo estado você não sabe com "
+        "certeza — uma terra indígena, um distrito, um povoado, uma cidade pequena —, "
+        "responda uf_ou_pais = null em vez de supor. Supor 'AM' por causa do contexto "
+        "é pior do que admitir que não sabe.\n\n"
+
         "DUAS ARMADILHAS:\n"
         "1. Nome de repartição não é fato. 'Delegacia Especializada em Roubos, Furtos e "
         "Defraudações' é o nome do órgão — não conclua que houve roubo ou furto por "
@@ -253,6 +266,7 @@ DEFAULT_PROMPTS: dict[str, str] = {
         '      "tentativa": false,\n'
         '      "occurred_on": "2026-06-02",\n'
         '      "occurred_precision": "dia",\n'
+        '      "uf_ou_pais": "AM",\n'
         '      "municipio": "Manaus",\n'
         '      "bairro": "São José Operário",\n'
         '      "location_text": "mercadinho na rua Filipenses",\n'
