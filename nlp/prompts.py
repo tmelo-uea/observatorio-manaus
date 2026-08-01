@@ -210,30 +210,35 @@ DEFAULT_PROMPTS: dict[str, str] = {
         "VOCABULÁRIO — use exatamente um destes identificadores em 'type':\n"
         "{vocabulario}\n\n"
 
-        "Responda SOMENTE com JSON neste formato:\n"
+        "Responda SOMENTE com JSON. Abaixo vai um EXEMPLO PREENCHIDO, para uma "
+        "matéria fictícia sobre um comerciante morto durante assalto. Copie a "
+        "ESTRUTURA, nunca os valores — e jamais devolva o texto de uma descrição de "
+        "campo como se fosse um valor:\n"
         "{{\n"
         '  "is_crime": true,\n'
         '  "crimes": [\n'
         "    {{\n"
-        '      "type": "identificador do vocabulário",\n'
-        '      "secondary_types": ["outras figuras que o MESMO fato configure"],\n'
-        '      "stage": "fato|investigacao|prisao|julgamento|condenacao",\n'
+        '      "type": "latrocinio",\n'
+        '      "secondary_types": ["roubo"],\n'
+        '      "stage": "fato",\n'
         '      "tentativa": false,\n'
-        '      "occurred_on": "AAAA-MM-DD ou null se a matéria não informar",\n'
-        '      "occurred_precision": "dia|mes|ano|desconhecida",\n'
-        '      "municipio": "Manaus, Parintins, ... ou null",\n'
-        '      "bairro": "bairro citado ou null",\n'
-        '      "location_text": "trecho curto indicando o local ou null",\n'
-        '      "count_victims": "número de VÍTIMAS, ou null se a matéria não disser",\n'
-        '      "count_suspects": "número de SUSPEITOS, presos ou investigados, ou null",\n'
-        '      "description": "1 a 2 frases sobre o fato, SEM nomes próprios",\n'
-        '      "entities": ["nomes próprios de pessoas citadas na matéria"],\n'
+        '      "occurred_on": "2026-06-02",\n'
+        '      "occurred_precision": "dia",\n'
+        '      "municipio": "Manaus",\n'
+        '      "bairro": "São José Operário",\n'
+        '      "location_text": "mercadinho na rua Filipenses",\n'
+        '      "count_victims": 1,\n'
+        '      "count_suspects": 2,\n'
+        '      "description": "Um comerciante foi morto a tiros durante assalto ao '
+        'próprio mercadinho.",\n'
+        '      "entities": ["Fulano de Tal"],\n'
         '      "legal_cited_by_source": true,\n'
-        '      "legal_text_source": "trecho em que a matéria cita o enquadramento, ou null",\n'
-        '      "confidence": 0.9\n'
+        '      "legal_text_source": "a polícia trata o caso como latrocínio"\n'
         "    }}\n"
         "  ]\n"
-        "}}\n\n"
+        "}}\n"
+        "Campos sem informação na matéria recebem null (ou lista vazia, em "
+        "secondary_types e entities). NÃO invente para preencher.\n\n"
 
         "Se is_crime for false, 'crimes' deve ser lista vazia.\n"
         "'tentativa' é true quando o crime NÃO se consumou por circunstâncias alheias "
@@ -243,6 +248,10 @@ DEFAULT_PROMPTS: dict[str, str] = {
         "tentativa.\n"
         "NUNCA escreva nomes próprios de pessoas em 'description' — eles vão apenas em "
         "'entities'.\n"
+        "PREENCHA 'bairro' sempre que a matéria localizar o fato dentro de Manaus, "
+        "inclusive quando disser apenas 'no Centro', 'no bairro X', 'na zona leste' ou "
+        "'na zona norte'. Centro é bairro. Não deixe a localização só na descrição: "
+        "se o texto diz onde foi, o campo tem que dizer também.\n"
         "NÃO invente data nem local: o que a matéria não informa vai como null.\n"
         "legal_cited_by_source é true SOMENTE se a matéria nomear a figura penal ou "
         "citar o dispositivo — 'responderá por latrocínio', 'crime de estelionato', "

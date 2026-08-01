@@ -52,14 +52,29 @@ def get_db():
     return get_engine()
 
 
+@st.cache_data(ttl=20)
+def versao_dados() -> int:
+    """Impressão digital da base, usada como chave de cache das demais consultas.
+
+    Sem isto, cada consulta cacheia por 5 min com chave própria, e enquanto o
+    backfill grava registros a página pode mostrar fotografias de momentos
+    diferentes lado a lado — "últimos 30 dias" chegou a exibir MAIS matérias que
+    "últimos 90 dias", porque o número de 90 vinha de um cache anterior. Passando
+    esta versão como argumento, todas as consultas invalidam juntas e a página
+    fica internamente consistente.
+    """
+    with get_db().connect() as conn:
+        return conn.execute(text("SELECT COUNT(*) FROM crime_mentions")).scalar() or 0
+
+
 @st.cache_data(ttl=300)
-def tem_dados() -> bool:
+def tem_dados(versao: int) -> bool:
     with get_db().connect() as conn:
         return bool(conn.execute(text("SELECT COUNT(*) FROM crime_mentions")).scalar())
 
 
 @st.cache_data(ttl=300)
-def load_panorama(dias: int, municipio: str | None):
+def load_panorama(versao: int, dias: int, municipio: str | None):
     inicio = (datetime.utcnow() - timedelta(hours=4)).date() - timedelta(days=dias)
     filtro = "AND m.municipio = :mun" if municipio else ""
     params = {"ini": inicio}
@@ -84,7 +99,7 @@ def load_panorama(dias: int, municipio: str | None):
 
 
 @st.cache_data(ttl=300)
-def load_serie(dias: int, municipio: str | None) -> pd.DataFrame:
+def load_serie(versao: int, dias: int, municipio: str | None) -> pd.DataFrame:
     inicio = (datetime.utcnow() - timedelta(hours=4)).date() - timedelta(days=dias)
     filtro = "AND municipio = :mun" if municipio else ""
     params = {"ini": inicio}
@@ -106,7 +121,7 @@ def load_serie(dias: int, municipio: str | None) -> pd.DataFrame:
 
 
 @st.cache_data(ttl=300)
-def load_ranking(dias: int, municipio: str | None) -> pd.DataFrame:
+def load_ranking(versao: int, dias: int, municipio: str | None) -> pd.DataFrame:
     inicio = (datetime.utcnow() - timedelta(hours=4)).date() - timedelta(days=dias)
     filtro = "AND m.municipio = :mun" if municipio else ""
     params = {"ini": inicio}
@@ -126,20 +141,35 @@ def load_ranking(dias: int, municipio: str | None) -> pd.DataFrame:
 
 
 @st.cache_data(ttl=300)
-def load_zonas(dias: int) -> pd.DataFrame:
+def load_zonas(versao: int, dias: int, municipio: str | None):
+    """Distribuição por zona MAIS o denominador.
+
+    Sem saber quantas matérias puderam ser localizadas, as barras convidam a
+    leitura de "distribuição da criminalidade" — que é exatamente o que esta
+    página não mede.
+    """
     inicio = (datetime.utcnow() - timedelta(hours=4)).date() - timedelta(days=dias)
+    filtro = "AND municipio = :mun" if municipio else ""
+    params = {"ini": inicio}
+    if municipio:
+        params["mun"] = municipio
     with get_db().connect() as conn:
-        res = conn.execute(text("""
+        res = conn.execute(text(f"""
             SELECT zona, crime_group, COUNT(*) AS cnt
             FROM crime_mentions
-            WHERE reported_on >= :ini AND zona IS NOT NULL
+            WHERE reported_on >= :ini AND zona IS NOT NULL {filtro}
             GROUP BY zona, crime_group
-        """), {"ini": inicio})
-        return pd.DataFrame(res.fetchall(), columns=res.keys())
+        """), params)
+        df = pd.DataFrame(res.fetchall(), columns=res.keys())
+        tot = conn.execute(text(f"""
+            SELECT COUNT(*), SUM(zona IS NOT NULL)
+            FROM crime_mentions WHERE reported_on >= :ini {filtro}
+        """), params).fetchone()
+    return df, int(tot[0] or 0), int(tot[1] or 0)
 
 
 @st.cache_data(ttl=300)
-def load_municipios() -> list[str]:
+def load_municipios(versao: int) -> list[str]:
     with get_db().connect() as conn:
         rows = conn.execute(text("""
             SELECT municipio, COUNT(*) c FROM crime_mentions
@@ -150,7 +180,7 @@ def load_municipios() -> list[str]:
 
 
 @st.cache_data(ttl=300)
-def load_caracterizacao(dias: int) -> dict:
+def load_caracterizacao(versao: int, dias: int) -> dict:
     """Números sobre o próprio método: quanto a imprensa tipifica e quanto data."""
     inicio = (datetime.utcnow() - timedelta(hours=4)).date() - timedelta(days=dias)
     with get_db().connect() as conn:
@@ -164,7 +194,7 @@ def load_caracterizacao(dias: int) -> dict:
 
 
 @st.cache_data(ttl=300)
-def load_export() -> pd.DataFrame:
+def load_export(versao: int) -> pd.DataFrame:
     """Todas as menções com a matéria de origem, para conferência externa.
 
     NÃO inclui o campo de nomes próprios: ele existe apenas para agrupar
@@ -282,7 +312,9 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-if not tem_dados():
+VERSAO = versao_dados()
+
+if not tem_dados(VERSAO):
     st.info(
         "A extração ainda não produziu registros. Os dados começam a aparecer no "
         "próximo ciclo do coletor, e o histórico é preenchido pelo backfill."
@@ -293,7 +325,7 @@ col_f1, col_f2 = st.columns([1, 1])
 with col_f1:
     periodo_nome = st.selectbox("Período", list(PERIODOS), index=1)
 with col_f2:
-    municipios = load_municipios()
+    municipios = load_municipios(VERSAO)
     escolha_mun = st.selectbox("Município", ["Todos"] + municipios, index=0)
 
 dias = PERIODOS[periodo_nome]
@@ -301,7 +333,7 @@ municipio = None if escolha_mun == "Todos" else escolha_mun
 
 # ---------------------------------------------------------------- panorama
 
-pan = load_panorama(dias, municipio)
+pan = load_panorama(VERSAO, dias, municipio)
 c1, c2, c3, c4 = st.columns(4)
 c1.metric("Matérias sobre crime", fmt_br(pan["mencoes"]))
 c2.metric("Figuras penais distintas", fmt_br(pan["figuras"]))
@@ -321,7 +353,7 @@ st.divider()
 st.subheader("Evolução da cobertura")
 st.caption("Matérias publicadas ao longo do tempo, agrupadas pelo bem jurídico protegido.")
 
-df_serie = load_serie(dias, municipio)
+df_serie = load_serie(VERSAO, dias, municipio)
 if df_serie.empty:
     st.info("Sem dados no período selecionado.")
 else:
@@ -383,7 +415,7 @@ st.caption(
     "A coluna “casos” desconta a repetição entre veículos."
 )
 
-df_rank = load_ranking(dias, municipio)
+df_rank = load_ranking(VERSAO, dias, municipio)
 if df_rank.empty:
     st.info("Sem dados no período selecionado.")
 else:
@@ -415,12 +447,17 @@ else:
 
 # ---------------------------------------------------------------- zonas
 
-df_zonas = load_zonas(dias)
+df_zonas, zonas_total, zonas_com = load_zonas(VERSAO, dias, municipio)
 if not df_zonas.empty:
-    st.subheader("Distribuição por zona de Manaus")
+    st.subheader("Cobertura criminal por zona de Manaus")
+    pct_zona = (100 * zonas_com / zonas_total) if zonas_total else 0
     st.caption(
-        "Só entram matérias que citam um bairro identificável. A maioria não cita — "
-        "então isto mostra onde a imprensa **localiza** o crime, não onde ele se concentra."
+        f"De **{fmt_br(zonas_total)} matérias** no período, **{fmt_br(zonas_com)} "
+        f"({pct_zona:.0f}%)** citam bairro ou zona identificável e entram neste "
+        "gráfico; nas demais a matéria não permite localizar o fato. Matérias "
+        "diferentes sobre o mesmo caso são contadas separadamente, de modo que as "
+        "barras medem **volume de cobertura**, e não número de ocorrências nem "
+        "concentração de criminalidade."
     )
     pivot = df_zonas.pivot_table(index="zona", columns="crime_group",
                                  values="cnt", aggfunc="sum", fill_value=0)
@@ -446,7 +483,7 @@ st.divider()
 
 # ---------------------------------------------------------------- rodapé
 
-df_export = load_export()
+df_export = load_export(VERSAO)
 if not df_export.empty:
     csv = df_export.to_csv(index=False, sep=";").encode("utf-8-sig")
     col_a, col_b = st.columns([1, 3])
@@ -524,7 +561,7 @@ modo que a distribuição geográfica descreve onde a imprensa *localiza* os fat
 - As referências legais aguardam revisão de especialista em Direito.
 """)
 
-    car = load_caracterizacao(dias)
+    car = load_caracterizacao(VERSAO, dias)
     if car["total"]:
         pct_lei = (100 * car["citam"] / car["com_info"]) if car["com_info"] else 0
         pct_dia = 100 * car["com_dia"] / car["total"]

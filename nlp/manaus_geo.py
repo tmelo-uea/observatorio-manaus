@@ -83,6 +83,23 @@ ALIASES = {
 }
 
 
+# A imprensa frequentemente localiza o fato pela ZONA, não pelo bairro ("na zona
+# leste de Manaus"). Sem isto, o modelo punha "Zona Leste" no campo de bairro: a
+# zona — que a matéria informava — se perdia, e o campo bairro guardava um valor
+# que não é bairro. Cardeais isolados são seguros porque nenhum bairro de Manaus
+# se chama Norte, Sul, Leste ou Oeste; "Centro" NÃO entra aqui, é bairro da Sul.
+_ZONAS_ESCRITAS = {
+    "zona norte": "Norte", "norte": "Norte",
+    "zona sul": "Sul", "sul": "Sul",
+    "zona leste": "Leste", "leste": "Leste",
+    "zona oeste": "Oeste", "oeste": "Oeste",
+    "zona centro-sul": "Centro-Sul", "centro-sul": "Centro-Sul",
+    "centro sul": "Centro-Sul",
+    "zona centro-oeste": "Centro-Oeste", "centro-oeste": "Centro-Oeste",
+    "centro oeste": "Centro-Oeste",
+}
+
+
 def resolve(bairro: str | None) -> tuple[str | None, str | None]:
     """Normaliza o bairro e devolve (bairro_oficial, zona).
 
@@ -92,11 +109,20 @@ def resolve(bairro: str | None) -> tuple[str | None, str | None]:
     if not bairro:
         return None, None
     key = _norm(bairro)
+
+    # Bairro conhecido tem precedência: resolve nome e zona de uma vez.
     if key in ALIASES:
         key = _norm(ALIASES[key])
     hit = _INDEX.get(key)
     if hit:
         return hit[0], hit[1]
+
+    # Zona escrita por extenso: guarda a zona e deixa o bairro vazio, porque
+    # zona não é bairro e não deve ocupar aquele campo.
+    zona_direta = _ZONAS_ESCRITAS.get(key.replace("zona da ", "zona ").strip())
+    if zona_direta:
+        return None, zona_direta
+
     return bairro.strip()[:80], None
 
 

@@ -185,6 +185,12 @@ SLUG_ALIASES = {
     "posse_de_arma": "posse_ilegal_arma",
     "agiotagem": "usura",
     "roubo_seguido_de_morte": "latrocinio",
+    # Qualificadora não é figura própria: homicídio qualificado é o mesmo art. 121.
+    "homicidio_qualificado": "homicidio_doloso",
+    "homicidio_simples": "homicidio_doloso",
+    "descumprimento_medida_protetiva": "medida_protetiva",
+    "descumprimento_de_medida_protetiva": "medida_protetiva",
+    "violacao_medida_protetiva": "medida_protetiva",
     "violencia_domestica": "lesao_corporal_domestica",
     "tentativa_de_homicidio": "homicidio_doloso",
     "tentativa_de_feminicidio": "feminicidio",
