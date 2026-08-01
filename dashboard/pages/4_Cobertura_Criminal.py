@@ -452,28 +452,73 @@ if not df_zonas.empty:
     st.subheader("Cobertura criminal por zona de Manaus")
     pct_zona = (100 * zonas_com / zonas_total) if zonas_total else 0
     st.caption(
-        f"De **{fmt_br(zonas_total)} matérias** no período, **{fmt_br(zonas_com)} "
-        f"({pct_zona:.0f}%)** citam bairro ou zona identificável e entram neste "
-        "gráfico; nas demais a matéria não permite localizar o fato. Matérias "
-        "diferentes sobre o mesmo caso são contadas separadamente, de modo que as "
-        "barras medem **volume de cobertura**, e não número de ocorrências nem "
-        "concentração de criminalidade."
+        f"Das **{fmt_br(zonas_total)} matérias** do período, **{fmt_br(zonas_com)} "
+        f"({pct_zona:.0f}%)** informam bairro ou zona. Cada matéria é contada "
+        "separadamente; o gráfico mede cobertura jornalística, não número de "
+        "ocorrências nem concentração da criminalidade."
     )
+
+    modo = st.radio("Modo de exibição", ["Quantidade", "Composição percentual"],
+                    horizontal=True, label_visibility="collapsed", key="modo_zona")
+
     pivot = df_zonas.pivot_table(index="zona", columns="crime_group",
                                  values="cnt", aggfunc="sum", fill_value=0)
-    ordem_z = pivot.sum(axis=1).sort_values(ascending=True).index
+
+    # Grupos ordenados por volume; a cauda vira "Outros grupos". Onze categorias
+    # numa legenda de uma linha ficavam ilegíveis e com cores confundíveis.
+    OUTROS = "__outros__"
+    N_PRINCIPAIS = 7
+    totais_grupo = pivot.sum().sort_values(ascending=False)
+    principais = list(totais_grupo.head(N_PRINCIPAIS).index)
+    cauda = [g for g in totais_grupo.index if g not in principais]
+    if cauda:
+        pivot[OUTROS] = pivot[cauda].sum(axis=1)
+        pivot = pivot[principais + [OUTROS]]
+    else:
+        pivot = pivot[principais]
+
+    totais_zona = pivot.sum(axis=1)
+    ordem_z = totais_zona.sort_values(ascending=True).index  # maior no topo
+
+    percentual = modo == "Composição percentual"
+    plot = pivot.div(totais_zona.replace(0, 1), axis=0) * 100 if percentual else pivot
+
     fig_z = go.Figure()
     for grupo in pivot.columns:
+        nome = "Outros grupos" if grupo == OUTROS else CRIME_GROUPS.get(grupo, grupo)
+        cor = "#adb5bd" if grupo == OUTROS else GROUP_COLORS.get(grupo, "#95a5a6")
+        abs_ = pivot.loc[ordem_z, grupo]
+        pct = (abs_ / totais_zona[ordem_z].replace(0, 1) * 100)
         fig_z.add_trace(go.Bar(
-            y=ordem_z, x=pivot.loc[ordem_z, grupo], name=CRIME_GROUPS.get(grupo, grupo),
-            orientation="h", marker=dict(color=GROUP_COLORS.get(grupo, "#95a5a6")),
-            hovertemplate=f"<b>{CRIME_GROUPS.get(grupo, grupo)}</b><br>%{{y}}: %{{x}}<extra></extra>",
+            y=ordem_z, x=plot.loc[ordem_z, grupo], name=nome, orientation="h",
+            marker=dict(color=cor),
+            customdata=list(zip(abs_, pct)),
+            hovertemplate=(f"<b>{nome}</b><br>%{{y}}: %{{customdata[0]}} matérias"
+                           " (%{customdata[1]:.0f}% da zona)<extra></extra>"),
         ))
+
+    # Total ao final de cada barra: dispensa o leitor de estimar pelo eixo.
+    if not percentual:
+        for zona in ordem_z:
+            tot = int(totais_zona[zona])
+            share = 100 * tot / max(1, int(totais_zona.sum()))
+            fig_z.add_annotation(
+                x=tot, y=zona, text=f"<b>{tot}</b> · {share:.0f}%",
+                showarrow=False, xanchor="left", xshift=8,
+                font=dict(size=11, color="#5b6b73"),
+            )
+
     fig_z.update_layout(
-        barmode="stack", height=320,
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        margin=dict(l=10, r=40, t=80, b=40),
-        plot_bgcolor="#fafafa", xaxis_title="Matérias", yaxis_title="",
+        barmode="stack", height=340,
+        # traceorder normal: sem isto o Plotly INVERTE a legenda em barras
+        # empilhadas, e ela passa a listar as cores na ordem oposta à dos
+        # segmentos — o leitor precisa procurar cada cor de trás para frente.
+        legend=dict(orientation="h", traceorder="normal", yanchor="bottom",
+                    y=1.02, xanchor="left", x=0, font=dict(size=11)),
+        margin=dict(l=10, r=90, t=90, b=40),
+        plot_bgcolor="#fafafa", yaxis_title="",
+        xaxis_title="% da cobertura da zona" if percentual else "Matérias",
+        xaxis=dict(range=[0, 100]) if percentual else {},
     )
     st.plotly_chart(fig_z, use_container_width=True)
 
