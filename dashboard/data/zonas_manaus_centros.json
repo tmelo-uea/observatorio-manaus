@@ -1,0 +1,32 @@
+{
+ "Leste": {
+  "lon": -59.93426,
+  "lat": -3.09021,
+  "bairros_usados": 9
+ },
+ "Norte": {
+  "lon": -59.98357,
+  "lat": -2.99441,
+  "bairros_usados": 7
+ },
+ "Centro-Sul": {
+  "lon": -60.00763,
+  "lat": -3.07925,
+  "bairros_usados": 7
+ },
+ "Sul": {
+  "lon": -59.98721,
+  "lat": -3.12795,
+  "bairros_usados": 17
+ },
+ "Oeste": {
+  "lon": -60.0657,
+  "lat": -3.02909,
+  "bairros_usados": 12
+ },
+ "Centro-Oeste": {
+  "lon": -60.04678,
+  "lat": -3.07074,
+  "bairros_usados": 5
+ }
+}

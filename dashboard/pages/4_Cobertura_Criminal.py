@@ -2,6 +2,8 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
+import json
+
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -138,6 +140,25 @@ def load_ranking(versao: int, dias: int, municipio: str | None) -> pd.DataFrame:
             ORDER BY mencoes DESC
         """), params)
         return pd.DataFrame(res.fetchall(), columns=res.keys())
+
+
+@st.cache_data
+def carrega_centros_zonas() -> dict:
+    """Ponto central de cada zona de Manaus, para posicionar o mapa.
+
+    Calculado a partir dos limites de bairro do OpenStreetMap e do mapa
+    bairro→zona da Lei 1.401/2010. São CENTROS, não contornos: desenhar o
+    polígono de uma zona exigiria somar os polígonos de todos os seus bairros,
+    e o OSM não tem todos — falta o Jorge Teixeira, entre outros, o que abriria
+    um vazio no meio da Zona Leste. Marcador não tem esse problema.
+    """
+    caminho = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                           "data", "zonas_manaus_centros.json")
+    try:
+        with open(caminho, encoding="utf8") as fh:
+            return json.load(fh)
+    except Exception:
+        return {}
 
 
 @st.cache_data(ttl=300)
@@ -521,6 +542,63 @@ if not df_zonas.empty:
         xaxis=dict(range=[0, 100]) if percentual else {},
     )
     st.plotly_chart(fig_z, use_container_width=True)
+
+    # ------------------------------------------------------------------ mapa
+    centros = carrega_centros_zonas()
+    if centros:
+        MIN_PARA_PINTAR = 20
+        st.markdown("**Grupo predominante na cobertura de cada zona**")
+        st.caption(
+            "A cor indica qual grupo criminal MAIS aparece na cobertura daquela "
+            "zona — é o perfil do que a imprensa noticia ali, não a intensidade "
+            "da criminalidade. O tamanho do marcador é fixo de propósito: zona "
+            "com mais matérias não é pintada como “mais crime”."
+        )
+        linhas = []
+        for zona, c in centros.items():
+            if zona not in pivot.index:
+                continue
+            serie = pivot.loc[zona]
+            total = int(serie.sum())
+            grupo = serie.idxmax()
+            n = int(serie.max())
+            nome_g = "Outros grupos" if grupo == OUTROS else CRIME_GROUPS.get(grupo, grupo)
+            poucos = total < MIN_PARA_PINTAR
+            linhas.append({
+                "zona": zona, "lat": c["lat"], "lon": c["lon"],
+                "grupo": nome_g, "n": n, "total": total,
+                "pct": 100 * n / max(1, total),
+                "cor": "#cfd6da" if poucos else (
+                    "#adb5bd" if grupo == OUTROS else GROUP_COLORS.get(grupo, "#95a5a6")),
+                "rotulo": f"{zona}" + (" *" if poucos else ""),
+                "poucos": poucos,
+            })
+        dfm = pd.DataFrame(linhas)
+        fig_m = go.Figure(go.Scattermapbox(
+            lat=dfm["lat"], lon=dfm["lon"], mode="markers+text",
+            marker=dict(size=26, color=dfm["cor"]),
+            text=dfm["rotulo"], textposition="top center",
+            textfont=dict(size=12, color="#33414a"),
+            customdata=dfm[["grupo", "n", "total", "pct"]].values,
+            hovertemplate=("<b>%{text}</b><br>Grupo predominante: %{customdata[0]}"
+                           "<br>%{customdata[1]} de %{customdata[2]} matérias "
+                           "(%{customdata[3]:.0f}%)<extra></extra>"),
+        ))
+        fig_m.update_layout(
+            mapbox=dict(style="carto-positron", center=dict(lat=-3.06, lon=-60.01), zoom=9.4),
+            height=380, margin=dict(l=0, r=0, t=10, b=0), showlegend=False,
+        )
+        st.plotly_chart(fig_m, use_container_width=True)
+        if dfm["poucos"].any():
+            st.caption(
+                f"⁎ Zona com menos de {MIN_PARA_PINTAR} matérias no período: o grupo "
+                "predominante muda com poucos registros e não é exibido em cor."
+            )
+        st.caption(
+            "Marcadores posicionados no centro aproximado de cada zona, calculado a "
+            "partir dos limites de bairro do OpenStreetMap. Não são contornos "
+            "administrativos — a divisão oficial é a da Lei Municipal nº 1.401/2010."
+        )
 
 # ---------------------------------------------------------------- rodapé
 
