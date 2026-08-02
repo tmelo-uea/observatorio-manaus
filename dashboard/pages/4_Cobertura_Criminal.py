@@ -14,7 +14,7 @@ from nlp.crime_types import CRIME_GROUPS, label as tipo_label, legal_ref, group_
 
 st.set_page_config(
     page_title="Cobertura Criminal — Observatório de Manaus",
-    page_icon="⚖️",
+    page_icon="🚔",
     layout="wide",
 )
 
@@ -261,7 +261,7 @@ st.markdown("""
     margin-bottom: 20px;
 ">
     <div style="font-size: 1.6rem; font-weight: 800; color: #ffffff; margin-bottom: 8px;">
-        ⚖️ Cobertura Criminal
+        🚔 Cobertura Criminal
     </div>
     <div style="font-size: 0.95rem; color: #bfdbfe; line-height: 1.7;">
         Quanto e como a imprensa do Amazonas noticia crimes. Cada matéria de
