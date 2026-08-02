@@ -146,8 +146,7 @@ def load_ranking(versao: int, dias: int, municipio: str | None) -> pd.DataFrame:
     with get_db().connect() as conn:
         res = conn.execute(text(f"""
             SELECT m.crime_type, m.crime_group,
-                   COUNT(*)                   AS mencoes,
-                   COUNT(DISTINCT m.event_id) AS casos
+                   COUNT(*) AS mencoes
             FROM crime_mentions m
             WHERE m.reported_on >= :ini {filtro}
             GROUP BY m.crime_type, m.crime_group
@@ -532,7 +531,7 @@ else:
 st.subheader("Figuras penais mais noticiadas")
 st.caption(
     "Cada barra é um tipo penal, com o dispositivo legal correspondente. "
-    "A coluna “casos” desconta a repetição entre veículos."
+    "Matérias diferentes sobre o mesmo caso são contadas separadamente."
 )
 
 df_rank = load_ranking(VERSAO, dias, municipio)
@@ -545,9 +544,8 @@ else:
         y=[tipo_label(t) for t in top["crime_type"]],
         orientation="h",
         marker=dict(color=[GROUP_COLORS.get(g, "#95a5a6") for g in top["crime_group"]]),
-        customdata=[[legal_ref(t) or "—", c] for t, c in zip(top["crime_type"], top["casos"])],
-        hovertemplate="<b>%{y}</b><br>%{x} matérias<br>%{customdata[1]} casos distintos"
-                      "<br>%{customdata[0]}<extra></extra>",
+        customdata=[[legal_ref(t) or "—"] for t in top["crime_type"]],
+        hovertemplate="<b>%{y}</b><br>%{x} matérias<br>%{customdata[0]}<extra></extra>",
     ))
     fig_r.update_layout(
         height=max(360, 22 * len(top)), margin=dict(l=10, r=40, t=20, b=40),
@@ -561,7 +559,6 @@ else:
             "Dispositivo": [legal_ref(t) or "—" for t in df_rank["crime_type"]],
             "Grupo": [group_label(g) for g in df_rank["crime_group"]],
             "Matérias": df_rank["mencoes"],
-            "Casos distintos": df_rank["casos"],
         })
         st.dataframe(tabela, use_container_width=True, hide_index=True)
 
