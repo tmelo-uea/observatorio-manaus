@@ -240,81 +240,6 @@ def load_caracterizacao(versao: int, dias: int) -> dict:
             "total": int(row[2] or 0), "com_dia": int(row[3] or 0)}
 
 
-@st.cache_data(ttl=300)
-def load_export(versao: int) -> pd.DataFrame:
-    """Todas as menções com a matéria de origem, para conferência externa.
-
-    NÃO inclui o campo de nomes próprios: ele existe apenas para agrupar
-    menções do mesmo caso e não deve sair numa página pública.
-    """
-    with get_db().connect() as conn:
-        res = conn.execute(text("""
-            SELECT m.id                    AS mencao_id,
-                   a.title                 AS materia,
-                   a.url                   AS link,
-                   s.name                  AS veiculo,
-                   m.reported_on           AS publicada_em,
-                   m.crime_type            AS figura_slug,
-                   m.crime_group           AS grupo_slug,
-                   m.legal_ref             AS dispositivo_legal,
-                   m.stage                 AS etapa,
-                   m.tentativa,
-                   m.occurred_on           AS data_do_fato,
-                   m.occurred_precision    AS precisao_da_data,
-                   m.municipio, m.zona, m.bairro,
-                   m.count_victims         AS vitimas,
-                   m.count_suspects        AS suspeitos,
-                   m.description           AS descricao_extraida,
-                   COALESCE(NULLIF(a.content, ''), NULLIF(a.summary, ''),
-                            NULLIF(a.transcript, '')) AS texto_da_materia,
-                   m.legal_cited_by_source AS materia_cita_lei,
-                   m.event_id              AS caso_id,
-                   m.model                 AS modelo,
-                   m.extracted_at          AS extraido_em
-            FROM crime_mentions m
-            JOIN articles a ON a.id = m.article_id
-            JOIN sources s  ON s.id = a.source_id
-            ORDER BY m.reported_on DESC, m.id DESC
-        """))
-        df = pd.DataFrame(res.fetchall(), columns=res.keys())
-    if df.empty:
-        return df
-    df.insert(6, "figura_penal", [tipo_label(s) for s in df["figura_slug"]])
-    df.insert(8, "grupo", [CRIME_GROUPS.get(g, g) for g in df["grupo_slug"]])
-    df["materia_cita_lei"] = df["materia_cita_lei"].map({1: "sim", 0: "não"})
-    # Vazio significa que o modelo não se pronunciou — diferente de "consumado".
-    df["tentativa"] = df["tentativa"].map({1: "tentado", 0: "consumado"})
-
-    # A data sai formatada conforme a precisão declarada. Guardamos internamente
-    # 2025-01-01 com precisão "ano" para preservar o ano, mas exportar isso cru
-    # faz 1º de janeiro parecer o dia do crime — uma auditoria leu exatamente
-    # assim. Aqui "2025" é ano, "2025-10" é mês e a data cheia só aparece quando
-    # a matéria realmente permitiu datar até o dia.
-    def _data_por_precisao(row):
-        d, prec = row["data_do_fato"], row["precisao_da_data"]
-        if d is None or prec not in ("dia", "mes", "ano"):
-            return ""
-        if prec == "dia":
-            return d.strftime("%Y-%m-%d")
-        if prec == "mes":
-            return d.strftime("%Y-%m")
-        return d.strftime("%Y")
-    df["data_do_fato"] = df.apply(_data_por_precisao, axis=1)
-
-    # Texto da matéria, para conferir sem depender de o link abrir. Os feeds
-    # vindos do Google News guardam URL de redirecionamento que muitas vezes não
-    # resolve — numa avaliação de 50 registros, 46 ficaram inverificáveis por
-    # isso. Sem tags HTML e sem quebras de linha, para não estourar a planilha.
-    df["texto_da_materia"] = (
-        df["texto_da_materia"].fillna("")
-        .str.replace(r"<[^>]+>", " ", regex=True)
-        .str.replace(r"&[a-z]+;|&#\d+;", " ", regex=True)
-        .str.replace(r"\s+", " ", regex=True)
-        .str.strip().str.slice(0, 1500)
-    )
-    return df
-
-
 @st.cache_data(ttl=120)
 def load_amostra(n: int = 10) -> pd.DataFrame:
     with get_db().connect() as conn:
@@ -749,26 +674,6 @@ if not df_zonas.empty:
 st.divider()
 
 # ---------------------------------------------------------------- rodapé
-
-df_export = load_export(VERSAO)
-if not df_export.empty:
-    csv = df_export.to_csv(index=False, sep=";").encode("utf-8-sig")
-    col_a, col_b = st.columns([1, 3])
-    with col_a:
-        st.download_button(
-            "⬇️ Baixar dados em CSV",
-            data=csv,
-            file_name=f"cobertura_criminal_{datetime.utcnow():%Y%m%d}.csv",
-            mime="text/csv",
-            use_container_width=True,
-        )
-    with col_b:
-        st.caption(
-            f"**{len(df_export)} registros**, um por crime noticiado, com o link da "
-            "matéria de origem ao lado da classificação — para conferir linha a linha. "
-            "Ponto e vírgula como separador e UTF-8 com BOM, para abrir direto no Excel "
-            "sem quebrar acentuação."
-        )
 
 with st.expander("📐 Metodologia da análise"):
     st.markdown("""
