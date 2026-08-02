@@ -227,7 +227,7 @@ def render_theme_card(row, summary_row):
     keywords = extract_keywords(titles) if titles else []
     chips_html = "".join(
         f'<span style="padding:5px 11px;border-radius:999px;background:#ffffff;'
-        f'border:1px solid #dbeafe;color:#1d4ed8;font-size:0.82rem;font-weight:700;">{kw}</span>'
+        f'border:1px solid #dbeafe;color:#1d4ed8;font-size:0.85rem;font-weight:700;">{kw}</span>'
         for kw in keywords
     ) if keywords else '<span style="color:#9ca3af;font-size:0.85rem;">Sem dados suficientes hoje</span>'
 
@@ -239,7 +239,7 @@ def render_theme_card(row, summary_row):
         pct = int((src_count / max_count) * 100)
         sources_html += f"""
         <div style="margin-bottom:10px;">
-            <div style="display:flex;justify-content:space-between;font-size:0.88rem;font-weight:700;margin-bottom:4px;">
+            <div style="display:flex;justify-content:space-between;font-size:0.85rem;font-weight:700;margin-bottom:4px;">
                 <span>{src_name}</span><span>{src_count}</span>
             </div>
             <div style="height:8px;background:#e2e8f0;border-radius:999px;overflow:hidden;">
@@ -255,14 +255,14 @@ def render_theme_card(row, summary_row):
         summary_text = summary_row[0]
         article_count = summary_row[2]
         leitura_html = f"""
-        <p style="margin:0 0 8px;font-size:0.86rem;text-transform:uppercase;
+        <p style="margin:0 0 8px;font-size:0.85rem;text-transform:uppercase;
             letter-spacing:0.06em;color:#6b7280;font-weight:800;">Leitura do Observatório</p>
         <p style="margin:0;font-size:1rem;line-height:1.75;color:#334155;">{summary_text}</p>
-        <p style="margin:10px 0 0;font-size:0.78rem;color:#9ca3af;">
+        <p style="margin:10px 0 0;font-size:0.75rem;color:#9ca3af;">
             Baseado em {article_count} artigos publicados hoje</p>"""
     else:
         leitura_html = """
-        <p style="margin:0 0 8px;font-size:0.86rem;text-transform:uppercase;
+        <p style="margin:0 0 8px;font-size:0.85rem;text-transform:uppercase;
             letter-spacing:0.06em;color:#6b7280;font-weight:800;">Leitura do Observatório</p>
         <p style="margin:0;font-size:0.95rem;color:#9ca3af;font-style:italic;">
             Resumo ainda não disponível — será gerado automaticamente na próxima coleta.</p>"""
@@ -274,38 +274,38 @@ def render_theme_card(row, summary_row):
             ▲ Em alta esta semana
         </div>""" if em_alta else ""
 
-    delta_html = f'<div style="font-size:0.76rem;margin-top:5px;color:{delta_color};font-weight:700;">{delta_arrow} {delta_str} vs. semana anterior</div>' if delta_str else ""
+    delta_html = f'<div style="font-size:0.75rem;margin-top:5px;color:{delta_color};font-weight:700;">{delta_arrow} {delta_str} vs. semana anterior</div>' if delta_str else ""
 
     st.html(f"""
 <div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:22px;box-shadow:0 4px 18px rgba(15,23,42,0.07);overflow:hidden;margin-bottom:4px;font-family:sans-serif;">
   <div style="background:linear-gradient(135deg,#eff6ff 0%,#eef2ff 55%,#f8fafc 100%);padding:22px 26px 18px;border-bottom:1px solid #dbeafe;">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
       <div style="display:flex;align-items:center;gap:14px;">
-        <div style="width:52px;height:52px;border-radius:18px;display:flex;align-items:center;justify-content:center;background:#ffffff;box-shadow:0 6px 16px rgba(37,99,235,0.13);font-size:1.7rem;">{icon}</div>
+        <div style="width:52px;height:52px;border-radius:18px;display:flex;align-items:center;justify-content:center;background:#ffffff;box-shadow:0 6px 16px rgba(37,99,235,0.13);font-size:1.6rem;">{icon}</div>
         <div>
-          <div style="font-size:0.76rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:{color};margin-bottom:3px;">Resumo automático por tema</div>
-          <div style="font-size:1.45rem;font-weight:800;color:#0f172a;line-height:1.2;">{name}</div>
+          <div style="font-size:0.75rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:{color};margin-bottom:3px;">Resumo automático por tema</div>
+          <div style="font-size:1.2rem;font-weight:800;color:#0f172a;line-height:1.2;">{name}</div>
         </div>
       </div>
       {status_badge}
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;">
       <div style="background:#ffffffcc;border:1px solid #dbeafe;border-radius:14px;padding:13px 15px;">
-        <div style="font-size:0.77rem;color:#6b7280;margin-bottom:3px;">Notícias hoje</div>
-        <div style="font-size:1.4rem;font-weight:800;color:#111827;">{total_hoje}</div>
+        <div style="font-size:0.75rem;color:#6b7280;margin-bottom:3px;">Notícias hoje</div>
+        <div style="font-size:1.2rem;font-weight:800;color:#111827;">{total_hoje}</div>
         {delta_html}
       </div>
       <div style="background:#ffffffcc;border:1px solid #dbeafe;border-radius:14px;padding:13px 15px;">
-        <div style="font-size:0.77rem;color:#6b7280;margin-bottom:3px;">Fontes hoje</div>
-        <div style="font-size:1.4rem;font-weight:800;color:#111827;">{fontes_hoje}</div>
+        <div style="font-size:0.75rem;color:#6b7280;margin-bottom:3px;">Fontes hoje</div>
+        <div style="font-size:1.2rem;font-weight:800;color:#111827;">{fontes_hoje}</div>
       </div>
       <div style="background:#ffffffcc;border:1px solid #dbeafe;border-radius:14px;padding:13px 15px;">
-        <div style="font-size:0.77rem;color:#6b7280;margin-bottom:3px;">Assuntos detectados</div>
-        <div style="font-size:1.4rem;font-weight:800;color:#111827;">{len(keywords)}</div>
+        <div style="font-size:0.75rem;color:#6b7280;margin-bottom:3px;">Assuntos detectados</div>
+        <div style="font-size:1.2rem;font-weight:800;color:#111827;">{len(keywords)}</div>
       </div>
       <div style="background:#ffffffcc;border:1px solid #dbeafe;border-radius:14px;padding:13px 15px;">
-        <div style="font-size:0.77rem;color:#6b7280;margin-bottom:3px;">Última notícia</div>
-        <div style="font-size:1.4rem;font-weight:800;color:#111827;">{_time_ago(ultima)}</div>
+        <div style="font-size:0.75rem;color:#6b7280;margin-bottom:3px;">Última notícia</div>
+        <div style="font-size:1.2rem;font-weight:800;color:#111827;">{_time_ago(ultima)}</div>
       </div>
     </div>
   </div>
@@ -313,11 +313,11 @@ def render_theme_card(row, summary_row):
     <div>{leitura_html}</div>
     <div style="display:flex;flex-direction:column;gap:16px;">
       <div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:16px;padding:15px;">
-        <div style="font-size:0.8rem;text-transform:uppercase;letter-spacing:0.06em;font-weight:800;color:#475569;margin-bottom:10px;">Assuntos em destaque</div>
+        <div style="font-size:0.85rem;text-transform:uppercase;letter-spacing:0.06em;font-weight:800;color:#475569;margin-bottom:10px;">Assuntos em destaque</div>
         <div style="display:flex;flex-wrap:wrap;gap:7px;">{chips_html}</div>
       </div>
       <div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:16px;padding:15px;">
-        <div style="font-size:0.8rem;text-transform:uppercase;letter-spacing:0.06em;font-weight:800;color:#475569;margin-bottom:10px;">Fontes mais presentes</div>
+        <div style="font-size:0.85rem;text-transform:uppercase;letter-spacing:0.06em;font-weight:800;color:#475569;margin-bottom:10px;">Fontes mais presentes</div>
         {sources_html}
       </div>
     </div>
@@ -334,12 +334,25 @@ except Exception as e:
     st.stop()
 
 # --- Visão geral ---
-st.title("🏷️ Temas")
-st.caption(
-    "Acompanhe os principais assuntos que estão em pauta em Manaus, organizados por área de interesse. "
-    "Para cada tema — saúde, segurança, política, esporte e outros — você confere um resumo do dia, "
-    "o volume de notícias publicadas e como a cobertura vem evoluindo ao longo da semana."
-)
+st.markdown("""
+<div style="
+    background: linear-gradient(135deg, #1a3a5c 0%, #1e6091 100%);
+    border-radius: 14px;
+    padding: 22px 32px;
+    margin-bottom: 20px;
+">
+    <div style="font-size: 1.6rem; font-weight: 800; color: #ffffff; margin-bottom: 8px;">
+        🏷️ Temas
+    </div>
+    <div style="font-size: 0.95rem; color: #bfdbfe; line-height: 1.7;">
+        Acompanhe os principais assuntos que estão em pauta em Manaus, organizados por
+        área de interesse. Para cada tema — <strong style="color:#ffffff;">saúde,
+        segurança, política, esporte</strong> e outros — você confere um resumo do dia,
+        o volume de notícias publicadas e como a cobertura vem evoluindo ao longo da
+        semana.
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 counts_df = stats_df[stats_df["name"] != "Outros"].copy()
 color_map = dict(zip(counts_df["name"], counts_df["color"]))
@@ -349,12 +362,16 @@ fig = px.bar(
     color_discrete_map=color_map,
     labels={"total_all": "Total de notícias", "name": "Tema"},
 )
-fig.update_layout(showlegend=False, yaxis=dict(categoryorder="total ascending"), height=380)
+fig.update_layout(
+    showlegend=False, yaxis=dict(categoryorder="total ascending", title=""),
+    height=430, margin=dict(l=10, r=30, t=20, b=45),
+    plot_bgcolor="white", xaxis=dict(showgrid=True, gridcolor="#eef2f4"),
+)
 st.plotly_chart(fig, use_container_width=True)
 
 st.divider()
 st.subheader("Resumos por tema")
-st.caption("Clique em um tema para expandir o resumo do dia.")
+st.markdown("Clique em um tema para expandir o resumo do dia. Os resumos são gerados automaticamente a partir das notícias locais publicadas no dia.")
 
 engine = get_db()
 topics_iter = stats_df[stats_df["name"] != "Outros"].iterrows()
