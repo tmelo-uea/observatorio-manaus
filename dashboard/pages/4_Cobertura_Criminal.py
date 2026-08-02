@@ -396,63 +396,135 @@ st.divider()
 # ---------------------------------------------------------------- série temporal
 
 st.subheader("Evolução da cobertura")
-st.caption("Matérias publicadas ao longo do tempo, agrupadas pelo bem jurídico protegido.")
+st.caption(
+    "Acompanhe o volume de matérias publicadas ao longo do tempo e a evolução dos "
+    "principais grupos da classificação penal. Os dados representam cobertura "
+    "jornalística e não correspondem ao número de crimes ou ocorrências distintas."
+)
+
+MESES_ABREV = {1: "jan", 2: "fev", 3: "mar", 4: "abr", 5: "mai", 6: "jun",
+               7: "jul", 8: "ago", 9: "set", 10: "out", 11: "nov", 12: "dez"}
+N_PRINCIPAIS_SERIE = 5
 
 df_serie = load_serie(VERSAO, dias, municipio)
 if df_serie.empty:
     st.info("Sem dados no período selecionado.")
 else:
+    modo_serie = st.radio(
+        "Modo da série", ["Volume total", "Principais grupos", "Composição (%)"],
+        horizontal=True, label_visibility="collapsed", key="modo_serie")
+
     df_serie["dia"] = pd.to_datetime(df_serie["dia"])
-    span = (df_serie["dia"].max() - df_serie["dia"].min()).days
+    # Semana encerrada no domingo. A série é de COBERTURA, então agrega pela
+    # data de publicação — data_do_fato diria quando o crime ocorreu, que é
+    # outra pergunta.
+    df_serie["semana"] = df_serie["dia"].dt.to_period("W-SUN").apply(
+        lambda pr: pr.end_time.normalize())
 
-    # Semana só faz sentido com período suficiente; abaixo disso, dia.
-    if span > 60:
-        df_serie["periodo"] = df_serie["dia"] - pd.to_timedelta(
-            df_serie["dia"].dt.weekday, unit="D")
-        unidade, rotulo = "semana", "Matérias por semana"
-    else:
-        df_serie["periodo"] = df_serie["dia"]
-        unidade, rotulo = "dia", "Matérias por dia"
+    inicio_janela = pd.Timestamp((datetime.utcnow() - timedelta(hours=4)).date()
+                                 - timedelta(days=dias))
+    fim_janela = pd.Timestamp((datetime.utcnow() - timedelta(hours=4)).date())
 
-    df_serie = (df_serie.groupby(["periodo", "crime_group"], as_index=False)["cnt"]
-                .sum())
-    n_periodos = df_serie["periodo"].nunique()
-    ordem = df_serie.groupby("crime_group")["cnt"].sum().sort_values(ascending=False)
+    semanal = df_serie.groupby(["semana", "crime_group"], as_index=False)["cnt"].sum()
+    total_sem = semanal.groupby("semana", as_index=False)["cnt"].sum().sort_values("semana")
 
-    # Com poucos períodos, barras empilhadas: área e linha precisam de dois
-    # pontos para desenhar, e um período único renderizava um gráfico em branco.
-    usar_barra = n_periodos < 4
+    # Semana parcial: começa antes do início da janela ou termina depois de hoje.
+    def parcial(fim_semana):
+        return (fim_semana - pd.Timedelta(days=6)) < inicio_janela or fim_semana > fim_janela
+    total_sem["parcial"] = total_sem["semana"].apply(parcial)
 
-    fig = go.Figure()
-    for grupo in ordem.index:
-        gdf = df_serie[df_serie["crime_group"] == grupo].sort_values("periodo")
-        cor = GROUP_COLORS.get(grupo, "#95a5a6")
-        nome = CRIME_GROUPS.get(grupo, grupo)
-        tip = f"<b>{nome}</b><br>%{{x|%d/%m/%Y}}: %{{y}} matérias<extra></extra>"
-        if usar_barra:
-            fig.add_trace(go.Bar(x=gdf["periodo"], y=gdf["cnt"], name=nome,
-                                 marker=dict(color=cor), hovertemplate=tip))
-        else:
-            fig.add_trace(go.Scatter(
-                x=gdf["periodo"], y=gdf["cnt"], name=nome, mode="lines",
-                stackgroup="one", line=dict(color=cor, width=0.5),
-                hovertemplate=tip))
-    fig.update_layout(
-        height=400, hovermode="x unified",
-        barmode="stack" if usar_barra else None,
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        margin=dict(l=60, r=40, t=80, b=50),
-        plot_bgcolor="#fafafa", xaxis_title="", yaxis_title=rotulo,
-        xaxis=dict(type="date", tickformat="%d/%m"),
+    eixo = dict(
+        tickvals=list(total_sem["semana"]),
+        ticktext=[f"{d.day} {MESES_ABREV[d.month]}" for d in total_sem["semana"]],
     )
-    st.plotly_chart(fig, use_container_width=True)
-    if n_periodos < 4:
-        st.caption(
-            f"Há apenas {n_periodos} dia(s) com registros. A série temporal só "
-            "ganha forma conforme a extração cobrir um período maior."
-        )
+    base_layout = dict(
+        height=430, margin=dict(l=60, r=30, t=60, b=50), plot_bgcolor="white",
+        xaxis=dict(showgrid=False, **eixo),
+        yaxis=dict(showgrid=True, gridcolor="#eef2f4", zeroline=False),
+        hovermode="x unified",
+        legend=dict(orientation="h", traceorder="normal", yanchor="top",
+                    y=-0.14, xanchor="left", x=0, font=dict(size=11)),
+    )
 
-# ---------------------------------------------------------------- ranking
+    if modo_serie == "Volume total":
+        st.markdown("**Evolução do volume de cobertura**")
+        st.caption("Quantidade de matérias sobre ocorrências criminais publicadas "
+                   "em cada semana.")
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=total_sem["semana"], y=total_sem["cnt"], mode="lines+markers",
+            line=dict(color="#1e6091", width=2.5),
+            marker=dict(size=[9 if pc else 6 for pc in total_sem["parcial"]],
+                        color=["white" if pc else "#1e6091" for pc in total_sem["parcial"]],
+                        line=dict(width=2, color="#1e6091")),
+            customdata=[["semana parcial" if pc else ""] for pc in total_sem["parcial"]],
+            hovertemplate="%{y} matérias %{customdata[0]}<extra></extra>",
+            showlegend=False,
+        ))
+        fig.update_layout(yaxis_title="Matérias por semana", xaxis_title="", **base_layout)
+        st.plotly_chart(fig, use_container_width=True)
+
+    else:
+        # Cinco maiores no recorte atual; o resto vira "Outros grupos".
+        ordem = semanal.groupby("crime_group")["cnt"].sum().sort_values(ascending=False)
+        principais = list(ordem.head(N_PRINCIPAIS_SERIE).index)
+        semanal["exibicao"] = semanal["crime_group"].where(
+            semanal["crime_group"].isin(principais), OUTROS)
+        pv = semanal.pivot_table(index="semana", columns="exibicao", values="cnt",
+                                 aggfunc="sum", fill_value=0).sort_index()
+        colunas = [g for g in principais if g in pv.columns]
+        if OUTROS in pv.columns:
+            colunas.append(OUTROS)
+        pv = pv[colunas]
+        tot = pv.sum(axis=1)
+
+        def nome_de(g):
+            return "Outros grupos" if g == OUTROS else CRIME_GROUPS.get(g, g)
+
+        def cor_de(g):
+            return COR_OUTROS if g == OUTROS else GROUP_COLORS.get(g, "#95a5a6")
+
+        if modo_serie == "Principais grupos":
+            st.markdown("**Evolução dos principais grupos da cobertura criminal**")
+            st.caption("Quantidade semanal de matérias nos grupos mais frequentes da "
+                       "classificação penal. Clique na legenda para ocultar ou exibir "
+                       "cada linha.")
+            fig = go.Figure()
+            for g in colunas:
+                fig.add_trace(go.Scatter(
+                    x=pv.index, y=pv[g], name=nome_de(g), mode="lines",
+                    line=dict(color=cor_de(g), width=2.2),
+                    hovertemplate="%{y} matérias<extra>" + nome_de(g) + "</extra>",
+                ))
+            fig.update_layout(yaxis_title="Matérias por semana", xaxis_title="", **base_layout)
+            st.plotly_chart(fig, use_container_width=True)
+
+        else:
+            st.markdown("**Composição da cobertura por grupo criminal**")
+            st.caption("Participação percentual de cada grupo no total de matérias "
+                       "publicadas em cada semana.")
+            pct = pv.div(tot.replace(0, 1), axis=0) * 100
+            fig = go.Figure()
+            for g in colunas:
+                fig.add_trace(go.Bar(
+                    x=pct.index, y=pct[g], name=nome_de(g),
+                    marker=dict(color=cor_de(g)),
+                    customdata=list(zip(pv[g], tot)),
+                    hovertemplate=("%{customdata[0]} matérias — %{y:.1f}% "
+                                   "(total da semana: %{customdata[1]})"
+                                   "<extra>" + nome_de(g) + "</extra>"),
+                ))
+            fig.update_layout(barmode="stack", yaxis_title="% das matérias da semana",
+                              xaxis_title="", **base_layout)
+            fig.update_yaxes(range=[0, 100])
+            st.plotly_chart(fig, use_container_width=True)
+
+    if total_sem["parcial"].any():
+        st.caption(
+            "Os valores são agregados por semana de publicação, encerrada no domingo. "
+            "A primeira e a última semanas do período podem estar incompletas — "
+            "aparecem com marcador vazado no modo de volume."
+        )
 
 st.subheader("Figuras penais mais noticiadas")
 st.caption(
