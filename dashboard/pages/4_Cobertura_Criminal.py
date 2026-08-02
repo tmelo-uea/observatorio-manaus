@@ -109,7 +109,8 @@ def load_panorama(versao: int, dias: int, municipio: str | None):
         params["mun"] = municipio
     with get_db().connect() as conn:
         row = conn.execute(text(f"""
-            SELECT COUNT(*)                       AS mencoes,
+            SELECT COUNT(DISTINCT m.article_id)   AS materias,
+                   COUNT(*)                       AS registros,
                    COUNT(DISTINCT m.crime_type)   AS figuras,
                    COUNT(DISTINCT a.source_id)    AS veiculos,
                    COUNT(DISTINCT m.municipio)    AS municipios
@@ -118,10 +119,11 @@ def load_panorama(versao: int, dias: int, municipio: str | None):
             WHERE m.reported_on >= :ini {filtro}
         """), params).fetchone()
     return {
-        "mencoes": row[0] or 0,
-        "figuras": row[1] or 0,
-        "veiculos": row[2] or 0,
-        "municipios": row[3] or 0,
+        "materias": row[0] or 0,
+        "registros": row[1] or 0,
+        "figuras": row[2] or 0,
+        "veiculos": row[3] or 0,
+        "municipios": row[4] or 0,
     }
 
 
@@ -239,16 +241,31 @@ def load_municipios(versao: int) -> list[str]:
 
 @st.cache_data(ttl=300)
 def load_caracterizacao(versao: int, dias: int) -> dict:
-    """Números sobre o próprio método: quanto a imprensa tipifica e quanto data."""
+    """Números sobre o próprio método: quanto a imprensa tipifica e quanto data.
+
+    Conta REGISTROS, não matérias: uma matéria gera mais de um registro quando
+    noticia crimes de tipos diferentes. Rotular linha de tabela como "matéria"
+    contradiria a unidade de análise declarada na própria metodologia.
+    """
     inicio = (datetime.utcnow() - timedelta(hours=4)).date() - timedelta(days=dias)
     with get_db().connect() as conn:
         row = conn.execute(text("""
             SELECT SUM(legal_cited_by_source = 1), COUNT(legal_cited_by_source),
-                   COUNT(*), SUM(occurred_precision = 'dia')
+                   COUNT(*), SUM(occurred_precision = 'dia'),
+                   COUNT(DISTINCT article_id)
             FROM crime_mentions WHERE reported_on >= :ini
         """), {"ini": inicio}).fetchone()
+        # Proporção do tema que NÃO é crime, medida em vez de afirmada de memória
+        aval = conn.execute(text("""
+            SELECT COUNT(*) FROM articles a
+            JOIN topics t ON a.topic_id = t.id
+            WHERE a.is_local = 1 AND a.crime_processed_at IS NOT NULL
+              AND t.name IN ('Segurança Pública', 'Justiça e Direito')
+              AND a.published_at >= :ini
+        """), {"ini": inicio}).scalar() or 0
     return {"citam": int(row[0] or 0), "com_info": int(row[1] or 0),
-            "total": int(row[2] or 0), "com_dia": int(row[3] or 0)}
+            "total": int(row[2] or 0), "com_dia": int(row[3] or 0),
+            "materias": int(row[4] or 0), "avaliados": int(aval)}
 
 
 # ---------------------------------------------------------------- cabeçalho
@@ -314,7 +331,8 @@ municipio = None if escolha_mun == "Todos" else escolha_mun
 
 pan = load_panorama(VERSAO, dias, municipio)
 cartoes = [
-    ("📰", "Matérias sobre crime", fmt_br(pan["mencoes"]), "no período selecionado"),
+    ("📰", "Matérias sobre crime", fmt_br(pan["materias"]),
+     f'{fmt_br(pan["registros"])} registros classificados'),
     ("⚖️", "Figuras penais distintas", fmt_br(pan["figuras"]), "tipos identificados"),
     ("🗞️", "Veículos", fmt_br(pan["veiculos"]), "portais, blogs e canais"),
     ("📍", "Municípios", fmt_br(pan["municipios"]), "com fato localizado"),
@@ -693,80 +711,125 @@ st.divider()
 
 # ---------------------------------------------------------------- rodapé
 
+st.markdown("""
+<div style="background:#eef4f9;border:1px solid #cfe0ee;border-radius:10px;
+            padding:14px 20px;margin:6px 0 10px 0;max-width:1080px;">
+    <span style="display:inline-block;background:#1e6091;color:#fff;font-size:0.7rem;
+                 font-weight:700;letter-spacing:0.05em;text-transform:uppercase;
+                 padding:3px 9px;border-radius:20px;margin-right:10px;">
+        Classificação automática</span>
+    <span style="display:inline-block;background:#8a6d3b;color:#fff;font-size:0.7rem;
+                 font-weight:700;letter-spacing:0.05em;text-transform:uppercase;
+                 padding:3px 9px;border-radius:20px;">
+        Agrupamento por caso desativado</span>
+    <div style="font-size:0.95rem;color:#22384c;line-height:1.65;margin-top:10px;">
+        A análise mede <b>cobertura jornalística</b>. A unidade principal é a
+        <b>matéria</b>, e os totais <b>não representam crimes distintos</b>.
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+car = load_caracterizacao(VERSAO, dias)
+if car["total"]:
+    pct_lei = (100 * car["citam"] / car["com_info"]) if car["com_info"] else 0
+    pct_dia = 100 * car["com_dia"] / car["total"]
+    m1, m2, m3 = st.columns(3)
+    m1.metric("Registros classificados", fmt_br(car["total"]),
+              help=f'{fmt_br(car["materias"])} matérias distintas no período. Uma '
+                   "matéria gera mais de um registro quando noticia crimes de tipos "
+                   "diferentes.")
+    m2.metric("Citam enquadramento jurídico", f"{pct_lei:.0f}%",
+              help=f'{fmt_br(car["citam"])} de {fmt_br(car["com_info"])} registros '
+                   "em que o modelo se pronunciou sobre isso.")
+    m3.metric("Fatos datados até o dia", f"{pct_dia:.0f}%",
+              help=f'{fmt_br(car["com_dia"])} de {fmt_br(car["total"])} registros. '
+                   "Nos demais a matéria não permite precisão de dia.")
+    texto(
+        "O total indica o volume analisado. Os percentuais descrevem o texto "
+        "jornalístico, não a criminalidade: mostram com que frequência as matérias "
+        "apresentam um enquadramento jurídico explícito e com que precisão informam "
+        "a data do fato."
+    )
+
 with st.expander("📐 Metodologia da análise"):
-    st.markdown("""
-**O que é medido.** O Observatório coleta continuamente as publicações de dezenas de
-portais, blogs e canais do Amazonas. Desta análise participam apenas as matérias
-classificadas como locais e pertencentes aos temas *Segurança Pública* e
-*Justiça e Direito*. Cada matéria desse conjunto é lida por um modelo de linguagem que
-responde se ela noticia um crime e, em caso afirmativo, qual figura penal, em que etapa
-(fato, investigação, prisão, julgamento ou condenação), quando, onde e quantas pessoas
-estavam envolvidas. Cerca de metade do que é publicado sob o tema *Segurança Pública*
-não trata de crime — incêndio, acidente, resgate, treinamento de bombeiros — e é
-descartada nessa leitura.
+    st.markdown('<div style="max-width:1080px;">', unsafe_allow_html=True)
+    descarte = ""
+    if car.get("avaliados") and car["avaliados"] > car.get("materias", 0):
+        pct_desc = 100 * (car["avaliados"] - car["materias"]) / car["avaliados"]
+        descarte = (f" No período, **{pct_desc:.0f}%** das publicações desses temas "
+                    "não noticiavam crime e foram descartadas.")
+    st.markdown(f"""
+**O que é analisado.** O Observatório coleta continuamente publicações de dezenas de
+portais, blogs e canais do Amazonas. Participam desta análise apenas as matérias
+classificadas como locais e vinculadas aos temas *Segurança Pública* ou
+*Justiça e Direito*.
 
-**Unidade de análise.** A unidade primária é a *matéria*, não o crime. Isso é
-deliberado: o objeto de estudo é a cobertura jornalística, e só é possível observar o
-que foi publicado. Uma operação policial com doze prisões por tráfico conta como uma
-matéria, com vítimas e suspeitos contados em campos separados. Uma matéria só gera mais
-de um registro se noticiar crimes de tipos diferentes.
+Um modelo de linguagem verifica se cada matéria noticia uma ocorrência criminal
+concreta. Em caso afirmativo, identifica a figura penal, a etapa noticiada — fato,
+investigação, prisão, julgamento ou condenação —, a data e o local do fato e, quando
+possível, quantifica separadamente vítimas e suspeitos.
 
-**Agrupamento por caso — em desenvolvimento, atualmente desligado.** Um mesmo crime
-costuma ser noticiado por vários veículos, e distinguir *"vinte crimes noticiados uma
-vez cada"* de *"um crime noticiado vinte vezes"* é uma pergunta central sobre a
-imprensa. A primeira versão do agrupamento não conseguia fundir registros quando a
-matéria não nomeava pessoas — o que é a regra no noticiário policial brasileiro — e
-produzia praticamente um caso por matéria. Como isso levava a página a afirmar que não
-há repetição de cobertura, o que é falso, o agrupamento foi desativado até ser
-refeito. **Enquanto isso, cada matéria conta como um registro, e o total NÃO deve ser
-lido como número de crimes distintos.**
+Uma parcela relevante das publicações desses temas não noticia crimes: incêndios sem
+indício de crime, acidentes, resgates, treinamentos, campanhas educativas, balanços
+estatísticos e matérias institucionais são descartados.{descarte}
 
-**Classificação legal.** As categorias correspondem a figuras do Código Penal e da
-legislação penal especial, organizadas pelos Títulos do Código — o bem jurídico
-protegido. Sempre que o fato configura uma figura autônoma, ela é preferida à genérica:
-feminicídio em vez de homicídio, latrocínio em vez de roubo. O dispositivo legal
-exibido **não é gerado pelo modelo**: vem de uma tabela fixa associada a cada categoria,
-o que evita citações de artigos inventadas. Registra-se separadamente se a própria
-matéria mencionou o enquadramento jurídico — isso é característica do texto
-jornalístico, não do crime.
+**Unidade de análise.** A unidade primária é a **matéria jornalística**, não o crime.
+A escolha é deliberada: o objeto de estudo é a cobertura da imprensa, e só é possível
+observar aquilo que foi publicado. Uma operação policial com doze prisões por tráfico
+conta como uma matéria; vítimas e suspeitos, quando informados, vão em campos
+separados. Uma matéria gera mais de um registro apenas quando noticia crimes de tipos
+diferentes.
 
-**Datas.** O sistema guarda duas datas: a da publicação e a do fato. A distinção
-importa — uma nota divulgada hoje sobre a condenação de um crime de anos atrás é
-cobertura de hoje sobre um fato antigo. Junto com a data do fato guarda-se até onde a
-matéria permite datá-lo: dia, mês ou apenas ano. Quando o texto diz somente "em 2019",
-registra-se o ano, que é informação real, em vez de o sistema inventar um dia. Os
-gráficos de evolução usam a data de **publicação**, porque medem cobertura.
+**Agrupamento por caso — em desenvolvimento, atualmente desativado.** Um mesmo crime
+pode ser noticiado por vários veículos, e distinguir "vinte crimes noticiados uma vez
+cada" de "um crime noticiado vinte vezes" é questão central para o estudo da cobertura.
+A primeira versão do agrupamento tinha dificuldade para fundir matérias que não
+mencionavam nomes de pessoas, situação frequente no noticiário policial, e produzia
+praticamente um caso por matéria. Foi desativado até ser reformulado. Enquanto isso as
+matérias são contabilizadas separadamente, e os totais **não devem ser interpretados
+como número de crimes distintos**.
 
-**Localização.** O bairro é extraído do texto quando citado, e a zona da cidade é
-derivada dele pela divisão oficial da Lei Municipal nº 1.401/2010, que reconhece 64
-bairros em seis zonas administrativas. Os 62 municípios do Amazonas vêm do IBGE, e
-crime ocorrido fora deles é descartado. A maioria das matérias não informa bairro, de
-modo que a distribuição geográfica descreve onde a imprensa *localiza* os fatos.
+**Classificação penal.** As categorias correspondem a figuras do Código Penal e da
+legislação penal especial. Para fins analíticos, são agrupadas segundo o bem jurídico
+protegido, tomando como referência os Títulos do Código Penal e mantendo grupos
+próprios para leis especiais.
+
+Quando a narrativa permite identificar uma figura penal autônoma, ela é preferida à
+genérica: feminicídio em vez de homicídio, latrocínio em vez de roubo. A classificação
+é automática e tem finalidade informativa — **não substitui o enquadramento das
+autoridades competentes**.
+
+O dispositivo legal exibido **não é gerado pelo modelo**: vem de uma tabela fixa
+associada a cada categoria, o que evita a citação de artigos inexistentes. Registra-se
+separadamente se a própria matéria menciona a figura penal ou o artigo de lei — isso
+caracteriza o texto jornalístico, não o crime.
+
+**Datas.** O sistema mantém duas: a de publicação da matéria e a do fato. A distinção
+importa, porque uma notícia publicada hoje sobre a condenação de um crime de anos atrás
+é cobertura atual sobre fato antigo. A data do fato preserva somente a precisão que a
+matéria oferece — dia, mês, ano ou desconhecida. Quando o texto informa apenas "em
+2019", registra-se somente o ano, sem inventar mês ou dia. Os gráficos de evolução usam
+a **data de publicação**, porque medem o comportamento da cobertura.
+
+**Localização.** O bairro é extraído quando aparece no texto, e a zona administrativa é
+derivada da divisão oficial da Lei Municipal nº 1.401/2010, que distribui os 64 bairros
+de Manaus em seis zonas. A lista dos 62 municípios amazonenses segue o IBGE, e
+ocorrências claramente localizadas fora do Amazonas são descartadas. Como muitas
+matérias não informam bairro, a distribuição geográfica mostra **onde a imprensa
+consegue localizar os fatos que noticia**, e não onde a criminalidade se concentra.
 
 **Limitações conhecidas.**
-- Crimes que não viraram notícia são invisíveis para o método.
-- Veículos com maior volume de publicação pesam mais no resultado.
-- A classificação é automática e contém erros; a amostra de verificação abaixo permite
-  estimar a taxa de acerto.
-- As referências legais aguardam revisão de especialista em Direito.
+- Crimes que não se tornam notícia são invisíveis para o método.
+- Veículos que publicam mais têm maior peso no conjunto.
+- Matérias diferentes sobre o mesmo caso são contadas separadamente enquanto o
+  agrupamento estiver desativado.
+- A classificação é automática e está sujeita a erros. Estimar a taxa de acerto exige
+  amostra aleatória ou estratificada, conferida contra as matérias de origem; amostra
+  escolhida por suspeita encontra defeitos, mas não mede o conjunto.
+- As associações entre categorias e dispositivos legais aguardam revisão de
+  especialista em Direito.
 """)
-
-    car = load_caracterizacao(VERSAO, dias)
-    if car["total"]:
-        pct_lei = (100 * car["citam"] / car["com_info"]) if car["com_info"] else 0
-        pct_dia = 100 * car["com_dia"] / car["total"]
-        m1, m2, m3 = st.columns(3)
-        m1.metric("Matérias analisadas", fmt_br(car["total"]), help=periodo_nome)
-        m2.metric("Citam o enquadramento jurídico", f"{pct_lei:.0f}%",
-                  help="Nomeiam a figura penal ou o artigo de lei")
-        m3.metric("Datam o fato até o dia", f"{pct_dia:.0f}%",
-                  help="Nas demais, a matéria não permite precisão de dia")
-        st.caption(
-            "Estes três números descrevem o texto jornalístico, não a criminalidade: "
-            "dizem com que frequência a imprensa local tipifica juridicamente o que "
-            "noticia e com que precisão data os fatos."
-        )
-
+    st.markdown('</div>', unsafe_allow_html=True)
 
 st.caption(
     "Observatório de Manaus — LSI/UEA. Dados atualizados automaticamente a cada 30 minutos."
