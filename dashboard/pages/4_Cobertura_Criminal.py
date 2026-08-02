@@ -64,14 +64,14 @@ def fmt_br(n) -> str:
 
 
 def texto(md: str) -> None:
-    """Parágrafo explicativo no mesmo corpo da página de Análises.
+    """Parágrafo explicativo, com a mesma tipografia da página de Análises.
 
-    st.caption renderiza pequeno e cinza-claro, adequado a nota de rodapé mas
-    não a texto que o leitor precisa ler para entender o gráfico.
+    st.markdown puro, e não HTML injetado: pega o corpo padrão do Streamlit
+    (1rem), que é o que a página de Análises usa — o helper anterior renderizava
+    a 0,95rem, menor que o resto do site. De quebra, o **negrito** volta a
+    funcionar: duas vezes um ** acabou dentro do HTML e apareceu como asterisco.
     """
-    st.markdown(
-        f'<div style="font-size:0.95rem;color:#374151;line-height:1.7;'
-        f'margin:2px 0 14px 0;">{md}</div>', unsafe_allow_html=True)
+    st.markdown(md)
 
 
 @st.cache_resource
@@ -345,7 +345,7 @@ for icone, rotulo, valor, sub in cartoes:
         'border-radius:10px;padding:16px 18px;">'
         f'<div style="font-size:0.75rem;color:#6c757d;text-transform:uppercase;'
         f'letter-spacing:0.04em;margin-bottom:8px;">{icone}&nbsp; {rotulo}</div>'
-        f'<div style="font-size:1.45rem;font-weight:700;color:#1a3a5c;'
+        f'<div style="font-size:1.2rem;font-weight:700;color:#1a3a5c;'
         f'line-height:1.2;">{valor}</div>'
         f'<div style="font-size:0.85rem;color:#6c757d;margin-top:3px;">{sub}</div>'
         '</div>')
@@ -530,8 +530,8 @@ if not df_zonas.empty:
     st.subheader("Cobertura criminal por zona de Manaus")
     pct_zona = (100 * zonas_com / zonas_total) if zonas_total else 0
     texto(
-        f"Das <b>{fmt_br(zonas_total)} matérias</b> do período, <b>{fmt_br(zonas_com)} "
-        f"({pct_zona:.0f}%)</b> informam bairro ou zona. Cada matéria é contada "
+        f"Das **{fmt_br(zonas_total)} matérias** do período, **{fmt_br(zonas_com)} "
+        f"({pct_zona:.0f}%)** informam bairro ou zona. Cada matéria é contada "
         "separadamente; o gráfico mede cobertura jornalística, não número de "
         "ocorrências nem concentração da criminalidade."
     )
