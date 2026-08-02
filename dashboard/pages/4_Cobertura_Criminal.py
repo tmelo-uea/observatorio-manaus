@@ -330,14 +330,22 @@ municipio = None if escolha_mun == "Todos" else escolha_mun
 # ---------------------------------------------------------------- panorama
 
 pan = load_panorama(VERSAO, dias, municipio)
+car = load_caracterizacao(VERSAO, dias)
+pct_lei = (100 * car["citam"] / car["com_info"]) if car["com_info"] else 0
+pct_dia = (100 * car["com_dia"] / car["total"]) if car["total"] else 0
+
 cartoes = [
     ("📰", "Matérias sobre crime", fmt_br(pan["materias"]),
      f'{fmt_br(pan["registros"])} registros classificados'),
     ("⚖️", "Figuras penais distintas", fmt_br(pan["figuras"]), "tipos identificados"),
     ("🗞️", "Veículos", fmt_br(pan["veiculos"]), "portais, blogs e canais"),
     ("📍", "Municípios", fmt_br(pan["municipios"]), "com fato localizado"),
+    ("📖", "Citam enquadramento jurídico", f"{pct_lei:.0f}%",
+     f'{fmt_br(car["citam"])} de {fmt_br(car["com_info"])} registros'),
+    ("📅", "Fatos datados até o dia", f"{pct_dia:.0f}%",
+     f'{fmt_br(car["com_dia"])} de {fmt_br(car["total"])} registros'),
 ]
-html = ('<div style="display:grid;grid-template-columns:repeat(4,1fr);'
+html = ('<div style="display:grid;grid-template-columns:repeat(3,1fr);'
         'gap:12px;margin-bottom:10px;">')
 for icone, rotulo, valor, sub in cartoes:
     html += (
@@ -352,9 +360,14 @@ for icone, rotulo, valor, sub in cartoes:
 html += '</div>'
 st.markdown(html, unsafe_allow_html=True)
 
-texto("Cada matéria que noticia um crime gera um registro. Matérias diferentes sobre "
-      "o mesmo caso ainda são contadas separadamente — o agrupamento por ocorrência "
-      "está em desenvolvimento e é descrito na metodologia.")
+texto(
+    "Cada matéria que noticia um crime gera um registro, e uma mesma matéria gera mais "
+    "de um quando noticia crimes de tipos diferentes. Matérias distintas sobre o mesmo "
+    "caso ainda são contadas separadamente — o agrupamento por ocorrência está em "
+    "desenvolvimento. Os dois percentuais descrevem o texto jornalístico, e não a "
+    "criminalidade: mostram com que frequência as matérias trazem um enquadramento "
+    "jurídico explícito e com que precisão informam a data do fato."
+)
 
 st.divider()
 
@@ -710,46 +723,6 @@ if not df_zonas.empty:
 st.divider()
 
 # ---------------------------------------------------------------- rodapé
-
-st.markdown("""
-<div style="background:#eef4f9;border:1px solid #cfe0ee;border-radius:10px;
-            padding:14px 20px;margin:6px 0 10px 0;max-width:1080px;">
-    <span style="display:inline-block;background:#1e6091;color:#fff;font-size:0.7rem;
-                 font-weight:700;letter-spacing:0.05em;text-transform:uppercase;
-                 padding:3px 9px;border-radius:20px;margin-right:10px;">
-        Classificação automática</span>
-    <span style="display:inline-block;background:#8a6d3b;color:#fff;font-size:0.7rem;
-                 font-weight:700;letter-spacing:0.05em;text-transform:uppercase;
-                 padding:3px 9px;border-radius:20px;">
-        Agrupamento por caso desativado</span>
-    <div style="font-size:0.95rem;color:#22384c;line-height:1.65;margin-top:10px;">
-        A análise mede <b>cobertura jornalística</b>. A unidade principal é a
-        <b>matéria</b>, e os totais <b>não representam crimes distintos</b>.
-    </div>
-</div>
-""", unsafe_allow_html=True)
-
-car = load_caracterizacao(VERSAO, dias)
-if car["total"]:
-    pct_lei = (100 * car["citam"] / car["com_info"]) if car["com_info"] else 0
-    pct_dia = 100 * car["com_dia"] / car["total"]
-    m1, m2, m3 = st.columns(3)
-    m1.metric("Registros classificados", fmt_br(car["total"]),
-              help=f'{fmt_br(car["materias"])} matérias distintas no período. Uma '
-                   "matéria gera mais de um registro quando noticia crimes de tipos "
-                   "diferentes.")
-    m2.metric("Citam enquadramento jurídico", f"{pct_lei:.0f}%",
-              help=f'{fmt_br(car["citam"])} de {fmt_br(car["com_info"])} registros '
-                   "em que o modelo se pronunciou sobre isso.")
-    m3.metric("Fatos datados até o dia", f"{pct_dia:.0f}%",
-              help=f'{fmt_br(car["com_dia"])} de {fmt_br(car["total"])} registros. '
-                   "Nos demais a matéria não permite precisão de dia.")
-    texto(
-        "O total indica o volume analisado. Os percentuais descrevem o texto "
-        "jornalístico, não a criminalidade: mostram com que frequência as matérias "
-        "apresentam um enquadramento jurídico explícito e com que precisão informam "
-        "a data do fato."
-    )
 
 with st.expander("📐 Metodologia da análise"):
     st.markdown('<div style="max-width:1080px;">', unsafe_allow_html=True)
