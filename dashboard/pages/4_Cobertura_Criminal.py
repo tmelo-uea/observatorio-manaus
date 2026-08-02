@@ -613,8 +613,14 @@ if not df_zonas.empty:
             # limpa mas tirava toda a âncora geográfica — rio, nome da cidade,
             # municípios vizinhos —, e quem não conhece Manaus ficava sem
             # referência. Polígonos semitransparentes para o fundo aparecer.
+            # ZOOM: o Mapbox GL usa tiles de 512px, não 256. Calcular com 256
+            # dá um nível a MAIS — e cada nível dobra a ampliação, então o mapa
+            # saía com o dobro do zoom necessário e a cidade aparecia cortada
+            # por mais que se aumentasse a margem. Aqui: 360/(512*2^z) graus por
+            # pixel, escolhendo o menor zoom entre o que a largura e a altura
+            # comportam, com 30% de folga.
             mapbox=dict(style="carto-positron",
-                        center=dict(lat=-3.0382, lon=-59.9981), zoom=11.6),
+                        center=dict(lat=-3.0382, lon=-59.9981), zoom=10.6),
             dragmode=False, height=700,
             # Uma legenda só: ela já traz zona E crime predominante, então a
             # legenda de zonas era repetição do mesmo par de informações.
@@ -625,7 +631,7 @@ if not df_zonas.empty:
                          borderwidth=1, font=dict(size=11)),
             margin=dict(l=0, r=0, t=10, b=0),
         )
-        col_esq, col_mapa, col_dir = st.columns([1, 3, 1])
+        col_esq, col_mapa, col_dir = st.columns([1, 2, 1])
         with col_mapa:
             st.plotly_chart(fig_mapa, use_container_width=True, config={
                 "scrollZoom": False, "displayModeBar": False, "doubleClick": False,
