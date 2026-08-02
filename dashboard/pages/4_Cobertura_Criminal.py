@@ -46,6 +46,9 @@ ZONA_CORES = {
     "Centro-Oeste": "#76b7b2",
 }
 
+# Agregado da cauda de categorias. Definidos no nível do módulo porque são
+# usados em três blocos distintos — série, ranking de zonas e mapa.
+OUTROS = "__outros__"
 COR_OUTROS = "#6b7a82"   # distinto do cinza-claro de "Não classificado"
 
 PERIODOS = {
@@ -583,7 +586,6 @@ if not df_zonas.empty:
 
     # Grupos ordenados por volume; a cauda vira "Outros grupos". Onze categorias
     # numa legenda de uma linha ficavam ilegíveis e com cores confundíveis.
-    OUTROS = "__outros__"
     N_PRINCIPAIS = 7
     totais_grupo = pivot.sum().sort_values(ascending=False)
     principais = list(totais_grupo.head(N_PRINCIPAIS).index)
