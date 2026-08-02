@@ -589,7 +589,7 @@ if not df_zonas.empty:
                 # Choropleth não entra na legenda por padrão: espera barra de
                 # cores, desligada aqui porque a escala é categórica.
                 showlegend=True, legend="legend",
-                marker=dict(line=dict(width=0.7, color="white"), opacity=0.9),
+                marker=dict(line=dict(width=0.7, color="white"), opacity=0.72),
                 customdata=[[zona, d["grupo"], d["n"], d["total"]]] * len(locais),
                 hovertemplate=("<b>%{location}</b><br>Zona %{customdata[0]}"
                                "<br>Predominante: %{customdata[1]}"
@@ -609,15 +609,21 @@ if not df_zonas.empty:
         fig_mapa.update_layout(
             # white-bg: sem tiles, sem rios, sem rótulos do mapa-base. Só os
             # polígonos, como num mapa temático impresso.
-            mapbox=dict(style="white-bg",
-                        center=dict(lat=-3.0382, lon=-59.9981), zoom=11.5),
+            # carto-positron: mapa-base claro. O white-bg deixava a imagem
+            # limpa mas tirava toda a âncora geográfica — rio, nome da cidade,
+            # municípios vizinhos —, e quem não conhece Manaus ficava sem
+            # referência. Polígonos semitransparentes para o fundo aparecer.
+            mapbox=dict(style="carto-positron",
+                        center=dict(lat=-3.0382, lon=-59.9981), zoom=11.2),
             dragmode=False, height=620,
             legend=dict(title=dict(text="Zona"), orientation="v",
                         yanchor="top", y=0.99, xanchor="left", x=0.01,
-                        bgcolor="rgba(255,255,255,0.85)", font=dict(size=11)),
+                        bgcolor="rgba(255,255,255,0.92)", bordercolor="#d7dee2", borderwidth=1,
+                        font=dict(size=11)),
             legend2=dict(title=dict(text="Grupo predominante"), orientation="v",
                          yanchor="bottom", y=0.01, xanchor="left", x=0.01,
-                         bgcolor="rgba(255,255,255,0.85)", font=dict(size=11)),
+                         bgcolor="rgba(255,255,255,0.92)", bordercolor="#d7dee2", borderwidth=1,
+                         font=dict(size=11)),
             margin=dict(l=0, r=0, t=10, b=0),
         )
         col_esq, col_mapa, col_dir = st.columns([1, 6, 1])
