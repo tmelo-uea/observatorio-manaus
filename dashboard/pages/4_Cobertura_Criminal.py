@@ -63,6 +63,17 @@ def fmt_br(n) -> str:
     return f"{int(n):,}".replace(",", ".")
 
 
+def texto(md: str) -> None:
+    """Parágrafo explicativo no mesmo corpo da página de Análises.
+
+    st.caption renderiza pequeno e cinza-claro, adequado a nota de rodapé mas
+    não a texto que o leitor precisa ler para entender o gráfico.
+    """
+    st.markdown(
+        f'<div style="font-size:0.95rem;color:#374151;line-height:1.7;'
+        f'margin:2px 0 14px 0;">{md}</div>', unsafe_allow_html=True)
+
+
 @st.cache_resource
 def get_db():
     return get_engine()
@@ -242,25 +253,39 @@ def load_caracterizacao(versao: int, dias: int) -> dict:
 
 # ---------------------------------------------------------------- cabeçalho
 
-st.title("⚖️ Cobertura Criminal")
-st.caption(
-    "Quanto e como a imprensa do Amazonas noticia crimes. Esta página acompanha, ao "
-    "longo do tempo, quais crimes aparecem nas notícias, em que parte da cidade e com "
-    "que intensidade cada caso é coberto."
-)
+st.markdown("""
+<div style="
+    background: linear-gradient(135deg, #1a3a5c 0%, #1e6091 100%);
+    border-radius: 14px;
+    padding: 22px 32px;
+    margin-bottom: 20px;
+">
+    <div style="font-size: 1.6rem; font-weight: 800; color: #ffffff; margin-bottom: 8px;">
+        ⚖️ Cobertura Criminal
+    </div>
+    <div style="font-size: 0.95rem; color: #bfdbfe; line-height: 1.7;">
+        Quanto e como a imprensa do Amazonas noticia crimes. Cada matéria de
+        <strong style="color:#ffffff;">Segurança Pública</strong> e
+        <strong style="color:#ffffff;">Justiça e Direito</strong> é lida automaticamente,
+        que identifica a figura penal, a etapa do caso, quando e onde o fato ocorreu.
+        A página acompanha, ao longo do tempo, quais crimes aparecem nas notícias, em que
+        parte da cidade e com que intensidade cada assunto é coberto.
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 st.markdown("""
-<div style="background:#fdf6e3;border-left:4px solid #b5651d;border-radius:8px;
-            padding:14px 20px;margin:6px 0 18px 0;">
-    <div style="font-weight:700;color:#7c4a03;font-size:0.92rem;margin-bottom:4px;">
+<div style="background:#fdf6e3;border-left:5px solid #b5651d;border-radius:10px;
+            padding:18px 24px;margin:0 0 22px 0;">
+    <div style="font-weight:700;color:#7c4a03;font-size:1.02rem;margin-bottom:6px;">
         O que estes números são — e o que não são
     </div>
-    <div style="color:#5b4636;line-height:1.6;font-size:0.9rem;">
+    <div style="color:#5b4636;line-height:1.7;font-size:0.95rem;">
         Estes dados medem a <b>cobertura da imprensa</b>, não a criminalidade real.
         Crimes que não viraram notícia não aparecem aqui, e um mesmo crime muito
         noticiado pesa mais do que um crime pouco noticiado. Portanto os gráficos
-        respondem <i>"o que a imprensa publicou"</i>, e nunca <i>"quantos crimes
-        aconteceram"</i>. Para estatística criminal oficial, consulte a Secretaria de
+        respondem <i>“o que a imprensa publicou”</i>, e nunca <i>“quantos crimes
+        aconteceram”</i>. Para estatística criminal oficial, consulte a Secretaria de
         Segurança Pública do Amazonas.
     </div>
 </div>
@@ -288,24 +313,37 @@ municipio = None if escolha_mun == "Todos" else escolha_mun
 # ---------------------------------------------------------------- panorama
 
 pan = load_panorama(VERSAO, dias, municipio)
-c1, c2, c3, c4 = st.columns(4)
-c1.metric("Matérias sobre crime", fmt_br(pan["mencoes"]))
-c2.metric("Figuras penais distintas", fmt_br(pan["figuras"]))
-c3.metric("Veículos", fmt_br(pan["veiculos"]))
-c4.metric("Municípios", fmt_br(pan["municipios"]))
+cartoes = [
+    ("📰", "Matérias sobre crime", fmt_br(pan["mencoes"]), "no período selecionado"),
+    ("⚖️", "Figuras penais distintas", fmt_br(pan["figuras"]), "tipos identificados"),
+    ("🗞️", "Veículos", fmt_br(pan["veiculos"]), "portais, blogs e canais"),
+    ("📍", "Municípios", fmt_br(pan["municipios"]), "com fato localizado"),
+]
+html = ('<div style="display:grid;grid-template-columns:repeat(4,1fr);'
+        'gap:12px;margin-bottom:10px;">')
+for icone, rotulo, valor, sub in cartoes:
+    html += (
+        '<div style="background:#f8f9fa;border:1px solid #e5e7eb;'
+        'border-radius:10px;padding:16px 18px;">'
+        f'<div style="font-size:0.75rem;color:#6c757d;text-transform:uppercase;'
+        f'letter-spacing:0.04em;margin-bottom:8px;">{icone}&nbsp; {rotulo}</div>'
+        f'<div style="font-size:1.45rem;font-weight:700;color:#1a3a5c;'
+        f'line-height:1.2;">{valor}</div>'
+        f'<div style="font-size:0.85rem;color:#6c757d;margin-top:3px;">{sub}</div>'
+        '</div>')
+html += '</div>'
+st.markdown(html, unsafe_allow_html=True)
 
-st.caption(
-    "Cada matéria que noticia um crime gera um registro. Matérias diferentes sobre "
-    "o mesmo caso ainda são contadas separadamente — o agrupamento por ocorrência "
-    "está em desenvolvimento e é descrito na metodologia."
-)
+texto("Cada matéria que noticia um crime gera um registro. Matérias diferentes sobre "
+      "o mesmo caso ainda são contadas separadamente — o agrupamento por ocorrência "
+      "está em desenvolvimento e é descrito na metodologia.")
 
 st.divider()
 
 # ---------------------------------------------------------------- série temporal
 
 st.subheader("Evolução da cobertura")
-st.caption(
+texto(
     "Acompanhe o volume de matérias publicadas ao longo do tempo e a evolução dos "
     "principais grupos da classificação penal. Os dados representam cobertura "
     "jornalística e não correspondem ao número de crimes ou ocorrências distintas."
@@ -356,9 +394,8 @@ else:
     )
 
     if modo_serie == "Volume total":
-        st.markdown("**Evolução do volume de cobertura**")
-        st.caption("Quantidade de matérias sobre ocorrências criminais publicadas "
-                   "em cada semana.")
+        st.markdown("#### Evolução do volume de cobertura")
+        texto("Quantidade de matérias sobre ocorrências criminais publicadas em cada semana.")
         fig = go.Figure()
         fig.add_trace(go.Scatter(
             x=total_sem["semana"], y=total_sem["cnt"], mode="lines+markers",
@@ -394,10 +431,9 @@ else:
             return COR_OUTROS if g == OUTROS else GROUP_COLORS.get(g, "#95a5a6")
 
         if modo_serie == "Principais grupos":
-            st.markdown("**Evolução dos principais grupos da cobertura criminal**")
-            st.caption("Quantidade semanal de matérias nos grupos mais frequentes da "
-                       "classificação penal. Clique na legenda para ocultar ou exibir "
-                       "cada linha.")
+            st.markdown("#### Evolução dos principais grupos da cobertura criminal")
+            texto("Quantidade semanal de matérias nos grupos mais frequentes da classificação "
+                  "penal. Clique na legenda para ocultar ou exibir cada linha.")
             fig = go.Figure()
             for g in colunas:
                 fig.add_trace(go.Scatter(
@@ -409,9 +445,9 @@ else:
             st.plotly_chart(fig, use_container_width=True)
 
         else:
-            st.markdown("**Composição da cobertura por grupo criminal**")
-            st.caption("Participação percentual de cada grupo no total de matérias "
-                       "publicadas em cada semana.")
+            st.markdown("#### Composição da cobertura por grupo criminal")
+            texto("Participação percentual de cada grupo no total de matérias publicadas em "
+                  "cada semana.")
             pct = pv.div(tot.replace(0, 1), axis=0) * 100
             fig = go.Figure()
             for g in colunas:
@@ -436,7 +472,7 @@ else:
         )
 
 st.subheader("Figuras penais mais noticiadas")
-st.caption(
+texto(
     "Cada barra é um tipo penal, com o dispositivo legal correspondente. "
     "Matérias diferentes sobre o mesmo caso são contadas separadamente."
 )
@@ -475,9 +511,9 @@ df_zonas, zonas_total, zonas_com = load_zonas(VERSAO, dias, municipio)
 if not df_zonas.empty:
     st.subheader("Cobertura criminal por zona de Manaus")
     pct_zona = (100 * zonas_com / zonas_total) if zonas_total else 0
-    st.caption(
-        f"Das **{fmt_br(zonas_total)} matérias** do período, **{fmt_br(zonas_com)} "
-        f"({pct_zona:.0f}%)** informam bairro ou zona. Cada matéria é contada "
+    texto(
+        f"Das <b>{fmt_br(zonas_total)} matérias</b> do período, <b>{fmt_br(zonas_com)} "
+        f"({pct_zona:.0f}%)</b> informam bairro ou zona. Cada matéria é contada "
         "separadamente; o gráfico mede cobertura jornalística, não número de "
         "ocorrências nem concentração da criminalidade."
     )
@@ -551,8 +587,8 @@ if not df_zonas.empty:
     centros = carrega_centros_zonas()
     if geo:
         MIN_PARA_PINTAR = 20
-        st.markdown("**Grupo predominante na cobertura criminal por zona**")
-        st.caption(
+        st.markdown("#### Grupo predominante na cobertura criminal por zona")
+        texto(
             "A cor indica o grupo mais frequente nas matérias com localização "
             "identificável em cada zona. O mapa representa o perfil da cobertura "
             "jornalística, não a intensidade da criminalidade."
