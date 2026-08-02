@@ -67,12 +67,34 @@ def load_source_types():
 
 
 @st.cache_data(ttl=300)
-def load_articles(date_start, date_end):
+def load_articles(date_start, date_end, show_all, topic, source, source_type):
+    """Carrega as notícias do período JÁ FILTRADAS no banco.
+
+    O teto de 5.000 precisa incidir sobre o conjunto filtrado, não sobre o
+    período inteiro. Antes, a consulta trazia as 5.000 mais recentes de TODAS
+    as fontes e o filtro era aplicado depois, em pandas — em 30 dias, com cerca
+    de 1.200 notícias por dia, essas 5.000 cobriam só os últimos quatro dias.
+    Ao filtrar por um portal de baixo volume, sobrava quase nada: o I9 Brasil
+    tinha 25 notícias no mês e a página mostrava 1.
+    """
     engine = get_db()
     start_utc = datetime(date_start.year, date_start.month, date_start.day, 4, 0, 0)
     end_utc = datetime(date_end.year, date_end.month, date_end.day, 4, 0, 0) + timedelta(days=1)
+
+    filtros = ["a.published_at >= :start", "a.published_at < :end"]
+    params = {"start": start_utc, "end": end_utc}
+    if not show_all:
+        filtros.append("a.is_local = 1")
+    if topic:
+        filtros.append("t.name = :topic"); params["topic"] = topic
+    if source:
+        filtros.append("s.name = :source"); params["source"] = source
+    if source_type:
+        filtros.append("s.type = :stype"); params["stype"] = source_type
+    where = " AND ".join(filtros)
+
     with engine.connect() as conn:
-        result = conn.execute(text("""
+        result = conn.execute(text(f"""
             SELECT
                 a.id, a.title, a.url,
                 LEFT(a.summary, 500) AS summary,
@@ -82,10 +104,10 @@ def load_articles(date_start, date_end):
             FROM articles a
             JOIN sources s ON a.source_id = s.id
             LEFT JOIN topics t ON a.topic_id = t.id
-            WHERE a.published_at >= :start AND a.published_at < :end
+            WHERE {where}
             ORDER BY a.published_at DESC
             LIMIT 5000
-        """), {"start": start_utc, "end": end_utc})
+        """), params)
         df = pd.DataFrame(result.fetchall(), columns=result.keys())
     if not df.empty:
         df["published_at"] = pd.to_datetime(df["published_at"])
@@ -201,22 +223,17 @@ _sel_type = _type_reverse.get(tipo) if tipo != "Todos" else None
 
 # --- Carrega dados ---
 try:
-    df = load_articles(d_start, d_end)
+    df = load_articles(d_start, d_end, show_all, _sel_topic, _sel_source, _sel_type)
     daily_raw = load_daily_counts(d_start, d_end, show_all, _sel_topic, _sel_source, _sel_type)
 except Exception as e:
     st.error(f"Erro ao conectar ao banco de dados: {e}")
     st.stop()
 
+# Tema, fonte, tipo e localidade já vieram filtrados do banco, para que o teto
+# de 5.000 incidisse sobre o conjunto certo. Aqui resta só a palavra-chave, que
+# é procurada no texto já carregado.
 filtered = df.copy()
 if not filtered.empty:
-    if _sel_topic:
-        filtered = filtered[filtered["topic"] == _sel_topic]
-    if _sel_source:
-        filtered = filtered[filtered["source"] == _sel_source]
-    if _sel_type:
-        filtered = filtered[filtered["source_type"] == _sel_type]
-    if not show_all:
-        filtered = filtered[filtered["is_local"] == True]
     if busca:
         mask = (
             filtered["title"].str.contains(busca, case=False, na=False) |
