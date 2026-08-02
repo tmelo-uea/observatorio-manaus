@@ -46,6 +46,8 @@ ZONA_CORES = {
     "Centro-Oeste": "#76b7b2",
 }
 
+COR_OUTROS = "#6b7a82"   # distinto do cinza-claro de "Não classificado"
+
 PERIODOS = {
     "Últimos 30 dias": 30,
     "Últimos 90 dias": 90,
@@ -164,6 +166,18 @@ def carrega_bairros_geojson() -> dict:
     """
     caminho = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                            "data", "bairros_manaus.geojson")
+    try:
+        with open(caminho, encoding="utf8") as fh:
+            return json.load(fh)
+    except Exception:
+        return {}
+
+
+@st.cache_data
+def carrega_centros_zonas() -> dict:
+    """Centro aproximado de cada zona, para posicionar o rótulo no mapa."""
+    caminho = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                           "data", "zonas_manaus_centros.json")
     try:
         with open(caminho, encoding="utf8") as fh:
             return json.load(fh)
@@ -489,7 +503,7 @@ if not df_zonas.empty:
         "ocorrências nem concentração da criminalidade."
     )
 
-    modo = st.radio("Modo de exibição", ["Quantidade", "Composição percentual"],
+    modo = st.radio("Modo de exibição", ["Quantidade", "Composição (%)"],
                     horizontal=True, label_visibility="collapsed", key="modo_zona")
 
     pivot = df_zonas.pivot_table(index="zona", columns="crime_group",
@@ -511,13 +525,13 @@ if not df_zonas.empty:
     totais_zona = pivot.sum(axis=1)
     ordem_z = totais_zona.sort_values(ascending=True).index  # maior no topo
 
-    percentual = modo == "Composição percentual"
+    percentual = modo == "Composição (%)"
     plot = pivot.div(totais_zona.replace(0, 1), axis=0) * 100 if percentual else pivot
 
     fig_z = go.Figure()
     for grupo in pivot.columns:
         nome = "Outros grupos" if grupo == OUTROS else CRIME_GROUPS.get(grupo, grupo)
-        cor = "#adb5bd" if grupo == OUTROS else GROUP_COLORS.get(grupo, "#95a5a6")
+        cor = COR_OUTROS if grupo == OUTROS else GROUP_COLORS.get(grupo, "#95a5a6")
         abs_ = pivot.loc[ordem_z, grupo]
         pct = (abs_ / totais_zona[ordem_z].replace(0, 1) * 100)
         fig_z.add_trace(go.Bar(
@@ -548,20 +562,22 @@ if not df_zonas.empty:
                     y=1.02, xanchor="left", x=0, font=dict(size=11)),
         margin=dict(l=10, r=90, t=90, b=40),
         plot_bgcolor="#fafafa", yaxis_title="",
-        xaxis_title="% da cobertura da zona" if percentual else "Matérias",
+        xaxis_title=("% da cobertura da zona" if percentual
+                         else "Matérias com localização identificável"),
         xaxis=dict(range=[0, 100]) if percentual else {},
     )
     st.plotly_chart(fig_z, use_container_width=True)
 
     # ------------------------------------------------------------------ mapa
     geo = carrega_bairros_geojson()
+    centros = carrega_centros_zonas()
     if geo:
         MIN_PARA_PINTAR = 20
-        st.markdown("**Mapa das zonas e do grupo predominante**")
+        st.markdown("**Grupo predominante na cobertura criminal por zona**")
         st.caption(
-            "Cada zona tem uma cor. A segunda legenda diz qual grupo criminal mais "
-            "aparece na cobertura de cada zona — é o perfil do que a imprensa "
-            "noticia ali, não a intensidade da criminalidade."
+            "A cor indica o grupo mais frequente nas matérias com localização "
+            "identificável em cada zona. O mapa representa o perfil da cobertura "
+            "jornalística, não a intensidade da criminalidade."
         )
 
         dominante = {}
@@ -569,66 +585,79 @@ if not df_zonas.empty:
             serie = pivot.loc[zona]
             total = int(serie.sum())
             g = serie.idxmax()
-            nome_g = "Outros grupos" if g == OUTROS else CRIME_GROUPS.get(g, g)
+            n = int(serie.max())
+            sem_amostra = total < MIN_PARA_PINTAR
             dominante[zona] = {
-                "grupo": nome_g if total >= MIN_PARA_PINTAR else "amostra pequena",
-                "n": int(serie.max()), "total": total,
+                "slug": None if sem_amostra else g,
+                "grupo": ("amostra pequena" if sem_amostra else
+                          ("Outros grupos" if g == OUTROS else CRIME_GROUPS.get(g, g))),
+                "n": n, "total": total,
+                "pct_grupo": 100 * n / max(1, total),
             }
 
+        # A COR passa a codificar o GRUPO, com a mesma paleta do gráfico. Antes
+        # ela codificava a zona — informação que a posição no mapa já dá —, e o
+        # grupo ficava só em texto na legenda. Pior: quatro zonas com o mesmo
+        # grupo predominante apareciam em quatro cores distintas, escondendo o
+        # principal achado. Agora zonas com o mesmo perfil compartilham a cor.
+        def cor_do_grupo(slug):
+            if slug is None:
+                return "#c9d1d6"
+            if slug == OUTROS:
+                return COR_OUTROS
+            return GROUP_COLORS.get(slug, "#95a5a6")
+
         fig_mapa = go.Figure()
-        for zona, cor in ZONA_CORES.items():
+        vistos = set()
+        for zona in pivot.index:
             locais = [f["properties"]["bairro"] for f in geo["features"]
                       if f["properties"]["zona"] == zona]
             if not locais:
                 continue
-            d = dominante.get(zona, {"grupo": "sem registros", "n": 0, "total": 0})
+            d = dominante[zona]
+            cor = cor_do_grupo(d["slug"])
+            # uma entrada de legenda por GRUPO, não por zona
+            primeira = d["grupo"] not in vistos
+            vistos.add(d["grupo"])
             fig_mapa.add_trace(go.Choroplethmapbox(
                 geojson=geo, locations=locais, z=[1] * len(locais),
-                featureidkey="properties.bairro", name=zona,
+                featureidkey="properties.bairro", name=d["grupo"],
                 colorscale=[[0, cor], [1, cor]], showscale=False,
-                # Choropleth não entra na legenda por padrão: espera barra de
-                # cores, desligada aqui porque a escala é categórica.
-                showlegend=False,
-                marker=dict(line=dict(width=0.7, color="white"), opacity=0.72),
-                customdata=[[zona, d["grupo"], d["n"], d["total"]]] * len(locais),
-                hovertemplate=("<b>%{location}</b><br>Zona %{customdata[0]}"
+                showlegend=primeira, legendgroup=d["grupo"],
+                # linha interna discreta: os bairros de uma mesma zona devem ler
+                # como um bloco só, já que a análise é por zona
+                marker=dict(line=dict(width=0.3, color="rgba(255,255,255,0.55)"),
+                            opacity=0.78),
+                customdata=[[zona, d["grupo"], d["n"], d["total"], d["pct_grupo"]]] * len(locais),
+                hovertemplate=("<b>Zona %{customdata[0]}</b>"
+                               "<br>%{customdata[3]} matérias localizadas"
                                "<br>Predominante: %{customdata[1]}"
-                               "<br>%{customdata[2]} de %{customdata[3]} matérias"
-                               "<extra></extra>"),
+                               "<br>%{customdata[2]} matérias — %{customdata[4]:.0f}% "
+                               "da cobertura da zona<extra></extra>"),
             ))
 
-            # Segunda legenda: mesma cor da zona, dizendo o crime predominante.
-            # Traço sem geometria visível, existe só para gerar a entrada.
+        if centros:
+            # Sem a cor identificando a zona, o nome precisa estar no mapa.
+            # Texto puro: marcador de mapa não interpreta HTML.
+            rot = [(z, c) for z, c in centros.items() if z in pivot.index]
             fig_mapa.add_trace(go.Scattermapbox(
-                lat=[None], lon=[None], mode="markers",
-                marker=dict(size=12, color=cor),
-                name=f"{zona} · {d['grupo']}",
-                showlegend=True, legend="legend2", hoverinfo="skip",
+                lat=[c["lat"] for _, c in rot], lon=[c["lon"] for _, c in rot],
+                mode="text", text=[z for z, _ in rot],
+                textfont=dict(size=13, color="#1f2a30"),
+                hoverinfo="skip", showlegend=False,
             ))
 
         fig_mapa.update_layout(
-            # white-bg: sem tiles, sem rios, sem rótulos do mapa-base. Só os
-            # polígonos, como num mapa temático impresso.
-            # carto-positron: mapa-base claro. O white-bg deixava a imagem
-            # limpa mas tirava toda a âncora geográfica — rio, nome da cidade,
-            # municípios vizinhos —, e quem não conhece Manaus ficava sem
-            # referência. Polígonos semitransparentes para o fundo aparecer.
-            # ZOOM: o Mapbox GL usa tiles de 512px, não 256. Calcular com 256
-            # dá um nível a MAIS — e cada nível dobra a ampliação, então o mapa
-            # saía com o dobro do zoom necessário e a cidade aparecia cortada
-            # por mais que se aumentasse a margem. Aqui: 360/(512*2^z) graus por
-            # pixel, escolhendo o menor zoom entre o que a largura e a altura
-            # comportam, com 30% de folga.
+            # ZOOM: o Mapbox GL usa tiles de 512px, não 256. Calcular com 256 dá
+            # um nível a MAIS, e cada nível dobra a ampliação — era o motivo de o
+            # mapa cortar por mais que se aumentasse a margem.
             mapbox=dict(style="carto-positron",
-                        center=dict(lat=-3.0382, lon=-59.9981), zoom=10.6),
-            dragmode=False, height=700,
-            # Uma legenda só: ela já traz zona E crime predominante, então a
-            # legenda de zonas era repetição do mesmo par de informações.
-            legend2=dict(title=dict(text="Zona · grupo predominante na cobertura"),
-                         orientation="v", yanchor="bottom", y=0.01,
-                         xanchor="left", x=0.01,
-                         bgcolor="rgba(255,255,255,0.93)", bordercolor="#d7dee2",
-                         borderwidth=1, font=dict(size=11)),
+                        center=dict(lat=-3.0382, lon=-59.9981), zoom=10.8),
+            dragmode=False, height=820,
+            legend=dict(title=dict(text="Grupo predominante"), orientation="v",
+                        yanchor="bottom", y=0.01, xanchor="left", x=0.01,
+                        bgcolor="rgba(255,255,255,0.93)", bordercolor="#d7dee2",
+                        borderwidth=1, font=dict(size=11)),
             margin=dict(l=0, r=0, t=10, b=0),
         )
         col_esq, col_mapa, col_dir = st.columns([1, 2, 1])
@@ -638,10 +667,10 @@ if not df_zonas.empty:
             })
         st.caption(
             f"{len(geo['features'])} dos 64 bairros oficiais têm limite cartográfico "
-            "na base aberta usada (OpenStreetMap); os demais não aparecem. A divisão "
+            "na base aberta usada (OpenStreetMap); os demais não aparecem, e o vazio "
+            "indica ausência de limite mapeado, não ausência de cobertura. A divisão "
             "em zonas é a da Lei Municipal nº 1.401/2010. Zona com menos de "
-            f"{MIN_PARA_PINTAR} matérias no período não tem grupo predominante "
-            "informado."
+            f"{MIN_PARA_PINTAR} matérias no período fica em cinza."
         )
 
 # ---------------------------------------------------------------- rodapé
