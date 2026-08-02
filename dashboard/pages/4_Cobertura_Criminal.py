@@ -240,24 +240,6 @@ def load_caracterizacao(versao: int, dias: int) -> dict:
             "total": int(row[2] or 0), "com_dia": int(row[3] or 0)}
 
 
-@st.cache_data(ttl=120)
-def load_amostra(n: int = 10) -> pd.DataFrame:
-    with get_db().connect() as conn:
-        res = conn.execute(text("""
-            SELECT m.id, m.crime_type, m.stage, m.tentativa, m.occurred_on, m.occurred_precision,
-                   m.reported_on, m.municipio, m.zona, m.bairro,
-                   m.description, m.legal_ref, m.legal_cited_by_source,
-                   m.count_victims, m.count_suspects,
-                   m.event_id, a.title, a.url, s.name AS fonte
-            FROM crime_mentions m
-            JOIN articles a ON a.id = m.article_id
-            JOIN sources s  ON s.id = a.source_id
-            ORDER BY RAND()
-            LIMIT :n
-        """), {"n": n})
-        return pd.DataFrame(res.fetchall(), columns=res.keys())
-
-
 # ---------------------------------------------------------------- cabeçalho
 
 st.title("⚖️ Cobertura Criminal")
@@ -749,35 +731,6 @@ modo que a distribuição geográfica descreve onde a imprensa *localiza* os fat
             "noticia e com que precisão data os fatos."
         )
 
-    st.divider()
-    st.markdown("**Amostra de verificação** — comparar a extração com a matéria original")
-    st.caption(
-        "Dez registros sorteados aleatoriamente, com a matéria original ao lado. "
-        "Serve para conferir se a leitura automática corresponde ao que o texto diz."
-    )
-    if st.button("Sortear outra amostra"):
-        load_amostra.clear()
-    for _, r in load_amostra().iterrows():
-        st.markdown(f"**[{r['title']}]({r['url']})**  \n*{r['fonte']}*")
-        st.dataframe(pd.DataFrame({
-            "Campo": ["Figura penal", "Dispositivo", "Etapa", "Tentado?", "Data do fato",
-                      "Precisão da data", "Publicação", "Município", "Zona",
-                      "Bairro", "Vítimas", "Suspeitos", "Matéria cita enquadramento",
-                      "Caso agrupado"],
-            "Extraído": [
-                tipo_label(r["crime_type"]), r["legal_ref"] or "—", r["stage"],
-                {1: "tentado", 0: "consumado"}.get(r["tentativa"], "—"),
-                r["occurred_on"] or "não informada",
-                r["occurred_precision"] or "—", r["reported_on"],
-                r["municipio"] or "—", r["zona"] or "—", r["bairro"] or "—",
-                r["count_victims"] if r["count_victims"] is not None else "—",
-                r["count_suspects"] if r["count_suspects"] is not None else "—",
-                {1: "sim", 0: "não"}.get(r["legal_cited_by_source"], "—"),
-                f"#{r['event_id']}" if r["event_id"] else "—",
-            ],
-        }), use_container_width=True, hide_index=True)
-        st.caption(f"Descrição extraída: {r['description']}")
-        st.divider()
 
 st.caption(
     "Observatório de Manaus — LSI/UEA. Dados atualizados automaticamente a cada 30 minutos."
