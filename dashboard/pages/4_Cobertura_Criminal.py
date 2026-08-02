@@ -588,7 +588,7 @@ if not df_zonas.empty:
                 colorscale=[[0, cor], [1, cor]], showscale=False,
                 # Choropleth não entra na legenda por padrão: espera barra de
                 # cores, desligada aqui porque a escala é categórica.
-                showlegend=True, legend="legend",
+                showlegend=False,
                 marker=dict(line=dict(width=0.7, color="white"), opacity=0.72),
                 customdata=[[zona, d["grupo"], d["n"], d["total"]]] * len(locais),
                 hovertemplate=("<b>%{location}</b><br>Zona %{customdata[0]}"
@@ -614,19 +614,18 @@ if not df_zonas.empty:
             # municípios vizinhos —, e quem não conhece Manaus ficava sem
             # referência. Polígonos semitransparentes para o fundo aparecer.
             mapbox=dict(style="carto-positron",
-                        center=dict(lat=-3.0382, lon=-59.9981), zoom=11.2),
-            dragmode=False, height=620,
-            legend=dict(title=dict(text="Zona"), orientation="v",
-                        yanchor="top", y=0.99, xanchor="left", x=0.01,
-                        bgcolor="rgba(255,255,255,0.92)", bordercolor="#d7dee2", borderwidth=1,
-                        font=dict(size=11)),
-            legend2=dict(title=dict(text="Grupo predominante"), orientation="v",
-                         yanchor="bottom", y=0.01, xanchor="left", x=0.01,
-                         bgcolor="rgba(255,255,255,0.92)", bordercolor="#d7dee2", borderwidth=1,
-                         font=dict(size=11)),
+                        center=dict(lat=-3.0382, lon=-59.9981), zoom=11.6),
+            dragmode=False, height=700,
+            # Uma legenda só: ela já traz zona E crime predominante, então a
+            # legenda de zonas era repetição do mesmo par de informações.
+            legend2=dict(title=dict(text="Zona · grupo predominante na cobertura"),
+                         orientation="v", yanchor="bottom", y=0.01,
+                         xanchor="left", x=0.01,
+                         bgcolor="rgba(255,255,255,0.93)", bordercolor="#d7dee2",
+                         borderwidth=1, font=dict(size=11)),
             margin=dict(l=0, r=0, t=10, b=0),
         )
-        col_esq, col_mapa, col_dir = st.columns([1, 6, 1])
+        col_esq, col_mapa, col_dir = st.columns([1, 3, 1])
         with col_mapa:
             st.plotly_chart(fig_mapa, use_container_width=True, config={
                 "scrollZoom": False, "displayModeBar": False, "doubleClick": False,
