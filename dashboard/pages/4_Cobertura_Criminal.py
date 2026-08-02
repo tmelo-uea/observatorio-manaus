@@ -607,6 +607,10 @@ if not df_zonas.empty:
                 geojson=geo, locations=locais, z=[1] * len(locais),
                 featureidkey="properties.bairro", name=zona,
                 colorscale=[[0, cor], [1, cor]], showscale=False,
+                # Choropleth NÃO entra na legenda por padrão no Plotly: ele
+                # espera uma barra de cores, que aqui está desligada porque a
+                # escala é categórica. Sem isto o mapa fica sem legenda alguma.
+                showlegend=True,
                 marker=dict(line=dict(width=0.6, color="white"), opacity=0.72),
                 customdata=[[zona, d["grupo"], d["n"], d["total"]]] * len(locais),
                 hovertemplate=("<b>%{location}</b><br>Zona %{customdata[0]}"
@@ -616,20 +620,42 @@ if not df_zonas.empty:
             ))
 
         if centros:
+            # Rótulo traz zona E grupo predominante: com o mapa travado, o hover
+            # deixa de ser o único lugar onde essa informação existe.
             rot = [(z, c) for z, c in centros.items() if z in pivot.index]
+            textos = []
+            for z, _ in rot:
+                d = dominante.get(z, {})
+                g = d.get("grupo", "")
+                curto = {"Crimes contra a vida": "vida",
+                         "Crimes contra o patrimônio": "patrimônio",
+                         "Crimes contra a dignidade sexual": "dignidade sexual",
+                         "Lesão, ameaça e violência doméstica": "lesão e ameaça",
+                         "Crimes contra a liberdade pessoal": "liberdade",
+                         "Crimes contra a paz pública": "paz pública",
+                         "amostra pequena": "amostra pequena"}.get(g, g)
+                textos.append(f"<b>{z}</b><br>{curto}")
             fig_mapa.add_trace(go.Scattermapbox(
                 lat=[c["lat"] for _, c in rot], lon=[c["lon"] for _, c in rot],
-                mode="text", text=[z for z, _ in rot],
-                textfont=dict(size=13, color="#2f3b42"),
+                mode="text", text=textos,
+                textfont=dict(size=12, color="#22303a"),
                 hoverinfo="skip", showlegend=False,
             ))
 
         fig_mapa.update_layout(
-            mapbox=dict(style="carto-positron", center=dict(lat=-3.06, lon=-60.00), zoom=9.7),
+            mapbox=dict(style="carto-positron", center=dict(lat=-3.06, lon=-60.00),
+                        zoom=9.7),
+            dragmode=False,
             height=460, margin=dict(l=0, r=0, t=10, b=0),
             legend=dict(orientation="h", yanchor="bottom", y=1.01, xanchor="left", x=0),
         )
-        st.plotly_chart(fig_mapa, use_container_width=True)
+        st.plotly_chart(fig_mapa, use_container_width=True, config={
+            # Mapa TRAVADO: sem arrastar, sem zoom, sem barra de ferramentas.
+            # Comporta-se como figura fixa, mas sem o custo de gerar imagem
+            # (kaleido, CPU por carga) e sem perder o hover.
+            "scrollZoom": False, "displayModeBar": False, "doubleClick": False,
+            "dragmode": False,
+        })
         st.caption(
             f"{len(geo['features'])} dos 64 bairros oficiais têm limite cartográfico "
             "na base aberta usada (OpenStreetMap); os demais aparecem em branco. A "
