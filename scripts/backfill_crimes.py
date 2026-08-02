@@ -31,10 +31,18 @@ from nlp.crime_extractor import (
     extract_from_article,
 )
 
-# Estimativas para o dry-run. O prompt fixo (instruções + vocabulário de 61
-# figuras penais) mede ~5.400 caracteres; o texto do artigo entra truncado.
-# Divide-se por 4 para aproximar caracteres → tokens em português.
-PROMPT_FIXO_CHARS = 5400
+# Estimativas para o dry-run. O prompt fixo (instruções + vocabulário) é medido
+# de fato a cada execução, e não fixado como constante: ele já quase triplicou
+# desde a primeira versão, conforme as auditorias motivaram regras novas, e uma
+# constante desatualizada subestimaria o custo pela metade.
+def _prompt_fixo_chars() -> int:
+    from nlp.prompts import DEFAULT_PROMPTS as _DP
+    from nlp.crime_types import prompt_vocabulary as _pv
+    return len(_DP["crime.extract"].format(
+        vocabulario=_pv(), data_publicacao="01/01/2026", texto=""))
+
+
+PROMPT_FIXO_CHARS = _prompt_fixo_chars()
 SAIDA_TOKENS_EST = 300
 
 
