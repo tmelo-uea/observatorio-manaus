@@ -171,25 +171,6 @@ def carrega_bairros_geojson() -> dict:
         return {}
 
 
-@st.cache_data
-def carrega_centros_zonas() -> dict:
-    """Ponto central de cada zona de Manaus, para posicionar o mapa.
-
-    Calculado a partir dos limites de bairro do OpenStreetMap e do mapa
-    bairro→zona da Lei 1.401/2010. São CENTROS, não contornos: desenhar o
-    polígono de uma zona exigiria somar os polígonos de todos os seus bairros,
-    e o OSM não tem todos — falta o Jorge Teixeira, entre outros, o que abriria
-    um vazio no meio da Zona Leste. Marcador não tem esse problema.
-    """
-    caminho = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                           "data", "zonas_manaus_centros.json")
-    try:
-        with open(caminho, encoding="utf8") as fh:
-            return json.load(fh)
-    except Exception:
-        return {}
-
-
 @st.cache_data(ttl=300)
 def load_zonas(versao: int, dias: int, municipio: str | None):
     """Distribuição por zona MAIS o denominador.
@@ -574,17 +555,15 @@ if not df_zonas.empty:
 
     # ------------------------------------------------------------------ mapa
     geo = carrega_bairros_geojson()
-    centros = carrega_centros_zonas()
     if geo:
         MIN_PARA_PINTAR = 20
         st.markdown("**Mapa das zonas e do grupo predominante**")
         st.caption(
-            "Cada zona tem uma cor. Passe o mouse para ver o bairro e qual grupo "
-            "criminal mais aparece na cobertura daquela zona — é o perfil do que a "
-            "imprensa noticia ali, não a intensidade da criminalidade."
+            "Cada zona tem uma cor. A segunda legenda diz qual grupo criminal mais "
+            "aparece na cobertura de cada zona — é o perfil do que a imprensa "
+            "noticia ali, não a intensidade da criminalidade."
         )
 
-        # grupo predominante por zona, calculado sobre o período selecionado
         dominante = {}
         for zona in pivot.index:
             serie = pivot.loc[zona]
@@ -607,59 +586,49 @@ if not df_zonas.empty:
                 geojson=geo, locations=locais, z=[1] * len(locais),
                 featureidkey="properties.bairro", name=zona,
                 colorscale=[[0, cor], [1, cor]], showscale=False,
-                # Choropleth NÃO entra na legenda por padrão no Plotly: ele
-                # espera uma barra de cores, que aqui está desligada porque a
-                # escala é categórica. Sem isto o mapa fica sem legenda alguma.
-                showlegend=True,
-                marker=dict(line=dict(width=0.6, color="white"), opacity=0.72),
+                # Choropleth não entra na legenda por padrão: espera barra de
+                # cores, desligada aqui porque a escala é categórica.
+                showlegend=True, legend="legend",
+                marker=dict(line=dict(width=0.7, color="white"), opacity=0.9),
                 customdata=[[zona, d["grupo"], d["n"], d["total"]]] * len(locais),
                 hovertemplate=("<b>%{location}</b><br>Zona %{customdata[0]}"
-                               "<br>Predominante na zona: %{customdata[1]}"
+                               "<br>Predominante: %{customdata[1]}"
                                "<br>%{customdata[2]} de %{customdata[3]} matérias"
                                "<extra></extra>"),
             ))
 
-        if centros:
-            # Rótulo traz zona E grupo predominante: com o mapa travado, o hover
-            # deixa de ser o único lugar onde essa informação existe.
-            rot = [(z, c) for z, c in centros.items() if z in pivot.index]
-            textos = []
-            for z, _ in rot:
-                d = dominante.get(z, {})
-                g = d.get("grupo", "")
-                curto = {"Crimes contra a vida": "vida",
-                         "Crimes contra o patrimônio": "patrimônio",
-                         "Crimes contra a dignidade sexual": "dignidade sexual",
-                         "Lesão, ameaça e violência doméstica": "lesão e ameaça",
-                         "Crimes contra a liberdade pessoal": "liberdade",
-                         "Crimes contra a paz pública": "paz pública",
-                         "amostra pequena": "amostra pequena"}.get(g, g)
-                textos.append(f"<b>{z}</b><br>{curto}")
+            # Segunda legenda: mesma cor da zona, dizendo o crime predominante.
+            # Traço sem geometria visível, existe só para gerar a entrada.
             fig_mapa.add_trace(go.Scattermapbox(
-                lat=[c["lat"] for _, c in rot], lon=[c["lon"] for _, c in rot],
-                mode="text", text=textos,
-                textfont=dict(size=12, color="#22303a"),
-                hoverinfo="skip", showlegend=False,
+                lat=[None], lon=[None], mode="markers",
+                marker=dict(size=12, color=cor),
+                name=f"{zona} · {d['grupo']}",
+                showlegend=True, legend="legend2", hoverinfo="skip",
             ))
 
         fig_mapa.update_layout(
-            mapbox=dict(style="carto-positron", center=dict(lat=-3.06, lon=-60.00),
-                        zoom=9.7),
-            dragmode=False,
-            height=460, margin=dict(l=0, r=0, t=10, b=0),
-            legend=dict(orientation="h", yanchor="bottom", y=1.01, xanchor="left", x=0),
+            # white-bg: sem tiles, sem rios, sem rótulos do mapa-base. Só os
+            # polígonos, como num mapa temático impresso.
+            mapbox=dict(style="white-bg",
+                        center=dict(lat=-3.0382, lon=-59.9981), zoom=11.5),
+            dragmode=False, height=620,
+            legend=dict(title=dict(text="Zona"), orientation="v",
+                        yanchor="top", y=0.99, xanchor="left", x=0.01,
+                        bgcolor="rgba(255,255,255,0.85)", font=dict(size=11)),
+            legend2=dict(title=dict(text="Grupo predominante"), orientation="v",
+                         yanchor="bottom", y=0.01, xanchor="left", x=0.01,
+                         bgcolor="rgba(255,255,255,0.85)", font=dict(size=11)),
+            margin=dict(l=0, r=0, t=10, b=0),
         )
-        st.plotly_chart(fig_mapa, use_container_width=True, config={
-            # Mapa TRAVADO: sem arrastar, sem zoom, sem barra de ferramentas.
-            # Comporta-se como figura fixa, mas sem o custo de gerar imagem
-            # (kaleido, CPU por carga) e sem perder o hover.
-            "scrollZoom": False, "displayModeBar": False, "doubleClick": False,
-            "dragmode": False,
-        })
+        col_esq, col_mapa, col_dir = st.columns([1, 6, 1])
+        with col_mapa:
+            st.plotly_chart(fig_mapa, use_container_width=True, config={
+                "scrollZoom": False, "displayModeBar": False, "doubleClick": False,
+            })
         st.caption(
             f"{len(geo['features'])} dos 64 bairros oficiais têm limite cartográfico "
-            "na base aberta usada (OpenStreetMap); os demais aparecem em branco. A "
-            "divisão em zonas é a da Lei Municipal nº 1.401/2010. Zona com menos de "
+            "na base aberta usada (OpenStreetMap); os demais não aparecem. A divisão "
+            "em zonas é a da Lei Municipal nº 1.401/2010. Zona com menos de "
             f"{MIN_PARA_PINTAR} matérias no período não tem grupo predominante "
             "informado."
         )
