@@ -1,4 +1,6 @@
+import html
 import re
+import unicodedata
 
 import streamlit as st
 import matplotlib.pyplot as plt
@@ -50,6 +52,8 @@ STOPWORDS = {
     "sábado", "sabado", "domingo", "feira",
     # palavras em inglês que escapam
     "the", "and", "for", "this", "that", "with",
+    # entidades HTML residuais
+    "nbsp", "amp", "quot", "apos",
     # referências de localização/transmissão genéricas
     "horário", "horario", "brasília", "brasilia",
     "primeiro", "segunda", "terceiro",
@@ -65,9 +69,12 @@ STOPWORDS = {
 
 def clean_text(series):
     def clean(t):
+        t = html.unescape(t)                      # &nbsp; → espaço, &amp; → &
+        t = unicodedata.normalize("NFC", t)        # recompõe caracteres decompostos (ex: "três" quebrando em "trê")
         t = re.sub(r"<[^>]+>", " ", t)           # remove tags HTML
         t = re.sub(r"https?://\S+", " ", t)       # remove URLs completas
         t = re.sub(r"\bhttps?\b", " ", t)         # remove http/https soltos
+        t = re.sub(r"&\w+;", " ", t)              # entidades HTML residuais
         t = re.sub(r"\b\w*\d\w*\b", " ", t)       # remove tokens com números
         t = re.sub(r"\b\w{1,2}\b", " ", t)        # remove palavras de 1-2 letras
         return t
