@@ -26,7 +26,14 @@ _engine = None
 def get_engine():
     global _engine
     if _engine is None:
-        _engine = create_engine(_build_url(), pool_pre_ping=True)
+        # connect/read/write_timeout: sem isso, um commit/query preso numa
+        # conexão MySQL travada bloqueia o job() inteiro indefinidamente
+        # (mesma classe de bug do incidente 2026-08-13/17, do lado do RSS).
+        _engine = create_engine(
+            _build_url(),
+            pool_pre_ping=True,
+            connect_args={"connect_timeout": 10, "read_timeout": 30, "write_timeout": 30},
+        )
     return _engine
 
 class Base(DeclarativeBase):

@@ -21,7 +21,11 @@ def fetch_feed(url: str):
         resp.raise_for_status()
         return feedparser.parse(resp.content), None
     except Exception as e:
-        return feedparser.parse(url), str(e)
+        # Não usar feedparser.parse(url) aqui: se requests já falhou (inclusive
+        # por timeout), deixar o feedparser buscar a URL por conta própria é
+        # sem timeout algum (sem socket.setdefaulttimeout global no projeto),
+        # e pode travar o job() inteiro por dias (incidente 2026-08-13/17).
+        return feedparser.parse(""), str(e)
 
 
 def parse_date(entry) -> datetime | None:
