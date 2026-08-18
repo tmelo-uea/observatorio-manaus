@@ -1,3 +1,4 @@
+import re
 import feedparser
 import requests
 from datetime import datetime, timezone
@@ -5,6 +6,22 @@ from email.utils import parsedate_to_datetime
 from sqlalchemy.exc import IntegrityError
 from db.connection import get_session
 from db.models import Source, Article
+
+_DATA_URI_RE = re.compile(r"data:[a-zA-Z0-9/+.-]+;base64,[A-Za-z0-9+/=]+")
+_SUMMARY_MAX_BYTES = 60_000  # coluna summary é TEXT (limite real 65.535 bytes)
+
+
+def _clean_summary(raw: str) -> str:
+    """Remove data URIs embutidos (ex: imagem em base64 colada no HTML) e
+    garante que o resultado cabe na coluna TEXT. Achado no feed da UFAM:
+    um resumo de 385KB (imagem em base64) derrubava o INSERT com
+    DataError, e a exceção não tratada por entrada travava a coleta das
+    entradas seguintes do MESMO feed no MESMO ciclo."""
+    text = _DATA_URI_RE.sub("", raw or "")
+    encoded = text.encode("utf-8")
+    if len(encoded) > _SUMMARY_MAX_BYTES:
+        text = encoded[:_SUMMARY_MAX_BYTES].decode("utf-8", errors="ignore")
+    return text
 
 _HEADERS = {
     "User-Agent": (
@@ -61,7 +78,7 @@ def collect_source(source: Source) -> int:
             article = Article(
                 title=entry.get("title", "")[:500],
                 url=entry.get("link", "")[:767],
-                summary=entry.get("summary", ""),
+                summary=_clean_summary(entry.get("summary", "")),
                 published_at=parse_date(entry),
                 source_id=source.id,
             )
