@@ -320,17 +320,23 @@ def _keyword_match(text: str) -> bool | None:
 
 
 def _groq_classify(text: str) -> bool:
-    """Usa Groq para classificar casos ambíguos."""
-    api_key = os.getenv("GROQ_API_KEY")
+    """Usa OpenAI para classificar casos ambíguos.
+
+    Groq descontinuou llama-3.1-8b-instant (2026-08-18, toda a família
+    Llama-instant saiu da conta) — migrado para gpt-4o-mini, já usado em
+    nlp/summarizer.py, que também não tem teto diário de tokens (o Groq 8b
+    tinha 500k TPD, quase todo consumido pela operação normal).
+    """
+    api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         return False
     try:
-        from groq import Groq
+        from openai import OpenAI
         from nlp.prompts import render
-        client = Groq(api_key=api_key)
+        client = OpenAI(api_key=api_key)
         prompt = render("is_local", text=text[:500])
         response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=5,
             temperature=0,
@@ -338,7 +344,7 @@ def _groq_classify(text: str) -> bool:
         answer = response.choices[0].message.content.strip().lower()
         return answer.startswith("sim")
     except Exception as e:
-        print(f"  [Groq local_classifier] Erro: {e}")
+        print(f"  [OpenAI local_classifier] Erro: {e}")
         return False
 
 

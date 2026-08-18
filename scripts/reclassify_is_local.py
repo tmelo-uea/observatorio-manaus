@@ -6,11 +6,11 @@ Necessário após remover keywords de nlp/local_classifier.py: o pipeline normal
 True->False. Logo, falsos positivos antigos (marcados local por uma keyword que
 foi removida) ficam presos como is_local=True. Este script os corrige.
 
-Estratégia (segura quanto a custo/limite do Groq):
+Estratégia (segura quanto a custo/limite da API):
   - is_local=True que AINDA casa alguma keyword  -> mantém True (sem LLM).
-  - is_local=True que NÃO casa mais nenhuma keyword -> reavalia via LLM:
+  - is_local=True que NÃO casa mais nenhuma keyword -> reavalia via LLM (OpenAI gpt-4o-mini):
         LLM "não" -> False ; LLM "sim" -> mantém True.
-        Em erro/429 do Groq, PARA com segurança (artigo intacto) e reporta;
+        Em erro/429/cota, PARA com segurança (artigo intacto) e reporta;
         basta re-rodar depois para continuar de onde parou.
   - --max-llm limita as chamadas por execução para não estourar o budget diário.
 
@@ -33,7 +33,7 @@ from nlp.local_classifier import _keyword_match
 
 
 class DailyLimitReached(Exception):
-    """Limite diário (TPD/RPD) do Groq — não adianta retry hoje."""
+    """Cota/limite diário do provedor LLM — não adianta retry hoje."""
 
 
 def _article_text(a) -> str:
@@ -41,12 +41,14 @@ def _article_text(a) -> str:
 
 
 def _llm_call(text: str) -> bool:
-    from groq import Groq
+    # Migrado de Groq llama-3.1-8b-instant (descontinuado pela Groq em 2026-08-18)
+    # para OpenAI gpt-4o-mini, já usado em nlp/local_classifier.py e nlp/summarizer.py.
+    from openai import OpenAI
     from nlp.prompts import render
-    client = Groq(api_key=os.environ["GROQ_API_KEY"])
+    client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
     prompt = render("is_local", text=text[:500])
     resp = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
+        model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
         max_tokens=5,
         temperature=0,
@@ -58,7 +60,7 @@ def _llm_is_local(text: str, max_retries: int = 4) -> bool:
     """Reavalia via LLM com retry/backoff em rate limit por minuto.
 
     - 429 por minuto (RPM/TPM): espera e tenta de novo (até max_retries).
-    - Limite diário (TPD/RPD, mensagem 'per day'): levanta DailyLimitReached.
+    - Cota/limite diário (mensagem 'insufficient_quota' ou 'per day'): levanta DailyLimitReached.
     - Outros erros: propaga.
     """
     for attempt in range(max_retries):
@@ -66,7 +68,7 @@ def _llm_is_local(text: str, max_retries: int = 4) -> bool:
             return _llm_call(text)
         except Exception as e:
             msg = str(e).lower()
-            if "per day" in msg or "tpd" in msg or "rpd" in msg:
+            if "insufficient_quota" in msg or "per day" in msg or "tpd" in msg or "rpd" in msg:
                 raise DailyLimitReached(str(e))
             if "rate_limit" in msg or "429" in msg or "too many requests" in msg:
                 wait = 15 * (attempt + 1)
