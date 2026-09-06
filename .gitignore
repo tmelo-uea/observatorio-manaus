@@ -7,3 +7,4 @@ venv/
 *.egg-info/
 .streamlit/secrets.toml
 backups/
+instagram/output/
