@@ -378,6 +378,18 @@ def build_caption(ref_date: date, topics: list[dict]) -> str:
 # Orquestração
 # ---------------------------------------------------------------------------
 
+def render_carousel(ref_date: date, data: dict) -> tuple[list[Image.Image], str]:
+    """Renderiza as imagens e a legenda a partir de um `data` já resolvido
+    (mesmo formato de fetch_card_data / load_card_data_from_json / SAMPLE_DATA).
+    Usado tanto pelo CLI (`generate`) quanto pela publicação automática
+    (`instagram/publish.py`), que não passa pelo disco — grava direto no banco."""
+    images = [render_cover(ref_date)]
+    images += [render_topic_card(topic, i) for i, topic in enumerate(data["topics"])]
+    images.append(render_closing(ref_date))
+    caption = build_caption(ref_date, data["topics"])
+    return images, caption
+
+
 def generate(ref_date: date | None = None, out_dir: str | None = None, use_sample: bool = False,
              from_json: str | None = None):
     if use_sample:
@@ -396,12 +408,10 @@ def generate(ref_date: date | None = None, out_dir: str | None = None, use_sampl
             f"como {sorted(EXCLUDED_TOPIC_SLUGS)}). Use --sample para pré-visualizar com dados de exemplo."
         )
 
+    images, caption = render_carousel(ref_date, data)
+
     out_dir = out_dir or os.path.join(os.path.dirname(__file__), "output", ref_date.isoformat())
     os.makedirs(out_dir, exist_ok=True)
-
-    images = [render_cover(ref_date)]
-    images += [render_topic_card(topic, i) for i, topic in enumerate(data["topics"])]
-    images.append(render_closing(ref_date))
 
     paths = []
     for i, img in enumerate(images, start=1):
@@ -411,7 +421,7 @@ def generate(ref_date: date | None = None, out_dir: str | None = None, use_sampl
 
     caption_path = os.path.join(out_dir, "legenda.txt")
     with open(caption_path, "w", encoding="utf-8") as f:
-        f.write(build_caption(ref_date, data["topics"]))
+        f.write(caption)
 
     if data["general_summary"]:
         print("\nResumo geral do dia (referência editorial — NÃO entra na legenda automaticamente):")

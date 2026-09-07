@@ -84,6 +84,38 @@ class DigestLog(Base):
     sent_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
+class InstagramCard(Base):
+    """Uma imagem do carrossel diário, em bytes, para o serviço `bot` (que tem
+    domínio público) servir por HTTP — a API do Instagram só aceita
+    `image_url`, não upload direto, e o worker que gera as imagens não tem
+    domínio público próprio."""
+    __tablename__ = "instagram_cards"
+    __table_args__ = (UniqueConstraint("date", "position", name="uq_instagram_card_date_position"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    date: Mapped[date] = mapped_column(Date, nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)  # 1..5, ordem no carrossel
+    image_data: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class InstagramPostLog(Base):
+    """Registra a publicação automática do carrossel diário no Instagram.
+
+    A UniqueConstraint em `date` é o que impede publicar duas vezes no mesmo
+    dia se o ciclo de coleta rodar de novo (a cada 30 min).
+    """
+    __tablename__ = "instagram_post_logs"
+    __table_args__ = (UniqueConstraint("date", name="uq_instagram_post_date"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    date: Mapped[date] = mapped_column(Date, nullable=False)
+    media_id: Mapped[str] = mapped_column(String(60), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="published")  # published | failed
+    error: Mapped[str] = mapped_column(Text, nullable=True)
+    posted_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
 class DailySummary(Base):
     __tablename__ = "daily_summaries"
     __table_args__ = (UniqueConstraint("date", "topic_id", name="uq_summary_date_topic"),)

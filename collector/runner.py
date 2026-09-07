@@ -31,6 +31,7 @@ from notifications.email_sender import run_digest
 from nlp.adjective_extractor import run_adjective_extraction
 from nlp.writing_metrics import run_writing_metrics, run_writing_insight
 from nlp.crime_extractor import run_crime_extraction
+from instagram.publish import run_instagram_publish
 
 Base.metadata.create_all(get_engine())
 run_migrations()
@@ -81,6 +82,7 @@ def job():
     _safe("run_daily_summary", run_daily_summary)
     _safe("run_topic_summaries", run_topic_summaries, min_articles=5)
     _safe("run_digest", run_digest)
+    _safe("run_instagram_publish", run_instagram_publish)
     _safe("run_adjective_extraction", run_adjective_extraction)
     _safe("run_writing_metrics", run_writing_metrics)
     _safe("run_writing_insight_source", run_writing_insight, "source")

@@ -51,6 +51,30 @@ async def health():
     return {"status": "ok", "service": "whatsapp-bot"}
 
 
+@app.get("/instagram/{date}/{position}.png")
+async def instagram_card(date: str, position: int):
+    """Serve uma imagem do carrossel diário do Instagram (gerada e salva no
+    banco pelo worker) — a API de publicação do Instagram busca as imagens
+    por essa URL pública, já que ela não aceita upload direto de arquivo."""
+    from datetime import date as date_cls
+    from db.connection import get_session
+    from db.models import InstagramCard
+
+    try:
+        ref_date = date_cls.fromisoformat(date)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Data inválida")
+
+    session = get_session()
+    try:
+        card = session.query(InstagramCard).filter_by(date=ref_date, position=position).first()
+        if not card:
+            raise HTTPException(status_code=404, detail="Card não encontrado")
+        return Response(content=card.image_data, media_type="image/png")
+    finally:
+        session.close()
+
+
 @app.post("/push/test")
 async def push_test(request: Request):
     """Dispara o push do boletim imediatamente (uso interno/testes)."""
