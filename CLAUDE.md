@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-**Observatório de Manaus** is an automated news monitoring platform for Manaus and Amazonas. It collects articles from 40+ RSS feeds (news portals, blogs, YouTube channels, government agencies), classifies them by topic and locality, and displays them in a Streamlit dashboard. Daily email digests are sent to subscribers.
+**Observatório de Manaus** is an automated news monitoring platform for Manaus and Amazonas. It collects articles from 40+ RSS feeds (news portals, blogs, YouTube channels, government agencies), classifies them by topic and locality, and displays them in a Streamlit dashboard. Daily email digests are sent to subscribers, and daily summary carousels are published to Instagram/Facebook.
 
 The system runs on **Railway** with two services:
 - **Web**: Streamlit dashboard
@@ -119,6 +119,21 @@ All timestamps stored in UTC; dashboard converts to Manaus time (UTC−4).
 - **`pages/2_Sobre.py`** — institution info, source list, email signup form
 - **`components/summary_card.py`** — reusable UI card for AI-generated summaries
 
+### Instagram Publishing (`instagram/`)
+- **`generate_cards.py`** — deterministic carousel generator (no LLM calls at render time): reads `daily_summaries` (general + per-topic), picks the top 3 topics by article count — **excluding `seguranca-publica`**, which requires human review before publication (see "Editorial safety" below) — and renders a 5-image carousel (1080×1350: cover, up to 3 topic cards, closing card) plus a caption, using PIL and the brand palette (navy `#0A2238`, forest green, cream, gold, terracotta). Uses the `DejaVuSans` font bundled with `matplotlib` (already a dependency) instead of shipping a font file.
+  - `--sample` — preview with example data, no DB needed
+  - `--date AAAA-MM-DD` — real data for a given day (needs direct DB access)
+  - `--from-json path.json` — load pre-fetched data (`date`, `general_summary`, `topics`) instead of querying the DB directly; used when the production DB is only reachable via `railway ssh -s coletor` (see Database note below)
+- **`assets/`** — brand logomark: `logomark-1024.png` (opaque navy square, used as the account profile photo) and `logomark-transparent.png` (composited into cards)
+- **`prototypes/`** — original editorial pilot (`manaus-em-resumo-2026-06-05.md` + concept art) that defined the visual identity and the "Editorial safety" rule below
+- **`output/<date>/`** — generated cards + `legenda.txt` (caption); gitignored, regenerated on demand
+
+**Accounts:** Instagram `@observatorio.manaus` (Business account) and Facebook Page "Observatório de Manaus", linked to each other in one Meta Business Portfolio. Profile photo on both is the WhatsApp bot mascot (`static/whatsapp_bot_icon.png`), for visual consistency across channels.
+
+**Publishing is currently manual** — no Instagram Graph API integration (would require Meta App Review + Business verification). Cards are generated locally, then uploaded through the Instagram web UI as a carousel post with the generated caption.
+
+**Editorial safety:** `generate_cards.py` never auto-selects the `seguranca-publica` (Segurança Pública) topic for cards or caption, and the caption is built only from the already-filtered topic summaries — never from the raw daily `general_summary` (which isn't topic-filtered and could otherwise leak crime/minor-related content excluded from the cards). Crime, missing-persons and similar sensitive stories require a human to review and write that content manually before it goes out.
+
 ### Email Digest (`notifications/email_sender.py`)
 - **Strategy:** Sendgrid API (preferred for Railway) with Brevo REST API as fallback
 - **Trigger:** runs at end of collection cycle; only sends if daily summaries exist
@@ -127,6 +142,13 @@ All timestamps stored in UTC; dashboard converts to Manaus time (UTC−4).
 - **Logging:** `DigestLog` table tracks sent date + recipient count
 
 ## Important Notes
+
+### Production database access
+
+`.env`'s `MYSQL_HOST` (`mysql-production-f527.up.railway.app`) is **not reachable from most local/sandboxed dev environments** — only from inside Railway's network. If a direct connection times out:
+- Use the Railway CLI to run a query inside the `coletor` (worker) service, which already has DB access: `railway ssh -s coletor -- python3 -c "..."` (the working directory is the repo root, so `from db.connection import get_session` etc. just works).
+- For `instagram/generate_cards.py`, fetch the data that way and save it as JSON, then run the generator locally with `--from-json`.
+- The `mysql-volume` has run close to capacity before (87% in September 2026) — `articles.content` (full article body, used by `nlp/crime_extractor.py`) is the largest column by far. No retention/cleanup job exists; if the volume fills up again, the project owner's preference has been to upgrade the Railway volume rather than prune data — don't delete rows or null out columns without asking first.
 
 ### Email / Digest System
 
@@ -171,6 +193,7 @@ Deploy on push to `main` branch (GitHub integration).
 
 ## Recent Changes
 
+- **September 2026:** Instagram/Facebook publishing added — accounts created (`@observatorio.manaus`, linked Facebook Page), brand logomark designed, and `instagram/generate_cards.py` built to render daily summary carousels. Publishing itself is manual for now.
 - **May 2026:** Email digest refactored to use REST APIs (Sendgrid primary, Brevo fallback) instead of SMTP for better Railway reliability
 - **May 2026:** Documentation added (`SENDGRID_SETUP.md`, `BREVO_TROUBLESHOOTING.md`, `DEPLOYMENT.md`)
 
@@ -185,6 +208,7 @@ Deploy on push to `main` branch (GitHub integration).
 | Scraping | feedparser, beautifulsoup4, yt-dlp |
 | NLP / Summarization | Groq (llama-3.1-8b-instant, whisper-large-v3) |
 | Charting | Plotly, matplotlib (word cloud) |
+| Image generation | Pillow (Instagram cards, `instagram/generate_cards.py`) |
 | Email | Sendgrid or Brevo REST APIs |
 | Scheduling | schedule (collection), apscheduler (digest) |
 | Hosting | Railway (MySQL + Python app) |

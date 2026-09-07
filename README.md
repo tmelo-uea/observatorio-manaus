@@ -80,6 +80,11 @@ Uma iniciativa do **LSI — Laboratório de Sistemas Inteligentes** da **Univers
 - Card de resumo diário com IA, mostrando fontes consultadas
 - Cards de resumo por tema com contadores de notícias hoje / semana / total
 
+### Publicação no Instagram
+- Gerador de cards (`instagram/generate_cards.py`) que transforma os resumos diários num carrossel de 5 imagens, sem nenhuma chamada de IA na renderização — só reaproveita os resumos já gerados
+- Exclui automaticamente o tema Segurança Pública da seleção (crimes, casos de menores etc. exigem revisão humana antes de publicar)
+- Publicação hoje é manual — sem integração com a API do Instagram
+
 ---
 
 ## Temas classificados
@@ -147,6 +152,11 @@ observatorio-manaus/
 │   ├── classifier.py        # Classificador de temas por palavras-chave
 │   ├── local_classifier.py  # Classificador de localidade (700+ keywords + Groq)
 │   └── summarizer.py        # Geração de resumos diários via Groq
+├── instagram/
+│   ├── generate_cards.py    # Gerador determinístico do carrossel diário
+│   ├── assets/               # Logomark (perfil + composição nos cards)
+│   ├── prototypes/           # Piloto editorial e identidade visual
+│   └── output/                # Cards gerados por data (gitignored)
 ├── scripts/
 │   └── backfill_transcripts.py  # Preenche transcrições retroativas (limit por ciclo)
 ├── Procfile                 # Comando de start para Railway
@@ -221,6 +231,7 @@ observatorio-manaus/
 | NLP / IA | Groq (`llama-3.1-8b-instant`) |
 | Gráficos | Plotly |
 | Nuvem de palavras | WordCloud + matplotlib |
+| Cards do Instagram | Pillow (PIL) |
 | Hospedagem | Railway (web + worker) |
 | Versionamento | GitHub |
 
@@ -325,6 +336,36 @@ python scripts/test_digest.py
 | Email não chegou | Verifique spam, confirme remetente (`BREVO_SENDER_EMAIL`) é autorizado no Brevo |
 | "Apenas N resumos disponíveis — sem envio" | Aguarde o coletor executar (a cada 30 min) e gerar resumos |
 | Erro SMTP no log | Verifique credenciais SMTP (`BREVO_SMTP_LOGIN` e `BREVO_API_KEY`) |
+
+---
+
+## Publicação no Instagram e Facebook
+
+O Observatório também publica um carrossel diário — "Manaus em resumo" — no Instagram ([@observatorio.manaus](https://www.instagram.com/observatorio.manaus/)) e na Página vinculada do Facebook, gerado a partir dos mesmos resumos por tema exibidos no dashboard.
+
+### Gerador de cards
+
+```bash
+# Pré-visualizar com dados de exemplo, sem precisar de banco
+python instagram/generate_cards.py --sample
+
+# Gerar com os dados reais de uma data (precisa de acesso ao MySQL de produção)
+python instagram/generate_cards.py --date 2026-09-06
+
+# Gerar a partir de dados já buscados (ex.: via `railway ssh`, quando o
+# banco de produção não está acessível diretamente)
+python instagram/generate_cards.py --from-json dados.json
+```
+
+Cada execução gera 5 imagens (1080×1350: capa, até 3 temas, encerramento) e uma legenda (`legenda.txt`) em `instagram/output/<data>/`.
+
+### Regra editorial
+
+O tema **Segurança Pública** nunca é selecionado automaticamente para os cards nem para a legenda — casos de crime, desaparecimentos e situações envolvendo menores exigem revisão humana antes de qualquer publicação (ver `instagram/prototypes/manaus-em-resumo-2026-06-05.md`). A legenda é montada só a partir dos resumos por tema já filtrados, nunca do resumo geral do dia (que não passa por esse filtro).
+
+### Publicação
+
+Hoje o processo é **manual**: os cards são gerados localmente e enviados como um post carrossel pela própria interface do Instagram, junto com a legenda gerada. Não há integração com a API do Instagram (Graph API) — isso exigiria verificação da conta como empresa e App Review da Meta.
 
 ---
 
