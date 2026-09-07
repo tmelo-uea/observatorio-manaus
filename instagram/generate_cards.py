@@ -122,6 +122,27 @@ def fetch_card_data(ref_date: date) -> dict:
         session.close()
 
 
+def _select_topics(topics: list[dict]) -> list[dict]:
+    """Aplica a mesma regra de exclusão/ranking de fetch_card_data, mas em
+    memória — usado pelo caminho --from-json, quando os dados já vieram de
+    fora (ex.: uma consulta rodada via `railway ssh` no worker, para os casos
+    em que o banco de produção não está acessível diretamente daqui)."""
+    eligible = [t for t in topics if t.get("slug") not in EXCLUDED_TOPIC_SLUGS]
+    eligible.sort(key=lambda t: t["article_count"], reverse=True)
+    return eligible[:MAX_CONTENT_CARDS]
+
+
+def load_card_data_from_json(path: str) -> dict:
+    import json
+    with open(path, encoding="utf-8") as f:
+        raw = json.load(f)
+    return {
+        "date": date.fromisoformat(raw["date"]),
+        "general_summary": raw.get("general_summary"),
+        "topics": _select_topics(raw["topics"]),
+    }
+
+
 # Dados de amostra para pré-visualizar o template sem acesso ao banco de
 # produção (baseados no piloto editorial de 2026-06-05).
 SAMPLE_DATA = {
@@ -220,7 +241,7 @@ def render_cover(ref_date: date) -> Image.Image:
     tagline_font = font_regular(34)
     TAGLINE_GAP, TAGLINE_LH = 50, 46
 
-    title = "MANAUS\nEM\nRESUMO"
+    title = "OBSERVATÓRIO\nMANAUS"
     title_box = draw.multiline_textbbox((0, 0), title, font=title_font, spacing=14)
     title_h = title_box[3] - title_box[1]
     date_box = draw.textbbox((0, 0), _data_abrev(ref_date), font=date_font)
@@ -357,9 +378,13 @@ def build_caption(ref_date: date, topics: list[dict]) -> str:
 # Orquestração
 # ---------------------------------------------------------------------------
 
-def generate(ref_date: date | None = None, out_dir: str | None = None, use_sample: bool = False):
+def generate(ref_date: date | None = None, out_dir: str | None = None, use_sample: bool = False,
+             from_json: str | None = None):
     if use_sample:
         data = SAMPLE_DATA
+        ref_date = data["date"]
+    elif from_json:
+        data = load_card_data_from_json(from_json)
         ref_date = data["date"]
     else:
         ref_date = ref_date or _manaus_today()
@@ -404,10 +429,15 @@ if __name__ == "__main__":
     parser.add_argument("--date", type=str, help="Data de referência (AAAA-MM-DD). Padrão: hoje (horário de Manaus).")
     parser.add_argument("--out-dir", type=str, help="Diretório de saída.")
     parser.add_argument("--sample", action="store_true", help="Usa dados de exemplo (pré-visualização sem banco).")
+    parser.add_argument("--from-json", type=str,
+                         help="Carrega os dados de um JSON já buscado (date, general_summary, topics) em vez de "
+                              "consultar o banco diretamente — útil quando o banco de produção só é alcançável "
+                              "via `railway ssh`.")
     args = parser.parse_args()
 
     generate(
         ref_date=date.fromisoformat(args.date) if args.date else None,
         out_dir=args.out_dir,
         use_sample=args.sample,
+        from_json=args.from_json,
     )
