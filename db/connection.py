@@ -181,4 +181,24 @@ def run_migrations():
             ))
             print("Migration: coluna phone de whatsapp_subscriptions ampliada para 35.")
 
+        # Amplia image_data em instagram_cards de BLOB (64KB) para LONGBLOB.
+        # Os cards 1080x1350 gerados por instagram/generate_cards.py passam
+        # de 64KB com frequência, e o INSERT falhava com DataError todo dia
+        # depois das 19h — nenhuma publicação chegava a sair.
+        instagram_cards_tem_tabela = conn.execute(text(
+            "SELECT COUNT(*) FROM information_schema.TABLES "
+            "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'instagram_cards'"
+        )).scalar()
+        if instagram_cards_tem_tabela:
+            image_data_type = conn.execute(text(
+                "SELECT DATA_TYPE FROM information_schema.COLUMNS "
+                "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'instagram_cards' "
+                "AND COLUMN_NAME = 'image_data'"
+            )).scalar()
+            if image_data_type == "blob":
+                conn.execute(text(
+                    "ALTER TABLE instagram_cards MODIFY COLUMN image_data LONGBLOB NOT NULL"
+                ))
+                print("Migration: coluna image_data de instagram_cards ampliada para LONGBLOB.")
+
         conn.commit()
