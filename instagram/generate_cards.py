@@ -354,6 +354,10 @@ def render_closing(ref_date: date) -> Image.Image:
     return img
 
 
+CAPTION_CHAR_LIMIT = 2200  # limite oficial de legenda do Instagram
+CAPTION_SAFETY_MARGIN = 100  # folga para o header/disclaimer não colar no limite exato
+
+
 def build_caption(ref_date: date, topics: list[dict]) -> str:
     """Monta a legenda só a partir dos temas já filtrados (mesmos dos cards).
 
@@ -362,19 +366,38 @@ def build_caption(ref_date: date, topics: list[dict]) -> str:
     vazar para a legenda pública conteúdo excluído dos cards por exigir
     revisão humana reforçada (ex.: ocorrências criminais, casos envolvendo
     menores). Ver "Decisões editoriais do piloto" no protótipo.
+
+    Trunca o resumo de cada tema para caber no limite de CAPTION_CHAR_LIMIT
+    caracteres do Instagram — com 1 card por tema (desde 2026-09-13) a soma
+    dos resumos crus de um dia cheio (~9 temas) já passa dos 2500 caracteres
+    sozinha, o que travava a publicação com "The caption was too long."
     """
-    lines = [f"Manaus em resumo — {_data_extenso(ref_date)}.", ""]
-    if topics:
-        resumo = " ".join(t["summary"].strip() for t in topics)
-        lines.append(resumo)
-    lines.append("")
-    lines.append(
+    header = f"Manaus em resumo — {_data_extenso(ref_date)}."
+    disclaimer = (
         "Esta é uma síntese automática da cobertura jornalística monitorada pelo "
         "Observatório de Manaus. O conteúdo representa o que foi publicado pelas "
         "fontes acompanhadas, não a totalidade dos acontecimentos. Consulte as "
         "notícias e fontes originais em observatorio.manaus.br."
     )
-    return "\n".join(lines)
+    # 2x "\n\n" (header->resumo, resumo->disclaimer) + 1x "\n\n" reservado
+    # mesmo sem tema, para não estourar a conta se topics vier vazio.
+    fixed_len = len(header) + len(disclaimer) + 4
+    budget = max(0, CAPTION_CHAR_LIMIT - CAPTION_SAFETY_MARGIN - fixed_len)
+    per_topic_budget = budget // len(topics) if topics else 0
+
+    lines = [header, ""]
+    if topics:
+        resumo = " ".join(_truncate(t["summary"].strip(), per_topic_budget) for t in topics)
+        lines.append(resumo)
+    lines.append("")
+    lines.append(disclaimer)
+    caption = "\n".join(lines)
+
+    # Trava final: garante o limite mesmo se o rateio por tema não bater
+    # certinho (arredondamento, tema com resumo bem mais longo que a média).
+    if len(caption) > CAPTION_CHAR_LIMIT:
+        caption = caption[: CAPTION_CHAR_LIMIT - 1].rstrip() + "…"
+    return caption
 
 
 # ---------------------------------------------------------------------------
