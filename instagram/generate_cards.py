@@ -1,10 +1,12 @@
 """Gerador determinístico de cards para Instagram a partir dos resumos diários.
 
 Lê o resumo geral e os resumos por tema do dia (tabela ``daily_summaries``),
-escolhe os temas com mais artigos (excluindo os que exigem revisão editorial
-reforçada) e renderiza um carrossel de imagens 1080x1350 seguindo a
-identidade visual definida em
-``instagram/prototypes/manaus-em-resumo-2026-06-05.md``.
+inclui um card para cada tema com resumo no dia (excluindo os que exigem
+revisão editorial reforçada) e renderiza um carrossel de imagens 1080x1350
+seguindo a identidade visual definida em
+``instagram/prototypes/manaus-em-resumo-2026-06-05.md``. O Instagram limita
+carrosséis a 10 imagens — ver ``_select_cards`` para o critério de corte nos
+dias com mais de 8 temas.
 
 Uso:
     python instagram/generate_cards.py --date 2026-06-05
@@ -57,7 +59,7 @@ LOGOMARK_TRANSPARENT = os.path.join(ASSETS_DIR, "logomark-transparent.png")
 # do piloto" no protótipo).
 EXCLUDED_TOPIC_SLUGS = {"seguranca-publica"}
 
-MAX_CONTENT_CARDS = 3
+MAX_CAROUSEL_IMAGES = 10  # limite do Instagram (Graph API) para imagens por carrossel
 BODY_CHAR_BUDGET = 230
 
 _MESES_ABREV = ["jan", "fev", "mar", "abr", "mai", "jun",
@@ -96,7 +98,9 @@ def _manaus_today() -> date:
 
 
 def fetch_card_data(ref_date: date) -> dict:
-    """Busca o resumo geral e os melhores resumos por tema para ref_date."""
+    """Busca o resumo geral e os resumos de todos os temas elegíveis para ref_date,
+    ordenados por article_count desc (o corte para caber no carrossel é decidido
+    depois, em _select_cards — aqui vem a lista completa)."""
     session = get_session()
     try:
         general = session.query(DailySummary).filter_by(date=ref_date, topic_id=None).first()
@@ -106,7 +110,6 @@ def fetch_card_data(ref_date: date) -> dict:
             .filter(DailySummary.date == ref_date, DailySummary.topic_id.isnot(None))
             .filter(~Topic.slug.in_(EXCLUDED_TOPIC_SLUGS))
             .order_by(DailySummary.article_count.desc())
-            .limit(MAX_CONTENT_CARDS)
             .all()
         )
         topics = [
@@ -129,7 +132,7 @@ def _select_topics(topics: list[dict]) -> list[dict]:
     em que o banco de produção não está acessível diretamente daqui)."""
     eligible = [t for t in topics if t.get("slug") not in EXCLUDED_TOPIC_SLUGS]
     eligible.sort(key=lambda t: t["article_count"], reverse=True)
-    return eligible[:MAX_CONTENT_CARDS]
+    return eligible
 
 
 def load_card_data_from_json(path: str) -> dict:
@@ -378,15 +381,35 @@ def build_caption(ref_date: date, topics: list[dict]) -> str:
 # Orquestração
 # ---------------------------------------------------------------------------
 
+def _select_cards(topics: list[dict]) -> tuple[list[dict], bool]:
+    """Decide quantos cards de tema entram e se o encerramento cabe, dado o
+    limite de MAX_CAROUSEL_IMAGES do Instagram. A capa nunca é cortada; o
+    encerramento é o primeiro a cair, e só se ainda faltar espaço depois
+    disso é que os temas menos noticiados (topics já vem ordenado por
+    article_count desc) são descartados.
+
+    Ex. com MAX_CAROUSEL_IMAGES=10: até 8 temas -> todos os temas + encerramento;
+    9 temas -> os 9 temas, sem encerramento; 10+ temas -> só os 9 mais
+    noticiados, sem encerramento.
+    """
+    max_with_closing = MAX_CAROUSEL_IMAGES - 2  # capa + encerramento
+    max_without_closing = MAX_CAROUSEL_IMAGES - 1  # só capa
+    if len(topics) <= max_with_closing:
+        return topics, True
+    return topics[:max_without_closing], False
+
+
 def render_carousel(ref_date: date, data: dict) -> tuple[list[Image.Image], str]:
     """Renderiza as imagens e a legenda a partir de um `data` já resolvido
     (mesmo formato de fetch_card_data / load_card_data_from_json / SAMPLE_DATA).
     Usado tanto pelo CLI (`generate`) quanto pela publicação automática
     (`instagram/publish.py`), que não passa pelo disco — grava direto no banco."""
+    topics, include_closing = _select_cards(data["topics"])
     images = [render_cover(ref_date)]
-    images += [render_topic_card(topic, i) for i, topic in enumerate(data["topics"])]
-    images.append(render_closing(ref_date))
-    caption = build_caption(ref_date, data["topics"])
+    images += [render_topic_card(topic, i) for i, topic in enumerate(topics)]
+    if include_closing:
+        images.append(render_closing(ref_date))
+    caption = build_caption(ref_date, topics)
     return images, caption
 
 
