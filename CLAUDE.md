@@ -130,7 +130,7 @@ All timestamps stored in UTC; dashboard converts to Manaus time (UTC−4).
 
 **Accounts:** Instagram `@observatorio.manaus` (Business account) and Facebook Page "Observatório de Manaus", linked to each other in one Meta Business Portfolio. Profile photo on both is the WhatsApp bot mascot (`static/whatsapp_bot_icon.png`), for visual consistency across channels.
 
-**Publishing is currently manual** — no Instagram Graph API integration (would require Meta App Review + Business verification). Cards are generated locally, then uploaded through the Instagram web UI as a carousel post with the generated caption.
+**Publishing is automatic** (since September 2026, via `instagram/publish.py`, called from `runner.py`'s collection cycle): once daily, after 7am Manaus time (same schedule and reasoning as the email digest — by then the previous day is fully closed), it renders the carousel for **the previous day**, saves each image's bytes to the `InstagramCard` table, and publishes through the Instagram Graph API using a System User token (env vars `INSTAGRAM_ACCESS_TOKEN`, `INSTAGRAM_BUSINESS_ACCOUNT_ID`, `INSTAGRAM_IMAGE_BASE_URL`). Since the Graph API only accepts an `image_url` (no direct upload) and the worker has no public domain, the `bot` service (which already has one, for the WhatsApp webhook) exposes `GET /instagram/<date>/<position>.png`, reading the bytes back from `InstagramCard` — that URL is what the Graph API fetches. `InstagramPostLog` (unique per day) prevents double-publishing; a failure logs `status="failed"` and is retried on the next 30-min cycle, no App Review or Business verification needed since it publishes only to the app owner's own account (Development Mode).
 
 **Editorial safety:** `generate_cards.py` never auto-selects the `seguranca-publica` (Segurança Pública) topic for cards or caption, and the caption is built only from the already-filtered topic summaries — never from the raw daily `general_summary` (which isn't topic-filtered and could otherwise leak crime/minor-related content excluded from the cards). Crime, missing-persons and similar sensitive stories require a human to review and write that content manually before it goes out.
 
@@ -193,7 +193,7 @@ Deploy on push to `main` branch (GitHub integration).
 
 ## Recent Changes
 
-- **September 2026:** Instagram/Facebook publishing added — accounts created (`@observatorio.manaus`, linked Facebook Page), brand logomark designed, and `instagram/generate_cards.py` built to render daily summary carousels. Publishing itself is manual for now.
+- **September 2026:** Instagram/Facebook publishing added — accounts created (`@observatorio.manaus`, linked Facebook Page), brand logomark designed, and `instagram/generate_cards.py` built to render daily summary carousels. Automatic publishing via the Graph API (`instagram/publish.py`) shipped shortly after; a `BLOB`-column bug delayed the first real post by 6 days, fixed 2026-09-13. Same day: switched from "top 3 topics" to one card per topic (dropping the closing card, then the least-covered topics, if more than 8 topics have a summary that day — Instagram caps carousels at 10 images), and moved the daily trigger from 19h same-day to 7am covering the previous day, matching the email digest's schedule.
 - **May 2026:** Email digest refactored to use REST APIs (Sendgrid primary, Brevo fallback) instead of SMTP for better Railway reliability
 - **May 2026:** Documentation added (`SENDGRID_SETUP.md`, `BREVO_TROUBLESHOOTING.md`, `DEPLOYMENT.md`)
 

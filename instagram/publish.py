@@ -134,11 +134,14 @@ def _log_result(session, ref_date: date, status: str, media_id: str | None = Non
         session.rollback()
 
 
-def run_instagram_publish(send_after_hour: int = 19, force: bool = False) -> str | None:
-    """Gera e publica o carrossel do dia no Instagram. Roda a cada ciclo de
-    coleta, mas só publica de fato uma vez por dia, depois de `send_after_hour`
-    (horário de Manaus) — publicar cedo demais rende um carrossel com poucos
-    temas, porque a coleta do dia ainda está no começo.
+def run_instagram_publish(send_after_hour: int = 7, force: bool = False) -> str | None:
+    """Gera e publica o carrossel do dia anterior no Instagram. Roda a cada
+    ciclo de coleta, mas só publica de fato uma vez por dia, depois de
+    `send_after_hour` (horário de Manaus) — mesmo horário e mesmo motivo do
+    digest por email (`notifications/email_sender.py::run_digest`): às 7h o
+    dia anterior já fechou (todos os temas cobertos, resumos finais), o que
+    dá um carrossel completo em vez de um recorte parcial de um dia ainda em
+    andamento.
 
     Retorna o media_id publicado, ou None se não publicou (ainda não é hora,
     já publicou hoje, sem temas elegíveis, ou faltou configuração).
@@ -161,6 +164,7 @@ def run_instagram_publish(send_after_hour: int = 19, force: bool = False) -> str
         return None
 
     today = _manaus_today()
+    content_date = today - timedelta(days=1)
     session = get_session()
     try:
         if not force and session.query(InstagramPostLog).filter_by(date=today, status="published").first():
@@ -169,14 +173,14 @@ def run_instagram_publish(send_after_hour: int = 19, force: bool = False) -> str
     finally:
         session.close()
 
-    data = fetch_card_data(today)
+    data = fetch_card_data(content_date)
     if not data["topics"]:
-        print(f"  [Instagram] Nenhum tema elegível ainda para {today} "
+        print(f"  [Instagram] Nenhum tema elegível para {content_date} "
               f"(excluindo {sorted(EXCLUDED_TOPIC_SLUGS)}) — tenta de novo no próximo ciclo.")
         return None
 
-    print(f"  [Instagram] Gerando carrossel de {today} ({len(data['topics'])} temas)...")
-    images, caption = render_carousel(today, data)
+    print(f"  [Instagram] Gerando carrossel de {content_date} ({len(data['topics'])} temas)...")
+    images, caption = render_carousel(content_date, data)
     _save_cards_to_db(today, images)
 
     image_urls = [f"{base_url}/instagram/{today.isoformat()}/{i}.png" for i in range(1, len(images) + 1)]
