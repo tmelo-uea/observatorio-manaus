@@ -127,6 +127,21 @@ def _publish_container(ig_user_id: str, creation_id: str, access_token: str) -> 
 
 
 def _log_result(session, ref_date: date, status: str, media_id: str | None = None, error: str | None = None):
+    """Grava o resultado da tentativa. Faz upsert por `date` (atualiza a linha
+    existente em vez de só inserir): uma falha já grava uma linha para o dia,
+    e sem isso o INSERT da tentativa seguinte (mesmo tendo publicado com
+    sucesso) batia na UniqueConstraint de `date` e era descartado em silêncio
+    pelo `except IntegrityError` — o post saía no Instagram, mas ficava
+    registrado aqui como "failed", e o próximo ciclo tentaria publicar de
+    novo (quase causou post duplicado em 2026-09-14, contido manualmente)."""
+    existing = session.query(InstagramPostLog).filter_by(date=ref_date).first()
+    if existing:
+        existing.status = status
+        existing.media_id = media_id
+        existing.error = error
+        existing.posted_at = datetime.utcnow()
+        session.commit()
+        return
     try:
         session.add(InstagramPostLog(date=ref_date, status=status, media_id=media_id, error=error))
         session.commit()
